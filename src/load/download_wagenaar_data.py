@@ -4,16 +4,11 @@ from tqdm import tqdm
 
 from src.folders import get_data_folder
 
-import os
-
-# os.environ['OPENBLAS_NUM_THREADS'] ='2'
 import numpy as np
 import subprocess
 
-# sys.path.append("..")
 
-
-def download(target_folder=None, days=None, extract=True):
+def download(target_folder=None, days=None, extract=True, density="dense"):
     if target_folder is None:
         target_folder = get_data_folder()
     if days is None:
@@ -31,16 +26,16 @@ def download(target_folder=None, days=None, extract=True):
         os.makedirs(_path, exist_ok=True)
 
     # list of all file names for daily spong activity
-    big_list = "http://neurodatasharing.bme.gatech.edu/development-data/html/wget/daily.spont.dense.text.0.0.0.list"
+    list_path = os.path.join(path_lists, f"daily.spont.{density}.text.0.0.0.list")
+    list_exists = os.path.isfile(list_path)
+    big_list = f"http://neurodatasharing.bme.gatech.edu/development-data/html/wget/daily.spont.{density}.text.0.0.0.list"
     url = big_list
     # download the list of all files
-    if load:
+    if load and not list_exists:
         bashCommand = "wget %s -P %s" % (url, path_lists)
         subprocess.call(bashCommand, shell=True)  # stdout=subprocess.PIPE)
     file_names = []
-    with open(
-        os.path.join(path_lists, "daily.spont.dense.text.0.0.0.list"), "r"
-    ) as file:
+    with open(list_path, "r") as file:
         for line in file:
             file_names.append(line.split()[0])
     res = list(os.walk(path_raw, topdown=True))
