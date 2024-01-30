@@ -90,6 +90,8 @@ def _get_data_from_file(data_folder):
     df["batch"] = df["file_name"].apply(lambda x: x.split("-")[0])
     df["culture"] = df["file_name"].apply(lambda x: x.split("-")[1])
     df["day"] = df["file_name"].apply(lambda x: x.split("-")[2].split(".")[0])
+    for col in ["batch", "culture", "day"]:
+        df[col] = df[col].astype(int)
     # set index
     df.set_index(["batch", "culture", "day"], inplace=True)
     print("Done")
