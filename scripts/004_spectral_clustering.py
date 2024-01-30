@@ -3,8 +3,6 @@ import numpy as np
 import time
 import pickle
 
-from tqdm import tqdm
-
 from src.folders import get_results_folder
 from src.spectral_clustering import SpectralClusteringModified
 
@@ -36,21 +34,7 @@ with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "wb") as f:
     pickle.dump(clustering, f)
 
 # %% compute labels
-with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "rb") as f:
-    clustering = pickle.load(f)
-clustering.verbose = False
-for n_clusters in tqdm(n_clusters_list, desc="Assign labels"):
-    clustering.n_clusters = n_clusters
-    clustering = clustering.compute_labels()
-
-    with open(
-        os.path.join(save_folder, f"004_clustering_labels_{n_clusters}.pkl"),
-        "wb",
-    ) as f:
-        pickle.dump(clustering, f)
-
-# %% compute labels all at once
-print("Compute labels all at once...")
+print("Compute labels...")
 with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "rb") as f:
     clustering = pickle.load(f)
 clustering.verbose = False
