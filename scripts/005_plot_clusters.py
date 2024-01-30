@@ -10,11 +10,10 @@ from src.folders import get_results_folder
 
 n_clusters = 5
 with open(
-    # os.path.join(get_results_folder(), f"005_clustering_test{n_clusters}.pkl"), "rb"
     os.path.join(
         get_results_folder(),
-        "007_spectral_clustering",
-        f"007_clustering_labels_{n_clusters}.pkl",
+        "004_spectral_clustering",
+        f"004_clustering_labels_{n_clusters}.pkl",
     ),
     "rb",
 ) as f:

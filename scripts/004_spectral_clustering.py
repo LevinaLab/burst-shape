@@ -6,17 +6,16 @@ import pickle
 from tqdm import tqdm
 
 from src.folders import get_results_folder
-from src.spectral_clustering.modified import SpectralClusteringModified
+from src.spectral_clustering import SpectralClusteringModified
 
 n_clusters_list = np.arange(2, 31, 1)
-save_folder = os.path.join(get_results_folder(), "007_spectral_clustering_test")
+save_folder = os.path.join(get_results_folder(), "004_spectral_clustering")
 os.makedirs(save_folder, exist_ok=True)
 
 # %% compute eigenvectors
 bursts = np.load(
     os.path.join(get_results_folder(), "002_wagenaar_bursts_mat.npy")
 )  # n_burst x time
-bursts = bursts[:100, :]
 
 print("Compute eigenvectors")
 start_time = time.time()
@@ -33,12 +32,12 @@ clustering = SpectralClusteringModified(
 end_time = time.time()
 print("Elapsed time: {}".format(end_time - start_time))
 
-with open(os.path.join(save_folder, "007_clustering_maps.pkl"), "wb") as f:
+with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "wb") as f:
     pickle.dump(clustering, f)
 
 # %% compute labels
 print("Compute labels")
-with open(os.path.join(save_folder, "007_clustering_maps.pkl"), "rb") as f:
+with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "rb") as f:
     clustering = pickle.load(f)
 clustering.verbose = False
 for n_clusters in tqdm(n_clusters_list, desc="Assign labels"):
@@ -46,7 +45,7 @@ for n_clusters in tqdm(n_clusters_list, desc="Assign labels"):
     clustering = clustering.compute_labels()
 
     with open(
-        os.path.join(save_folder, f"007_clustering_labels_{n_clusters}.pkl"),
+        os.path.join(save_folder, f"004_clustering_labels_{n_clusters}.pkl"),
         "wb",
     ) as f:
         pickle.dump(clustering, f)
