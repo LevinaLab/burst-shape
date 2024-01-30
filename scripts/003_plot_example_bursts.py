@@ -8,7 +8,7 @@ import seaborn as sns
 from src.folders import get_results_folder, get_data_folder
 
 df_cultures = pd.read_pickle(
-    os.path.join(get_results_folder(), "002_wagenaar_bursts.pkl")
+    os.path.join(get_results_folder(), "002_wagenaar_cultures_df.pkl")
 )
 df_bursts = pd.read_pickle(
     os.path.join(get_results_folder(), "002_wagenaar_bursts_df.pkl")

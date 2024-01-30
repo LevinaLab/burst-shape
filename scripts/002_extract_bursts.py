@@ -9,7 +9,7 @@ data_folder = os.path.join(get_data_folder(), "extracted")
 
 burst_length_threshold = 5  # in seconds
 
-df_save_path = os.path.join(get_results_folder(), "002_wagenaar_bursts.pkl")
+df_save_path = os.path.join(get_results_folder(), "002_wagenaar_cultures_df.pkl")
 df_burst_save_path = os.path.join(get_results_folder(), "002_wagenaar_bursts_df.pkl")
 df_mat_save_path = os.path.join(get_results_folder(), "002_wagenaar_bursts_mat.npy")
 
