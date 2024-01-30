@@ -1,4 +1,4 @@
-from .spectral_clustering import SpectralClusteringModified
+from .modified import SpectralClusteringModified
 
 
 __all__ = ["SpectralClusteringModified"]
