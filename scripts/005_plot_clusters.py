@@ -8,12 +8,16 @@ import pandas as pd
 
 from src.folders import get_results_folder
 
+# which clustering to plot
 n_clusters = 5
+col_cluster = f"cluster_{n_clusters}"
+
+# load data
 with open(
     os.path.join(
         get_results_folder(),
         "004_spectral_clustering",
-        f"004_clustering_labels_{n_clusters}.pkl",
+        f"004_clustering_labels.pkl",
     ),
     "rb",
 ) as f:
@@ -21,7 +25,8 @@ with open(
 df_bursts = pd.read_pickle(
     os.path.join(get_results_folder(), "002_wagenaar_bursts_df.pkl")
 )
-df_bursts["cluster"] = clustering.labels_
+for n_clusters_ in clustering.n_clusters:
+    df_bursts[f"cluster_{n_clusters_}"] = clustering.labels_[n_clusters_]
 
 # convert each category of multi-index to integer
 for i, index_name in enumerate(df_bursts.index.names):
@@ -30,12 +35,10 @@ for i, index_name in enumerate(df_bursts.index.names):
     )
 
 # %% plot clusters
-print(f"Number of clusters: {clustering.n_clusters}")
-
 # bar plot of cluster sizes
 fig, ax = plt.subplots()
 sns.despine()
-sns.countplot(x="cluster", hue="cluster", data=df_bursts, ax=ax, palette="Set1")
+sns.countplot(x=col_cluster, hue=col_cluster, data=df_bursts, ax=ax, palette="Set1")
 fig.show()
 
 for category in ["batch", "day"]:
@@ -43,7 +46,7 @@ for category in ["batch", "day"]:
     sns.despine()
     sns.countplot(
         x=category,
-        hue="cluster",
+        hue=col_cluster,
         data=df_bursts,
         ax=ax,
         native_scale=True,
@@ -55,7 +58,7 @@ facet_grid = sns.catplot(
     kind="count",
     col="batch",
     x="culture",
-    hue="cluster",
+    hue=col_cluster,
     data=df_bursts,
     palette="Set1",
     height=5,
@@ -71,8 +74,8 @@ n_plot = 100
 fig, ax = plt.subplots()
 fig.suptitle("Example bursts")
 sns.despine()
-for i in range(clustering.n_clusters):
-    df_bursts_i = df_bursts[df_bursts["cluster"] == i]
+for i in range(n_clusters):
+    df_bursts_i = df_bursts[df_bursts[col_cluster] == i]
     n_bursts_i = df_bursts_i.shape[0]
     idx_random = np.random.randint(
         0,
@@ -94,8 +97,8 @@ fig.show()
 fig, ax = plt.subplots()
 fig.suptitle("Average burst per cluster")
 sns.despine()
-for i in range(clustering.n_clusters):
-    df_bursts_i = df_bursts[df_bursts["cluster"] == i]
+for i in range(n_clusters):
+    df_bursts_i = df_bursts[df_bursts[col_cluster] == i]
     ax.plot(
         df_bursts_i["burst"].mean(),
         # color from set1 palette

@@ -36,7 +36,6 @@ with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "wb") as f:
     pickle.dump(clustering, f)
 
 # %% compute labels
-print("Compute labels")
 with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "rb") as f:
     clustering = pickle.load(f)
 clustering.verbose = False
@@ -49,3 +48,18 @@ for n_clusters in tqdm(n_clusters_list, desc="Assign labels"):
         "wb",
     ) as f:
         pickle.dump(clustering, f)
+
+# %% compute labels all at once
+print("Compute labels all at once...")
+with open(os.path.join(save_folder, "004_clustering_maps.pkl"), "rb") as f:
+    clustering = pickle.load(f)
+clustering.verbose = False
+clustering.n_clusters = n_clusters_list
+clustering = clustering.compute_labels()
+
+with open(
+    os.path.join(save_folder, f"004_clustering_labels.pkl"),
+    "wb",
+) as f:
+    pickle.dump(clustering, f)
+print("Done.")

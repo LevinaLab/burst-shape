@@ -134,21 +134,26 @@ class SpectralClusteringModified(SpectralClustering):
             print(f"Computing label assignment using {self.assign_labels}")
 
         random_state = check_random_state(self.random_state)
-        n_components = (
-            self.n_clusters if self.n_components is None else self.n_components
-        )
+        self.labels_ = {}
+        for n_cluster in self.n_clusters:
+            self.labels_[n_cluster] = self._compute_labels(n_cluster)
+        return self
+
+    def _compute_labels(self, n_clusters):
+        random_state = check_random_state(self.random_state)
+        n_components = n_clusters if self.n_components is None else self.n_components
         maps = self.maps_[:, :n_components]
         if self.assign_labels == "kmeans":
-            _, self.labels_, _ = k_means(
+            _, labels, _ = k_means(
                 maps,
-                self.n_clusters,
+                n_clusters,
                 random_state=random_state,
                 n_init=self.n_init,
                 verbose=self.verbose,
             )
         elif self.assign_labels == "cluster_qr":
-            self.labels_ = cluster_qr(maps)
+            labels = cluster_qr(maps)
         else:
-            self.labels_ = discretize(maps, random_state=random_state)
+            labels = discretize(maps, random_state=random_state)
 
-        return self
+        return labels
