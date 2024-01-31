@@ -28,12 +28,6 @@ df_bursts = pd.read_pickle(
 for n_clusters_ in clustering.n_clusters:
     df_bursts[f"cluster_{n_clusters_}"] = clustering.labels_[n_clusters_]
 
-# convert each category of multi-index to integer
-for i, index_name in enumerate(df_bursts.index.names):
-    df_bursts.index = df_bursts.index.set_levels(
-        df_bursts.index.levels[i].astype(int), level=i
-    )
-
 # %% plot clusters
 # bar plot of cluster sizes
 fig, ax = plt.subplots()
