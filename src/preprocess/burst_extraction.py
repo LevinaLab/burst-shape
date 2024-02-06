@@ -217,6 +217,7 @@ def _build_bursts_df(
                             ],
                             df_bursts.at[(batch, culture, day, i_burst), "end_extend"],
                             n_bins + 1,
+                            endpoint=True,
                         )
                         for i_burst in range(len(bursts_start_end))
                     ]
@@ -238,6 +239,7 @@ def _build_bursts_df(
                         df_bursts.at[index, "start_extend"],
                         df_bursts.at[index, "end_extend"],
                         n_bins + 1,
+                        endpoint=True,
                     )
                     counts, _ = np.histogram(data, bins=bins)
                     df_bursts.at[index, "burst"] = counts
