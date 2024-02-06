@@ -5,16 +5,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from src.folders import get_results_folder, get_data_folder
+from src.folders import get_data_folder
+from src.persistence import get_burst_folder
 
-df_cultures = pd.read_pickle(
-    os.path.join(get_results_folder(), "002_wagenaar_cultures_df.pkl")
-)
-df_bursts = pd.read_pickle(
-    os.path.join(get_results_folder(), "002_wagenaar_bursts_df.pkl")
-)
+# actual parameters copied from params.json or string
+burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
+
+folder = get_burst_folder(burst_extraction_params)
+
+df_cultures = pd.read_pickle(os.path.join(folder, "002_wagenaar_cultures_df.pkl"))
+df_bursts = pd.read_pickle(os.path.join(folder, "002_wagenaar_bursts_df.pkl"))
 bursts_mat = np.load(
-    os.path.join(get_results_folder(), "002_wagenaar_bursts_mat.npy")
+    os.path.join(folder, "002_wagenaar_bursts_mat.npy")
 )  # n_burst x time
 
 # %% Plot examples of burst extraction

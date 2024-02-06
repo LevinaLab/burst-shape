@@ -7,26 +7,34 @@ import seaborn as sns
 import pandas as pd
 from sklearn.manifold import TSNE
 
-from src.folders import get_results_folder
+from src.persistence import get_labels_file, get_burst_folder
+
+burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
+clustering_params = "spectral"
+labels_params = "004_clustering_labels.pkl"
 
 # load data
 with open(
-    os.path.join(
-        get_results_folder(),
-        "004_spectral_clustering",
-        f"004_clustering_labels.pkl",
+    get_labels_file(
+        labels_params,
+        clustering_params,
+        burst_extraction_params,
     ),
     "rb",
 ) as f:
     clustering = pickle.load(f)
 df_bursts = pd.read_pickle(
-    os.path.join(get_results_folder(), "002_wagenaar_bursts_df.pkl")
+    os.path.join(
+        get_burst_folder(burst_extraction_params), "002_wagenaar_bursts_df.pkl"
+    )
 )
 for n_clusters_ in clustering.n_clusters:
     df_bursts[f"cluster_{n_clusters_}"] = clustering.labels_[n_clusters_]
 
 bursts = np.load(
-    os.path.join(get_results_folder(), "002_wagenaar_bursts_mat.npy")
+    os.path.join(
+        get_burst_folder(burst_extraction_params), "002_wagenaar_bursts_mat.npy"
+    )
 )  # n_burst x time
 
 # %% tsne on bursts

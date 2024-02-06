@@ -6,24 +6,30 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 
-from src.folders import get_results_folder
+from src.persistence import get_labels_file, get_burst_folder
 
 # which clustering to plot
 n_clusters = 5
 col_cluster = f"cluster_{n_clusters}"
 
+burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
+clustering_params = "spectral"
+labels_params = "004_clustering_labels.pkl"
+
 # load data
 with open(
-    os.path.join(
-        get_results_folder(),
-        "004_spectral_clustering",
-        f"004_clustering_labels.pkl",
+    get_labels_file(
+        labels_params,
+        clustering_params,
+        burst_extraction_params,
     ),
     "rb",
 ) as f:
     clustering = pickle.load(f)
 df_bursts = pd.read_pickle(
-    os.path.join(get_results_folder(), "002_wagenaar_bursts_df.pkl")
+    os.path.join(
+        get_burst_folder(burst_extraction_params), "002_wagenaar_bursts_df.pkl"
+    )
 )
 for n_clusters_ in clustering.n_clusters:
     df_bursts[f"cluster_{n_clusters_}"] = clustering.labels_[n_clusters_]
@@ -79,12 +85,41 @@ for i in range(n_clusters):
     for j, idx in enumerate(idx_random):
         ax.plot(
             df_bursts_i.iloc[idx]["burst"],
-            # color from set1 palette
             color=sns.color_palette("Set1")[i],
             alpha=0.5,
             label=f"Cluster {i}" if j == 0 else None,
         )
 ax.legend()
+fig.show()
+
+# %% plot burst with real time
+n_plot = 100
+fig, ax = plt.subplots()
+fig.suptitle("Example bursts")
+sns.despine()
+for i in range(n_clusters):
+    df_bursts_i = df_bursts[df_bursts[col_cluster] == i]
+    n_bursts_i = df_bursts_i.shape[0]
+    idx_random = np.random.randint(
+        0,
+        n_bursts_i,
+        n_plot,
+    )
+    for j, idx in enumerate(idx_random):
+        bins = np.linspace(
+            -50, df_bursts_i.iloc[idx]["time_extend"] - 50, 51, endpoint=True
+        )
+        bins_mid = (bins[1:] + bins[:-1]) / 2
+        ax.plot(
+            bins_mid,
+            df_bursts_i.iloc[idx]["burst"],
+            color=sns.color_palette("Set1")[i],
+            alpha=0.5,
+            label=f"Cluster {i}" if j == 0 else None,
+        )
+ax.legend(frameon=False)
+ax.set_xlabel("Time [ms]")
+ax.set_ylabel("Rate [Hz]")
 fig.show()
 
 # %% plot average burst per cluster
