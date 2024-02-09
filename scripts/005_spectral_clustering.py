@@ -1,7 +1,6 @@
 import numpy as np
 import time
 
-from src.persistence.cross_validation import load_cv_params
 from src.spectral_clustering import SpectralClusteringModified
 from src.persistence import (
     load_burst_matrix,
@@ -11,6 +10,7 @@ from src.persistence import (
     load_clustering_maps,
     save_labels_params,
     save_clustering_labels,
+    load_cv_params,
 )
 
 # choose parameters for clustering

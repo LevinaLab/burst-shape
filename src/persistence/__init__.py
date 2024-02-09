@@ -7,7 +7,7 @@ from .burst_extraction import (
     load_df_bursts,
     load_burst_matrix,
 )
-from .cross_validation import save_cv_params
+from .cross_validation import save_cv_params, load_cv_params
 from .spectral_clustering import (
     save_clustering_params,
     save_clustering_maps,
@@ -26,6 +26,7 @@ __all__ = [
     "load_burst_matrix",
     "save_burst_extraction_params",
     "save_cv_params",
+    "load_cv_params",
     "save_clustering_params",
     "save_clustering_maps",
     "load_clustering_maps",
