@@ -1,11 +1,7 @@
-import os
-import json
-
-import pandas as pd
-
 from src.cross_validation.split import split_training_and_validation_data
-from src.persistence import get_burst_folder, cv_params_to_string
+from src.persistence import load_df_bursts, save_cv_params, save_df_bursts
 
+# parameters
 burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
 cv_params = {
     "type": "kfold",
@@ -14,28 +10,14 @@ cv_params = {
     "random_state": 0,
 }
 
-cv_string = cv_params_to_string(cv_params)
+# load data
+df_bursts = load_df_bursts(burst_extraction_params)
 
-df_bursts = pd.read_pickle(
-    os.path.join(
-        get_burst_folder(burst_extraction_params),
-        "002_wagenaar_bursts_df.pkl",
-    )
-)
-
+# split data
 df_bursts = split_training_and_validation_data(df_bursts, **cv_params)
 
 # save cv_params
-with open(
-    os.path.join(get_burst_folder(burst_extraction_params), f"{cv_string}_params.json"),
-    "w",
-) as f:
-    json.dump(cv_params, f, indent=4)
+save_cv_params(cv_params, burst_extraction_params)
 
 # save
-df_bursts.to_pickle(
-    os.path.join(
-        get_burst_folder(burst_extraction_params),
-        f"002_wagenaar_bursts_df_{cv_string}.pkl",
-    )
-)
+save_df_bursts(df_bursts, burst_extraction_params, cv_params=cv_params)

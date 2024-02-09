@@ -1,25 +1,23 @@
-import os
 import numpy as np
 import time
-import pickle
-import json
 
-import pandas as pd
-
+from src.persistence.cross_validation import load_cv_params
 from src.spectral_clustering import SpectralClusteringModified
 from src.persistence import (
-    get_burst_folder,
-    get_spectral_clustering_folder,
-    get_labels_file,
-    get_labels_params_file,
-    cv_params_to_string,
+    load_burst_matrix,
+    load_df_bursts,
+    save_clustering_params,
+    save_clustering_maps,
+    load_clustering_maps,
+    save_labels_params,
+    save_clustering_labels,
 )
 
 # choose parameters for clustering
 n_jobs = 12
 burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
 cv_params = "cv"  # set to None if not using cross-validation or to specific cv_params
-all_data = False  # set to False if you want to compute only cross-validation
+all_data = True  # set to False if you want to compute only cross-validation
 clustering_params = {
     "n_components_max": 30,
     "affinity": "nearest_neighbors",
@@ -27,47 +25,26 @@ clustering_params = {
     "random_state": 0,
 }
 
+# load cross-validation parameters
 if cv_params is not None:
-    if isinstance(cv_params, dict):
-        cv_string = cv_params_to_string(cv_params)
-    else:
-        cv_string = cv_params
-    with open(
-        os.path.join(
-            get_burst_folder(burst_extraction_params), f"{cv_string}_params.json"
-        ),
-        "r",
-    ) as f:
-        cv_params = json.load(f)
-        n_splits = cv_params["n_splits"]
+    cv_params = load_cv_params(burst_extraction_params, cv_params)
+    n_splits = cv_params["n_splits"]
 else:
     n_splits = 0
+
+# define which clustering tasks to perform
 tasks = []
 if all_data:
     tasks.append(None)
 if n_splits > 0:
     tasks.extend(list(range(n_splits)))
 
-# create folder
-save_folder = get_spectral_clustering_folder(clustering_params, burst_extraction_params)
-os.makedirs(save_folder, exist_ok=True)
 # save params as json
-with open(os.path.join(save_folder, "clustering_params.json"), "w") as f:
-    json.dump(clustering_params, f, indent=4)
+save_clustering_params(clustering_params, burst_extraction_params)
 
 # %% compute eigenvectors
-df_bursts = pd.read_pickle(
-    os.path.join(
-        get_burst_folder(burst_extraction_params),
-        f"002_wagenaar_bursts_df_{cv_string}.pkl",
-    )
-)
-bursts = np.load(
-    os.path.join(
-        get_burst_folder(burst_extraction_params),
-        "002_wagenaar_bursts_mat.npy",
-    )
-)  # n_burst x time
+df_bursts = load_df_bursts(burst_extraction_params, cv_params=cv_params)
+bursts = load_burst_matrix(burst_extraction_params)
 for i_split in tasks:
     if i_split is None:
         print("Compute eigenvectors for all data")
@@ -84,14 +61,13 @@ for i_split in tasks:
     ).compute_maps(bursts_split)
     end_time = time.time()
     print(f"Elapsed time: {end_time - start_time}")
-    maps_file = os.path.join(
-        save_folder,
-        f"004_clustering_maps.pkl"
-        if i_split is None
-        else f"004_clustering_maps_{cv_string}_{i_split}.pkl",
+    save_clustering_maps(
+        clustering,
+        clustering_params,
+        burst_extraction_params,
+        params_cross_validation=cv_params,
+        i_split=i_split,
     )
-    with open(maps_file, "wb") as f:
-        pickle.dump(clustering, f)
 
 # %% compute labels
 # choose parameters for labels
@@ -103,22 +79,19 @@ label_params = {
 }
 
 # save params as json
-with open(os.path.join(save_folder, get_labels_params_file(label_params)), "w") as f:
-    json.dump(label_params, f, indent=4)
+save_labels_params(label_params, clustering_params, burst_extraction_params)
 
 for i_split in tasks:
     if i_split is None:
         print("Compute labels for all data")
     else:
         print(f"Compute labels for split {i_split}")
-    maps_file = os.path.join(
-        save_folder,
-        f"004_clustering_maps.pkl"
-        if i_split is None
-        else f"004_clustering_maps_{cv_string}_{i_split}.pkl",
+    clustering = load_clustering_maps(
+        clustering_params,
+        burst_extraction_params,
+        params_cross_validation=cv_params,
+        i_split=i_split,
     )
-    with open(maps_file, "rb") as f:
-        clustering = pickle.load(f)
     clustering.n_jobs = n_jobs
     clustering.n_clusters = np.arange(
         label_params["n_clusters_min"], label_params["n_clusters_max"] + 1
@@ -127,10 +100,11 @@ for i_split in tasks:
     clustering.random_state = label_params["random_state"]
     clustering.verbose = False
     clustering = clustering.compute_labels()
-    with open(
-        get_labels_file(
-            label_params, clustering_params, burst_extraction_params, i_split=i_split
-        ),
-        "wb",
-    ) as f:
-        pickle.dump(clustering, f)
+    save_clustering_labels(
+        clustering,
+        clustering_params,
+        burst_extraction_params,
+        label_params,
+        params_cross_validation=cv_params,
+        i_split=i_split,
+    )

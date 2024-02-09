@@ -1,6 +1,9 @@
+import json
 import os
+import pickle
 
-from src.persistence import get_burst_folder
+from .burst_extraction import _get_burst_folder
+from .cross_validation_string import _cv_params_to_string
 
 _spectral_clustering_defaults: dict = {
     "n_components_max": 30,
@@ -28,51 +31,132 @@ def _spectral_clustering_params_to_str(params):
     return name
 
 
-def get_spectral_clustering_folder(
+def _get_spectral_clustering_folder(
     params_spectral_clustering: str or dict, params_burst_extraction: str or dict
 ):
     if isinstance(params_spectral_clustering, dict):
         params_spectral_clustering = _spectral_clustering_params_to_str(
             params_spectral_clustering
         )
-    path_burst_extraction = get_burst_folder(params_burst_extraction)
+    path_burst_extraction = _get_burst_folder(params_burst_extraction)
     return os.path.join(path_burst_extraction, params_spectral_clustering)
 
 
-def _labels_params_to_str(params, i_split):
-    name = "004_clustering_labels"
-    for key, value in params.items():
-        if key in _labels_defaults and value != _labels_defaults[key]:
-            name += f"_{key}_{value}"
-    if i_split is not None:
-        name += f"_cv_{i_split}"
-    name += ".pkl"
-    return name
+def save_clustering_params(params, params_burst_extraction):
+    save_folder = _get_spectral_clustering_folder(params, params_burst_extraction)
+    with open(
+        os.path.join(save_folder, "clustering_params.json"),
+        "w",
+    ) as f:
+        json.dump(params, f, indent=4)
 
 
-def get_labels_params_file(params):
-    name = "labels_params"
-    for key, value in params.items():
-        if key in _labels_defaults and value != _labels_defaults[key]:
-            name += f"_{key}_{value}"
-    name += ".json"
-    return name
-
-
-def get_labels_file(
-    params_labels: str or dict,
-    params_spectral_clustering: str or dict,
-    params_burst_extraction: str or dict,
-    i_split: int = None,
+def save_clustering_maps(
+    clustering,
+    params_spectral_clustering,
+    params_burst_extraction,
+    params_cross_validation=None,
+    i_split=None,
 ):
-    if isinstance(params_labels, dict):
-        params_labels = _labels_params_to_str(params_labels, i_split)
-    else:
-        if i_split is not None:
-            params_labels = params_labels.replace(".pkl", f"_cv_{i_split}.pkl")
-    return os.path.join(
-        get_spectral_clustering_folder(
-            params_spectral_clustering, params_burst_extraction
-        ),
-        params_labels,
+    save_folder = _get_spectral_clustering_folder(
+        params_spectral_clustering, params_burst_extraction
     )
+    os.makedirs(save_folder, exist_ok=True)
+    if params_cross_validation is not None and i_split is not None:
+        cv_string = _cv_params_to_string(params_cross_validation, i_split)
+        name = f"clustering_maps_{cv_string}.pkl"
+    else:
+        name = "clustering_maps.pkl"
+    with open(os.path.join(save_folder, name), "wb") as f:
+        pickle.dump(clustering, f)
+
+
+def load_clustering_maps(
+    params_spectral_clustering,
+    params_burst_extraction,
+    params_cross_validation=None,
+    i_split=None,
+):
+    save_folder = _get_spectral_clustering_folder(
+        params_spectral_clustering, params_burst_extraction
+    )
+    if params_cross_validation is not None and i_split is not None:
+        cv_string = _cv_params_to_string(params_cross_validation, i_split)
+        name = f"clustering_maps_{cv_string}.pkl"
+    else:
+        name = "clustering_maps.pkl"
+    with open(os.path.join(save_folder, name), "rb") as f:
+        clustering = pickle.load(f)
+    return clustering
+
+
+def _labels_params_to_str(params: str or dict):
+    if isinstance(params, str):
+        return params
+    else:
+        name = "labels"
+        for key, value in params.items():
+            if key in _labels_defaults and value != _labels_defaults[key]:
+                name += f"_{key}_{value}"
+        return name
+
+
+def _get_labels_params_file(params_labels):
+    name = _labels_params_to_str(params_labels)
+    name += "_params.json"
+    return name
+
+
+def save_labels_params(
+    params_labels, params_spectral_clustering, params_burst_extraction
+):
+    save_folder = _get_spectral_clustering_folder(
+        params_spectral_clustering, params_burst_extraction
+    )
+    with open(
+        os.path.join(save_folder, _get_labels_params_file(params_labels)), "w"
+    ) as f:
+        json.dump(params_labels, f, indent=4)
+
+
+def save_clustering_labels(
+    clustering,
+    params_spectral_clustering,
+    params_burst_extraction,
+    params_labels,
+    params_cross_validation=None,
+    i_split=None,
+):
+    save_folder = _get_spectral_clustering_folder(
+        params_spectral_clustering, params_burst_extraction
+    )
+    os.makedirs(save_folder, exist_ok=True)
+    labels_string = _labels_params_to_str(params_labels)
+    if params_cross_validation is not None and i_split is not None:
+        cv_string = _cv_params_to_string(params_cross_validation, i_split)
+        name = f"clustering_{labels_string}_{cv_string}.pkl"
+    else:
+        name = f"clustering_{labels_string}.pkl"
+    with open(os.path.join(save_folder, name), "wb") as f:
+        pickle.dump(clustering, f)
+
+
+def load_clustering_labels(
+    params_spectral_clustering,
+    params_burst_extraction,
+    params_labels,
+    params_cross_validation=None,
+    i_split=None,
+):
+    save_folder = _get_spectral_clustering_folder(
+        params_spectral_clustering, params_burst_extraction
+    )
+    labels_string = _labels_params_to_str(params_labels)
+    if params_cross_validation is not None and i_split is not None:
+        cv_string = _cv_params_to_string(params_cross_validation, i_split)
+        name = f"clustering_{labels_string}_{cv_string}.pkl"
+    else:
+        name = f"clustering_{labels_string}.pkl"
+    with open(os.path.join(save_folder, name), "rb") as f:
+        clustering = pickle.load(f)
+    return clustering

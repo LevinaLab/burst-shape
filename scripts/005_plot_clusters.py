@@ -4,39 +4,27 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 import seaborn as sns
-import pandas as pd
 
-from src.persistence import get_labels_file, get_burst_folder
+from src.persistence import load_clustering_labels, load_df_bursts
 
 # which clustering to plot
 n_clusters = 5
 col_cluster = f"cluster_{n_clusters}"
 
+# parameters which clustering to plot
 burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
 clustering_params = "spectral"
-labels_params = "004_clustering_labels.pkl"
+labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
 cv_split = (
     None  # set to None for plotting the whole clustering, set to int for specific split
 )
 
 # load data
-with open(
-    get_labels_file(
-        labels_params,
-        clustering_params,
-        burst_extraction_params,
-        i_split=cv_split,
-    ),
-    "rb",
-) as f:
-    clustering = pickle.load(f)
-df_bursts = pd.read_pickle(
-    os.path.join(
-        get_burst_folder(burst_extraction_params),
-        f"002_wagenaar_bursts_df{'_' + cv_params if cv_params is not None else ''}.pkl",
-    )
+clustering = load_clustering_labels(
+    clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
 )
+df_bursts = load_df_bursts(burst_extraction_params, cv_params=cv_params)
 if cv_split is not None:
     df_bursts = df_bursts[df_bursts[f"cv_{cv_split}_train"]]
 for n_clusters_ in clustering.n_clusters:

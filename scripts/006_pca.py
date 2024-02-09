@@ -1,41 +1,26 @@
-import os
-import pickle
-
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import pandas as pd
 from sklearn.decomposition import PCA
 
-from src.persistence import get_labels_file, get_burst_folder
+from src.persistence import load_df_bursts, load_clustering_labels, load_burst_matrix
 
 burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
 clustering_params = "spectral"
-labels_params = "004_clustering_labels.pkl"
+labels_params = "labels"
 
 # load data
-with open(
-    get_labels_file(
-        labels_params,
-        clustering_params,
-        burst_extraction_params,
-    ),
-    "rb",
-) as f:
-    clustering = pickle.load(f)
-df_bursts = pd.read_pickle(
-    os.path.join(
-        get_burst_folder(burst_extraction_params), "002_wagenaar_bursts_df.pkl"
-    )
+clustering = load_clustering_labels(
+    clustering_params,
+    burst_extraction_params,
+    labels_params,
+    params_cross_validation=None,
 )
+df_bursts = load_df_bursts(burst_extraction_params, cv_params=None)
 for n_clusters_ in clustering.n_clusters:
     df_bursts[f"cluster_{n_clusters_}"] = clustering.labels_[n_clusters_]
 
-bursts = np.load(
-    os.path.join(
-        get_burst_folder(burst_extraction_params), "002_wagenaar_bursts_mat.npy"
-    )
-)  # n_burst x time
+bursts = load_burst_matrix(burst_extraction_params)
 # %% pca on bursts
 pca_burst = PCA(n_components=None).fit(bursts)
 
