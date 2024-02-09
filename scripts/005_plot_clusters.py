@@ -15,6 +15,10 @@ col_cluster = f"cluster_{n_clusters}"
 burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
 clustering_params = "spectral"
 labels_params = "004_clustering_labels.pkl"
+cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
+cv_split = (
+    None  # set to None for plotting the whole clustering, set to int for specific split
+)
 
 # load data
 with open(
@@ -22,15 +26,19 @@ with open(
         labels_params,
         clustering_params,
         burst_extraction_params,
+        i_split=cv_split,
     ),
     "rb",
 ) as f:
     clustering = pickle.load(f)
 df_bursts = pd.read_pickle(
     os.path.join(
-        get_burst_folder(burst_extraction_params), "002_wagenaar_bursts_df.pkl"
+        get_burst_folder(burst_extraction_params),
+        f"002_wagenaar_bursts_df{'_' + cv_params if cv_params is not None else ''}.pkl",
     )
 )
+if cv_split is not None:
+    df_bursts = df_bursts[df_bursts[f"cv_{cv_split}_train"]]
 for n_clusters_ in clustering.n_clusters:
     df_bursts[f"cluster_{n_clusters_}"] = clustering.labels_[n_clusters_]
 

@@ -39,11 +39,13 @@ def get_spectral_clustering_folder(
     return os.path.join(path_burst_extraction, params_spectral_clustering)
 
 
-def _labels_params_to_str(params):
+def _labels_params_to_str(params, i_split):
     name = "004_clustering_labels"
     for key, value in params.items():
         if key in _labels_defaults and value != _labels_defaults[key]:
             name += f"_{key}_{value}"
+    if i_split is not None:
+        name += f"_cv_{i_split}"
     name += ".pkl"
     return name
 
@@ -61,9 +63,13 @@ def get_labels_file(
     params_labels: str or dict,
     params_spectral_clustering: str or dict,
     params_burst_extraction: str or dict,
+    i_split: int = None,
 ):
     if isinstance(params_labels, dict):
-        params_labels = _labels_params_to_str(params_labels)
+        params_labels = _labels_params_to_str(params_labels, i_split)
+    else:
+        if i_split is not None:
+            params_labels = params_labels.replace(".pkl", f"_cv_{i_split}.pkl")
     return os.path.join(
         get_spectral_clustering_folder(
             params_spectral_clustering, params_burst_extraction
