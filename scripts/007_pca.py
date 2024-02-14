@@ -51,7 +51,7 @@ fig.show()
 n_pcs = 4
 fig, ax = plt.subplots(figsize=(10, 5))
 sns.despine()
-ax.plot(pca_burst.components_[:n_pcs, :].T, label=[f"PC {i}" for i in range(n_pcs)])
+ax.plot(pca_burst.components_[:n_pcs, :].T, label=[f"PC {i + 1}" for i in range(n_pcs)])
 ax.legend()
 ax.set_xlabel("Time [arbitrary units]")
 ax.set_ylabel("Firing rate a.u.")
@@ -59,7 +59,7 @@ fig.show()
 
 # %% plot data points in first two PCs
 for pcs in [[0, 1], [0, 2], [1, 2]]:
-    for n_clusters in [2, 3, 4, 5]:
+    for n_clusters in [8]:  # [2, 3, 4, 5]:
         col_cluster = f"cluster_{n_clusters}"
 
         burst_transformed = pca_burst.transform(bursts)
@@ -75,6 +75,6 @@ for pcs in [[0, 1], [0, 2], [1, 2]]:
             s=4,
         )
         ax.legend(fontsize=8, markerscale=4, title="Cluster", frameon=False)
-        ax.set_xlabel(f"PC {pcs[0]}")
-        ax.set_ylabel(f"PC {pcs[1]}")
+        ax.set_xlabel(f"PC {pcs[0] + 1}")
+        ax.set_ylabel(f"PC {pcs[1] + 1}")
         fig.show()

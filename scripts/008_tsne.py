@@ -24,13 +24,13 @@ bursts = load_burst_matrix(burst_extraction_params)
 # %% tsne on bursts
 tsne_burst = TSNE(
     n_components=2,
-    perplexity=5,
+    perplexity=50,
     n_jobs=12,
     verbose=1,
 ).fit_transform(bursts)
 
 # %% plot tsne
-for n_clusters_ in [2, 3, 4, 5]:
+for n_clusters_ in [8]:  # [2, 3, 4, 5]:
     fig, ax = plt.subplots(figsize=(8, 8))
     sns.despine()
     sns.scatterplot(
