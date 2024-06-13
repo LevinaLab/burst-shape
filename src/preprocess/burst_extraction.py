@@ -22,6 +22,7 @@ def extract_bursts(
     extend_right=0.0,
     burst_length_threshold=None,
     pad_right=False,
+    normalization=None,
 ):
     """Extract bursts from data files.
 
@@ -43,12 +44,15 @@ def extract_bursts(
         extend_right (float, optional): Extend burst end time by this amount. Defaults to 0.0.
         burst_length_threshold (int, optional): Threshold for maximum burst length. Defaults to None.
         pad_right (bool, optional): Pad bursts to the right with zeros. Defaults to False.
+        normalization (str, optional): Normalization to apply to bursts.
+            Can be None, 'zscore', 'peak', 'integral'. Defaults to None.
 
     Returns:
         df_cultures (pd.DataFrame): Dataframe with columns 'file_name', 'n_bursts', 'burst_start_end'.
             Index is ('batch', 'culture', 'day').
         df_bursts (pd.DataFrame): Dataframe with columns 'start_orig', 'end_orig', 'start_extend', 'end_extend',
-            'time_orig', 'time_extend', 'burst'. Index is ('batch', 'culture', 'day', 'i_burst').
+            'time_orig', 'time_extend', 'burst', 'peak_height', 'integral'.
+            Index is ('batch', 'culture', 'day', 'i_burst').
         burst_matrix (np.ndarray): Matrix of bursts. Shape (n_bursts, n_bins).
     """
     if data_folder is None:
@@ -77,6 +81,7 @@ def extract_bursts(
         pad_right,
         bin_size,
     )
+    df_bursts = _normalize_bursts(df_bursts, normalization)
     burst_matrix = np.stack(df_bursts["burst"].values)
     return df_cultures, df_bursts, burst_matrix
 
@@ -141,6 +146,8 @@ def _build_bursts_df(
             "time_orig",
             "time_extend",
             "burst",
+            "peak_height",
+            "integral",
         ],
         index=pd.MultiIndex.from_tuples(
             itertools.chain.from_iterable(
@@ -251,6 +258,12 @@ def _build_bursts_df(
         )
     if bin_size is not None:
         df_bursts["burst"] = df_bursts["burst"] / bin_size * 1000
+
+    # compute peak height and integral
+    for index in tqdm(df_bursts.index, desc="Compute peak height and integral"):
+        burst = df_bursts.at[index, "burst"]
+        df_bursts.at[index, "peak_height"] = np.max(burst)
+        df_bursts.at[index, "integral"] = np.sum(burst)
     return df_bursts
 
 
@@ -278,4 +291,23 @@ def _filter_bursts(
             lambda burst: np.pad(burst, (0, n_bins - len(burst)))
         )
     print("Done")
+    return df_bursts
+
+
+def _normalize_bursts(df_bursts, normalization):
+    if normalization is not None:
+        print(f"Normalize bursts with {normalization}")
+        match normalization:
+            case None:
+                pass
+            case "zscore":
+                df_bursts["burst"] = df_bursts["burst"].apply(
+                    lambda burst: (burst - np.mean(burst)) / np.std(burst)
+                )
+            case "peak":
+                df_bursts["burst"] = df_bursts["burst"] / df_bursts["peak_height"]
+            case "integral":
+                df_bursts["burst"] = df_bursts["burst"] / df_bursts["integral"]
+            case _:
+                raise ValueError(f"Normalization {normalization} not recognized")
     return df_bursts

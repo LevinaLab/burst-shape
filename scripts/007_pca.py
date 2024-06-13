@@ -5,8 +5,8 @@ from sklearn.decomposition import PCA
 
 from src.persistence import load_df_bursts, load_clustering_labels, load_burst_matrix
 
-burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
-clustering_params = "spectral"
+burst_extraction_params = "burst_n_bins_50_normalization_integral"
+clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 
 # load data
@@ -45,6 +45,7 @@ for threshold in [0.95, 0.99]:
 ax.legend()
 ax.set_xlabel("PC")
 ax.set_ylabel("Explained variance")
+# ax.set_yscale("log")
 fig.show()
 
 # %% plot first PCs
@@ -52,7 +53,7 @@ n_pcs = 4
 fig, ax = plt.subplots(figsize=(10, 5))
 sns.despine()
 ax.plot(pca_burst.components_[:n_pcs, :].T, label=[f"PC {i + 1}" for i in range(n_pcs)])
-ax.legend()
+ax.legend(frameon=False)
 ax.set_xlabel("Time [arbitrary units]")
 ax.set_ylabel("Firing rate a.u.")
 fig.show()

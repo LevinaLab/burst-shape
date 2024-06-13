@@ -1,6 +1,3 @@
-import pickle
-import os
-
 from matplotlib import pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -8,12 +5,12 @@ import seaborn as sns
 from src.persistence import load_clustering_labels, load_df_bursts
 
 # which clustering to plot
-n_clusters = 5
+n_clusters = 8
 col_cluster = f"cluster_{n_clusters}"
 
 # parameters which clustering to plot
-burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
-clustering_params = "spectral"
+burst_extraction_params = "burst_n_bins_50_normalization_integral"
+clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
 cv_split = (
@@ -60,6 +57,7 @@ facet_grid = sns.catplot(
     height=5,
     aspect=0.4,
     sharey=False,
+    sharex=False,
 )
 facet_grid.set_titles("batch {col_name}")
 facet_grid.fig.show()
@@ -133,3 +131,17 @@ for i in range(n_clusters):
     )
 ax.legend()
 fig.show()
+
+# %% box plot of statistics (time_orig, time_extend, peak_height, integral)
+for stat in ["time_orig", "time_extend", "peak_height", "integral"]:
+    fig, ax = plt.subplots()
+    # fig.suptitle(f"Box plot of {stat}")
+    sns.despine()
+    sns.boxplot(
+        x=col_cluster, y=stat, data=df_bursts, ax=ax, palette="Set1", log_scale=True
+    )
+
+    # if stat == "peak_height":
+    #     ax.set_yscale("log")
+
+    fig.show()

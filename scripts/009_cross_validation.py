@@ -14,8 +14,8 @@ from src.persistence import (
 )
 
 # parameters which clustering to evaluate
-burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
-clustering_params = "spectral"
+burst_extraction_params = "burst_n_bins_50_normalization_integral"
+clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 cv_params = "cv"
 
@@ -30,18 +30,40 @@ clustering = load_clustering_labels(
     clustering_params, burst_extraction_params, labels_params, cv_params, i_split=None
 )
 n_clusters = clustering.n_clusters
+
+# concat empty columns with dtype int
+column_names = [f"cluster_{n_clusters_}" for n_clusters_ in n_clusters]
+if cv_params is not None:
+    cv_params = load_cv_params(burst_extraction_params, cv_params)
+    n_splits = cv_params["n_splits"]
+    for i in range(n_splits):
+        column_names.extend(
+            [f"cluster_{n_clusters_}_cv_{i}" for n_clusters_ in n_clusters]
+        )
+df_bursts = pd.concat(
+    [df_bursts, pd.DataFrame(columns=column_names, dtype=int)], axis=1
+)
+
 for n_clusters_ in n_clusters:
     df_bursts[f"cluster_{n_clusters_}"] = clustering.labels_[n_clusters_]
-for i in range(n_splits):
-    idx_train = df_bursts.index[df_bursts[f"cv_{i}_train"]]
-    clustering = load_clustering_labels(
-        clustering_params, burst_extraction_params, labels_params, cv_params, i_split=i
-    )
-    for n_clusters_ in n_clusters:
-        df_bursts[f"cluster_{n_clusters_}_cv_{i}"] = pd.Series(dtype=int)
-        df_bursts.loc[idx_train, f"cluster_{n_clusters_}_cv_{i}"] = clustering.labels_[
-            n_clusters_
-        ]
+
+if cv_params is not None:
+    # load cross-validation parameters
+    cv_params = load_cv_params(burst_extraction_params, cv_params)
+    n_splits = cv_params["n_splits"]
+    for i in tqdm(range(n_splits), desc="labels to dataframe"):
+        idx_train = df_bursts.index[df_bursts[f"cv_{i}_train"]]
+        clustering = load_clustering_labels(
+            clustering_params,
+            burst_extraction_params,
+            labels_params,
+            cv_params,
+            i_split=i,
+        )
+        for n_clusters_ in n_clusters:
+            df_bursts.loc[
+                idx_train, f"cluster_{n_clusters_}_cv_{i}"
+            ] = clustering.labels_[n_clusters_]
 
 
 # labels of n_clusters is saved in "cluster_{n_clusters}"
@@ -50,7 +72,16 @@ for i in range(n_splits):
 # index of training data can be accessed as df_bursts.index[df_bursts[f"cv_{i}_train"]]
 
 # %% map cross-validated labels based on centroids compared to all data
-for n_clusters_ in n_clusters:
+
+column_names = [
+    f"cluster_{n_clusters_}_cv_{i}_map"
+    for n_clusters_ in n_clusters
+    for i in range(n_splits)
+]
+df_bursts = pd.concat(
+    [df_bursts, pd.DataFrame(columns=column_names, dtype=int)], axis=1
+)
+for n_clusters_ in tqdm(n_clusters, desc="map labels based on centroids"):
     centroid_all = np.zeros((n_clusters_, burst_matrix.shape[1]))
     for i_cluster in range(n_clusters_):
         centroid_all[i_cluster] = burst_matrix[
@@ -71,7 +102,7 @@ for n_clusters_ in n_clusters:
             )
         # map labels based on minimum distance
         mapping = distance.argmin(axis=1)
-        df_bursts[f"cluster_{n_clusters_}_cv_{i}_map"] = pd.Series(dtype=int)
+        # df_bursts[f"cluster_{n_clusters_}_cv_{i}_map"] = pd.Series(dtype=int)
         df_bursts.loc[idx_train, f"cluster_{n_clusters_}_cv_{i}_map"] = df_bursts.loc[
             idx_train, f"cluster_{n_clusters_}_cv_{i}"
         ].map(dict(zip(range(n_clusters_), mapping)))

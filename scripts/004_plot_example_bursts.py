@@ -8,7 +8,7 @@ from src.folders import get_data_folder
 from src.persistence import load_df_cultures, load_df_bursts, load_burst_matrix
 
 # actual parameters copied from params.json or string
-burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
+burst_extraction_params = "burst_n_bins_50_normalization_integral"
 
 
 # load data

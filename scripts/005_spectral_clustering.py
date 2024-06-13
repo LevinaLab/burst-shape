@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-from src.spectral_clustering import SpectralClusteringModified
+from src.spectral_clustering import SpectralClusteringModified, compute_affinity_matrix
 from src.persistence import (
     load_burst_matrix,
     load_df_bursts,
@@ -10,17 +10,20 @@ from src.persistence import (
     load_clustering_maps,
     save_labels_params,
     save_clustering_labels,
+    save_affinity_matrix,
+    load_affinity_matrix,
     load_cv_params,
 )
 
 # choose parameters for clustering
 n_jobs = 12
-burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
+burst_extraction_params = "burst_n_bins_50_normalization_integral"
 cv_params = "cv"  # set to None if not using cross-validation or to specific cv_params
 all_data = True  # set to False if you want to compute only cross-validation
 clustering_params = {
     "n_components_max": 30,
-    "affinity": "nearest_neighbors",
+    "affinity": "precomputed",
+    "metric": "wasserstein",
     "n_neighbors": 10,
     "random_state": 0,
 }
@@ -42,32 +45,83 @@ if n_splits > 0:
 # save params as json
 save_clustering_params(clustering_params, burst_extraction_params)
 
-# %% compute eigenvectors
-df_bursts = load_df_bursts(burst_extraction_params, cv_params=cv_params)
-bursts = load_burst_matrix(burst_extraction_params)
+# %% compute affinity matrix and eigenvectors
 for i_split in tasks:
     if i_split is None:
-        print("Compute eigenvectors for all data")
+        print("Compute spectral clustering for all data")
     else:
-        print(f"Compute eigenvectors for split {i_split}")
-    start_time = time.time()
-    bursts_split = (
-        bursts if i_split is None else bursts[df_bursts[f"cv_{i_split}_train"]]
-    )
-    clustering = SpectralClusteringModified(
-        n_jobs=n_jobs,
-        verbose=True,
-        **clustering_params,
-    ).compute_maps(bursts_split)
-    end_time = time.time()
-    print(f"Elapsed time: {end_time - start_time}")
-    save_clustering_maps(
-        clustering,
-        clustering_params,
-        burst_extraction_params,
-        params_cross_validation=cv_params,
-        i_split=i_split,
-    )
+        print(f"Compute spectral clustering for split {i_split}")
+    try:
+        clustering = load_clustering_maps(
+            clustering_params,
+            burst_extraction_params,
+            params_cross_validation=cv_params,
+            i_split=i_split,
+        )
+        print("Eigenvectors already computed. Loading them.")
+    except FileNotFoundError:
+        print("Eigenvectors not found, computing them...")
+        start_time = time.time()
+
+        # load data
+        if clustering_params["affinity"] == "precomputed":
+            print("Requires precomputed affinity matrix, trying to load it...")
+            try:
+                X_split = load_affinity_matrix(
+                    clustering_params,
+                    burst_extraction_params,
+                    params_cross_validation=cv_params,
+                    i_split=i_split,
+                )
+                print("Precomputed affinity matrix found. Loading it.")
+            except FileNotFoundError:
+                print("Precomputed affinity matrix not found, computing it...")
+                burst_matrix = load_burst_matrix(burst_extraction_params)
+                if i_split is not None:
+                    burst_matrix = burst_matrix[
+                        load_df_bursts(burst_extraction_params, cv_params=cv_params)[
+                            f"cv_{i_split}_train"
+                        ]
+                    ]
+                X_split = compute_affinity_matrix(
+                    burst_matrix,
+                    n_jobs=n_jobs,
+                    metric=clustering_params["metric"],
+                    n_neighbors=clustering_params["n_neighbors"],
+                )
+                save_affinity_matrix(
+                    X_split,
+                    clustering_params,
+                    burst_extraction_params,
+                    params_cross_validation=cv_params,
+                    i_split=i_split,
+                )
+                print("Finished computing affinity matrix.")
+            print("Now computing eigenvectors...")
+        else:
+            bursts = load_burst_matrix(burst_extraction_params)
+            df_bursts = load_df_bursts(burst_extraction_params, cv_params=cv_params)
+            X_split = bursts[df_bursts[f"cv_{i_split}_train"]]
+
+        # compute eigenvectors
+        clustering_params_copy = clustering_params.copy()
+        clustering_params_copy.pop("metric")
+        clustering = SpectralClusteringModified(
+            n_jobs=n_jobs,
+            verbose=True,
+            **clustering_params_copy,
+        ).compute_maps(X_split)
+        end_time = time.time()
+        print(f"Elapsed time: {end_time - start_time}")
+
+        # save
+        save_clustering_maps(
+            clustering,
+            clustering_params,
+            burst_extraction_params,
+            params_cross_validation=cv_params,
+            i_split=i_split,
+        )
 
 # %% compute labels
 # choose parameters for labels

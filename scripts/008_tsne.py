@@ -4,8 +4,8 @@ from sklearn.manifold import TSNE
 
 from src.persistence import load_df_bursts, load_clustering_labels, load_burst_matrix
 
-burst_extraction_params = "burst_n_bins_50_extend_left_50_extend_right_50"
-clustering_params = "spectral"
+burst_extraction_params = "burst_n_bins_50_normalization_integral"
+clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 
 # load data

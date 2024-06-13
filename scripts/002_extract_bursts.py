@@ -19,10 +19,11 @@ params_burst_extraction = {
     "minSburst": 50,
     "bin_size": None,
     "n_bins": 50,
-    "extend_left": 50,
-    "extend_right": 50,
+    "extend_left": 0,
+    "extend_right": 0,
     "burst_length_threshold": None,
     "pad_right": False,
+    "normalization": "integral",
 }
 
 

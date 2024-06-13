@@ -15,6 +15,8 @@ from .spectral_clustering import (
     save_labels_params,
     save_clustering_labels,
     load_clustering_labels,
+    save_affinity_matrix,
+    load_affinity_matrix,
 )
 
 __all__ = [
@@ -33,4 +35,6 @@ __all__ = [
     "save_labels_params",
     "save_clustering_labels",
     "load_clustering_labels",
+    "save_affinity_matrix",
+    "load_affinity_matrix",
 ]

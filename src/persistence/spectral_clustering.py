@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+import scipy.sparse
 
 from .burst_extraction import _get_burst_folder
 from .cross_validation_string import _cv_params_to_string
@@ -8,6 +9,7 @@ from .cross_validation_string import _cv_params_to_string
 _spectral_clustering_defaults: dict = {
     "n_components_max": 30,
     "affinity": "nearest_neighbors",
+    "metric": None,
     "n_neighbors": 10,
     "random_state": 0,
 }
@@ -44,6 +46,7 @@ def _get_spectral_clustering_folder(
 
 def save_clustering_params(params, params_burst_extraction):
     save_folder = _get_spectral_clustering_folder(params, params_burst_extraction)
+    os.makedirs(save_folder, exist_ok=True)
     with open(
         os.path.join(save_folder, "clustering_params.json"),
         "w",
@@ -160,3 +163,59 @@ def load_clustering_labels(
     with open(os.path.join(save_folder, name), "rb") as f:
         clustering = pickle.load(f)
     return clustering
+
+
+def _get_path_affinity_matrix(
+    params_burst_extraction,
+    params_spectral_clustering,
+    params_cross_validation=None,
+    i_split=None,
+):
+    save_folder = _get_spectral_clustering_folder(
+        params_spectral_clustering, params_burst_extraction
+    )
+    name = "affinity_matrix"
+    assert isinstance(params_spectral_clustering, dict)
+    keys = ["metric", "n_neighbors"]
+    for key in keys:
+        if _spectral_clustering_defaults[key] != params_spectral_clustering[key]:
+            name += f"_{key}_{params_spectral_clustering[key]}"
+    if params_cross_validation is not None and i_split is not None:
+        cv_string = _cv_params_to_string(params_cross_validation, i_split)
+        name += f"_{cv_string}"
+    name += ".npz"
+    return os.path.join(save_folder, name)
+
+
+def save_affinity_matrix(
+    affinity_matrix,
+    params_spectral_clustering,
+    params_burst_extraction,
+    params_cross_validation=None,
+    i_split=None,
+):
+    path = _get_path_affinity_matrix(
+        params_burst_extraction,
+        params_spectral_clustering,
+        params_cross_validation,
+        i_split,
+    )
+    with open(path, "wb") as f:
+        scipy.sparse.save_npz(f, affinity_matrix)
+
+
+def load_affinity_matrix(
+    params_spectral_clustering,
+    params_burst_extraction,
+    params_cross_validation=None,
+    i_split=None,
+):
+    path = _get_path_affinity_matrix(
+        params_burst_extraction,
+        params_spectral_clustering,
+        params_cross_validation,
+        i_split,
+    )
+    with open(path, "rb") as f:
+        affinity_matrix = scipy.sparse.load_npz(f)
+    return affinity_matrix
