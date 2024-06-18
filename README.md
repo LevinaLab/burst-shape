@@ -1,13 +1,18 @@
 # Setup
 
 ## Installation
+[Optional] Create a conda environment named `burst-clustering` and `python=3.11` with
+```bash
+conda create -n burst-clustering python=3.11
+```
+
 Install `src` module with
 ```bash
 pip install -e .
 ```
 which will run `setup.py`, making the `src` module available.
 
-If this fails to install the dependencies, you can install them manually with
+[Optional] If this fails to install the dependencies, you can install them manually with
 ```bash
 pip install -r requirements.txt
 ```
