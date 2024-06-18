@@ -5,6 +5,10 @@
 ```bash
 conda create -n burst-clustering python=3.11
 ```
+Activate the environment with
+```bash
+conda activate burst-clustering
+```
 
 Install `src` module with
 ```bash
