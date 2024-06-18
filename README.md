@@ -1,3 +1,17 @@
+# Setup
+
+## Installation
+Install `src` module with
+```bash
+pip install -e .
+```
+which will run `setup.py`, making the `src` module available.
+
+If this fails to install the dependencies, you can install them manually with
+```bash
+pip install -r requirements.txt
+```
+
 # Computation pipeline
 
 ## Download data
