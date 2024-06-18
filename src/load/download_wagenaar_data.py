@@ -8,7 +8,7 @@ import numpy as np
 import subprocess
 
 
-def download(target_folder=None, days=None, extract=True, density="dense"):
+def download(target_folder=None, days=None, extract=True, density="dense", wget_append="--no-check-certificate"):
     if target_folder is None:
         target_folder = get_data_folder()
     if days is None:
@@ -32,7 +32,7 @@ def download(target_folder=None, days=None, extract=True, density="dense"):
     url = big_list
     # download the list of all files
     if load and not list_exists:
-        bashCommand = "wget %s -P %s" % (url, path_lists)
+        bashCommand = "wget %s -P %s %s" % (url, path_lists, wget_append)
         subprocess.call(bashCommand, shell=True)  # stdout=subprocess.PIPE)
     file_names = []
     with open(list_path, "r") as file:
@@ -63,7 +63,7 @@ def download(target_folder=None, days=None, extract=True, density="dense"):
                 [day, batch_culture, url.split("/")[-1]]
             )  # store day and a file name
             if load:
-                bashCommand = "wget %s -P %s" % (url, path_raw)
+                bashCommand = "wget %s -P %s %s" % (url, path_raw, wget_append)
                 subprocess.call(bashCommand, shell=True)  # stdout=subprocess.PIPE
 
     # extract .bz2 files from path_raw to path_extracted
