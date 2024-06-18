@@ -1,6 +1,12 @@
-_data_folder = "../data/"
-_fig_folder = "../figures/"
-_results_folder = "../results/"
+import os
+
+
+# Set the project folder dynamically based on the location of this file
+_project_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+_data_folder = "data"
+_fig_folder = "figures"
+_results_folder = "results"
 
 
 def get_data_folder():
@@ -9,7 +15,7 @@ def get_data_folder():
     Returns:
         str: path to the data folder
     """
-    return _data_folder
+    return os.path.join(_project_folder, _data_folder)
 
 
 def get_fig_folder():
@@ -18,7 +24,7 @@ def get_fig_folder():
     Returns:
         str: path to the figure folder
     """
-    return _fig_folder
+    return os.path.join(_project_folder, _fig_folder)
 
 
 def get_results_folder():
@@ -27,4 +33,4 @@ def get_results_folder():
     Returns:
         str: path to the results folder
     """
-    return _results_folder
+    return os.path.join(_project_folder, _results_folder)
