@@ -1,19 +1,20 @@
-import numpy as np
 import time
 
-from src.spectral_clustering import SpectralClusteringModified, compute_affinity_matrix
+import numpy as np
+
 from src.persistence import (
-    load_burst_matrix,
-    load_df_bursts,
-    save_clustering_params,
-    save_clustering_maps,
-    load_clustering_maps,
-    save_labels_params,
-    save_clustering_labels,
-    save_affinity_matrix,
     load_affinity_matrix,
+    load_burst_matrix,
+    load_clustering_maps,
     load_cv_params,
+    load_df_bursts,
+    save_affinity_matrix,
+    save_clustering_labels,
+    save_clustering_maps,
+    save_clustering_params,
+    save_labels_params,
 )
+from src.spectral_clustering import SpectralClusteringModified, compute_affinity_matrix
 
 # choose parameters for clustering
 n_jobs = 12

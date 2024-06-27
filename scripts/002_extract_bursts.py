@@ -1,14 +1,13 @@
 import os
 
-from src.preprocess import burst_extraction
-
 from src.folders import get_data_folder
 from src.persistence import (
-    save_df_cultures,
-    save_df_bursts,
-    save_burst_matrix,
     save_burst_extraction_params,
+    save_burst_matrix,
+    save_df_bursts,
+    save_df_cultures,
 )
+from src.preprocess import burst_extraction
 
 # parameters
 params_burst_extraction = {

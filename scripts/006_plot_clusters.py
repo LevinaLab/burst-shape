@@ -1,6 +1,6 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import seaborn as sns
+from matplotlib import pyplot as plt
 
 from src.persistence import load_clustering_labels, load_df_bursts
 

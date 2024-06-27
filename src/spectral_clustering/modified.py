@@ -1,16 +1,14 @@
 import warnings
 
 import numpy as np
-
 from sklearn.base import _fit_context
 from sklearn.cluster import SpectralClustering
-from sklearn.neighbors import kneighbors_graph, NearestNeighbors
-from sklearn.metrics.pairwise import pairwise_kernels
-from sklearn.utils import check_random_state
-from sklearn.manifold import spectral_embedding
-
 from sklearn.cluster._kmeans import k_means
-from sklearn.cluster._spectral import discretize, cluster_qr
+from sklearn.cluster._spectral import cluster_qr, discretize
+from sklearn.manifold import spectral_embedding
+from sklearn.metrics.pairwise import pairwise_kernels
+from sklearn.neighbors import NearestNeighbors, kneighbors_graph
+from sklearn.utils import check_random_state
 
 
 class SpectralClusteringModified(SpectralClustering):

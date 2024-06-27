@@ -1,7 +1,7 @@
-import ray
 import numpy as np
-import scipy.stats
+import ray
 import scipy.sparse
+import scipy.stats
 from tqdm import tqdm
 
 

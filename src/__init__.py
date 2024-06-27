@@ -1,9 +1,4 @@
-from . import folders
-from . import load
-from . import preprocess
-from . import spectral_clustering
-from . import cross_validation
-
+from . import cross_validation, folders, load, preprocess, spectral_clustering
 
 __all__ = [
     "folders",

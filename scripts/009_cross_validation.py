@@ -1,16 +1,17 @@
-import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
-import seaborn as sns
-from sklearn import metrics
-from tqdm import tqdm
 import itertools
 
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
+from sklearn import metrics
+from tqdm import tqdm
+
 from src.persistence import (
-    load_clustering_labels,
-    load_df_bursts,
-    load_cv_params,
     load_burst_matrix,
+    load_clustering_labels,
+    load_cv_params,
+    load_df_bursts,
 )
 
 # parameters which clustering to evaluate

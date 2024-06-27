@@ -1,7 +1,6 @@
 # Updated population burst detection
 import numpy as np
 import scipy.stats
-
 from numba import jit
 
 na = np.array

@@ -3,7 +3,7 @@ import numpy as np
 import seaborn as sns
 from sklearn.decomposition import PCA
 
-from src.persistence import load_df_bursts, load_clustering_labels, load_burst_matrix
+from src.persistence import load_burst_matrix, load_clustering_labels, load_df_bursts
 
 burst_extraction_params = "burst_n_bins_50_normalization_integral"
 clustering_params = "spectral_affinity_precomputed_metric_wasserstein"

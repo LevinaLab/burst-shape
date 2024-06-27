@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from src.folders import get_results_folder
+
 from .cross_validation_string import _cv_params_to_string
 
 _burst_extraction_defaults: dict = {

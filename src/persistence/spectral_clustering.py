@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+
 import scipy.sparse
 
 from .burst_extraction import _get_burst_folder

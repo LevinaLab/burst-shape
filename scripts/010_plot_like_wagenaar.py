@@ -1,11 +1,11 @@
 """Visualize the burst cluster similar to the Figure 3 in Wagenaar et al. 2006."""
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
 
-from src.persistence import load_df_bursts, load_clustering_labels
+from src.persistence import load_clustering_labels, load_df_bursts
 
 # which clustering to plot
 n_clusters = 8

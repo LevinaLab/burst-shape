@@ -1,14 +1,19 @@
 import os
+import subprocess
 
+import numpy as np
 from tqdm import tqdm
 
 from src.folders import get_data_folder
 
-import numpy as np
-import subprocess
 
-
-def download(target_folder=None, days=None, extract=True, density="dense", wget_append="--no-check-certificate"):
+def download(
+    target_folder=None,
+    days=None,
+    extract=True,
+    density="dense",
+    wget_append="--no-check-certificate",
+):
     if target_folder is None:
         target_folder = get_data_folder()
     if days is None:
