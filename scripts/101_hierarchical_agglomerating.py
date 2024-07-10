@@ -87,6 +87,7 @@ ax.set_ylabel("Davies-\nBouldin Index")
 # fig.tight_layout()
 fig.show()
 fig.savefig(os.path.join(fig_path, "davies_bouldin.svg"))
+fig.savefig(os.path.join(fig_path, "davies_bouldin.pdf"))
 
 if n_clusters is None:
     n_clusters = best_n_clusters
@@ -129,6 +130,7 @@ ax.set_yticks([])
 fig.tight_layout()
 fig.show()
 fig.savefig(os.path.join(fig_path, "dendrogram.svg"))
+fig.savefig(os.path.join(fig_path, "dendrogram.pdf"))
 
 # %% get clusters from linkage
 labels = fcluster(Z, t=n_clusters, criterion="maxclust")
@@ -162,6 +164,8 @@ ax.set_yticks([])
 fig.tight_layout()
 fig.show()
 fig.savefig(os.path.join(fig_path, "pca_clusters.svg"))
+fig.savefig(os.path.join(fig_path, "pca_clusters.pdf"))
+
 
 # %% histogram of cluster sizes
 fig, ax = plt.subplots()
@@ -194,6 +198,8 @@ ax.set_ylabel("Rate [a.u.]")
 fig.tight_layout()
 fig.show()
 fig.savefig(os.path.join(fig_path, "average_bursts.svg"))
+fig.savefig(os.path.join(fig_path, "average_bursts.pdf"))
+
 
 # %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
 df_bursts_reset = df_bursts.reset_index(
@@ -260,6 +266,8 @@ ax.set_ylabel("Fraction")
 fig.tight_layout()
 fig.show()
 fig.savefig(os.path.join(fig_path, "fraction_clusters.svg"))
+fig.savefig(os.path.join(fig_path, "fraction_clusters.pdf"))
+
 
 # %% development plot based on df_cultures
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
@@ -292,6 +300,7 @@ ax.set_xlabel("Day")
 ax.set_ylabel("Fraction")
 fig.show()
 fig.savefig(os.path.join(fig_path, "fraction_clusters_df_cultures.svg"))
+fig.savefig(os.path.join(fig_path, "fraction_clusters_df_cultures.pdf"))
 
 # %% complexity plot (information)
 # compute information based on cluster_rel columns
@@ -316,6 +325,7 @@ ax.set_xlabel("Day")
 ax.set_ylabel("Info [bits]")
 fig.show()
 fig.savefig(os.path.join(fig_path, "information.svg"))
+fig.savefig(os.path.join(fig_path, "information.pdf"))
 
 
 # %% similarity between batches (vector product of cluster_rel)
@@ -471,6 +481,7 @@ for stat in [
         ax.set_ylabel("Duration [ms]")
         ax.set_xlabel("Cluster")
         fig.savefig(os.path.join(fig_path, "time_orig.svg"))
+        fig.savefig(os.path.join(fig_path, "time_orig.pdf"))
 
     fig.show()
 
@@ -498,3 +509,4 @@ axs[-1].set_ylabel("Rate [Hz]")
 axs[-1].set_xlabel("Time [ms]")
 fig.show()
 fig.savefig(os.path.join(fig_path, "example_bursts.svg"))
+fig.savefig(os.path.join(fig_path, "example_bursts.pdf"))
