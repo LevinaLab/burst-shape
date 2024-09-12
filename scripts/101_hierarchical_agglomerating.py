@@ -10,14 +10,14 @@ import seaborn as sns
 from scipy.cluster.hierarchy import dendrogram, fcluster, linkage
 from scipy.spatial.distance import pdist, squareform
 from sklearn.decomposition import PCA
-from sklearn.metrics import davies_bouldin_score, pairwise_distances
+from sklearn.metrics import davies_bouldin_score
 
 from src import folders
 from src.persistence import load_burst_matrix, load_df_bursts
 from src.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = "burst_n_bins_50_normalization_integral"
-n_bursts = 4000  # if None uses all bursts
+n_bursts = None  # if None uses all bursts
 compute_parallel = True  # if True uses double the memory but is faster
 recompute = False  # if False and available loads the data from disk
 linkage_method = "complete"
@@ -73,18 +73,33 @@ else:
     print("Computing distance matrix and linkage")
     t0 = time()
     if compute_parallel:
+        n = burst_matrix.shape[0]
+        size = n * (n - 1) // 2
+        # initialize shared memory array
+        distance_matrix = multiprocessing.Array("d", n * (n - 1) // 2, lock=False)
+        # convert the burst matrix to shared memory with lock=False
+        burst_matrix_parallel = np.frombuffer(
+            multiprocessing.Array("d", burst_matrix.size, lock=False)
+        ).reshape(burst_matrix.shape)
+        burst_matrix_parallel[:] = burst_matrix
+        # create a shared lookup table for the index of the distance matrix
+        lookup_table = np.zeros((size, 2), dtype=int)
+        k = 0
+        for i in range(n - 1):
+            for j in range(i + 1, n):
+                lookup_table[k] = i, j
+                k += 1
 
-        def _metric_from_index(i, j):
-            return _wasserstein_distance(burst_matrix[i], burst_matrix[j])
+        def _metric_from_index(k):
+            i, j = lookup_table[k]
+            distance_matrix[k] = _wasserstein_distance(burst_matrix_parallel[i], burst_matrix_parallel[j])
 
+
+        # parallel computation of the distance matrix
         with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-            distance_matrix = pool.starmap(
+            pool.map(
                 _metric_from_index,
-                [
-                    (i, j)
-                    for i in range(burst_matrix.shape[0] - 1)
-                    for j in range(i + 1, burst_matrix.shape[0])
-                ],
+                range(size),
             )
     else:
         distance_matrix = pdist(burst_matrix, metric=_wasserstein_distance)
