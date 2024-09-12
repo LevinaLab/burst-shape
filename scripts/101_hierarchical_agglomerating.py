@@ -2,6 +2,7 @@
 import os
 import multiprocessing
 from time import time
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -85,10 +86,10 @@ else:
         # create a shared lookup table for the index of the distance matrix
         lookup_table = np.zeros((size, 2), dtype=int)
         k = 0
-        for i in range(n - 1):
-            for j in range(i + 1, n):
-                lookup_table[k] = i, j
-                k += 1
+        for i in tqdm(range(n - 1), desc="Computing lookup table"):
+            lookup_table[k : k + n - i - 1, 0] = i
+            lookup_table[k : k + n - i - 1, 1] = np.arange(i + 1, n)
+            k += n - i - 1
 
         def _metric_from_index(k):
             i, j = lookup_table[k]
