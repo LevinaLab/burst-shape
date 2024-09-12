@@ -1,5 +1,6 @@
 """Test hierarchical clustering with Wasserstein distance."""
 import os
+import multiprocessing
 from time import time
 
 import matplotlib.pyplot as plt
@@ -7,18 +8,23 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy.cluster.hierarchy import dendrogram, fcluster, linkage
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
 from sklearn.decomposition import PCA
-from sklearn.metrics import davies_bouldin_score
+from sklearn.metrics import davies_bouldin_score, pairwise_distances
 
 from src import folders
 from src.persistence import load_burst_matrix, load_df_bursts
+from src.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = "burst_n_bins_50_normalization_integral"
-n_clusters = 3  # if None chooses the number of clusters with Davies-Bouldin index
-n_bursts = 4000
+n_bursts = 4000  # if None uses all bursts
+compute_parallel = True  # if True uses double the memory but is faster
+recompute = False  # if False and available loads the data from disk
 linkage_method = "complete"
 np.random.seed(0)
+
+# plot settings
+n_clusters = None # 3  # if None chooses the number of clusters with Davies-Bouldin index
 
 # plotting
 cm = 1 / 2.54  # centimeters in inches
@@ -46,13 +52,50 @@ def _wasserstein_distance(a, b):
 
 
 # %% cluster with linkage
-t0 = time()
-distance_matrix = pdist(burst_matrix, metric=_wasserstein_distance)
-t1 = time()
-print(f"Distance matrix: {t1 - t0:.2f} s")
-Z = linkage(distance_matrix, method=linkage_method)
-t2 = time()
-print(f"Linkage: {t2 - t1:.2f} s")
+folder_agglomerating_clustering = os.path.join(
+    _get_burst_folder(burst_extraction_params),
+    f"agglomerating_clustering_linkage_{linkage_method}_n_bursts_{n_bursts}"
+)
+file_distance_matrix = os.path.join(
+    folder_agglomerating_clustering, "distance_matrix.npy"
+)
+file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
+
+if not recompute and os.path.exists(file_linkage):
+    print(f"Loading linkage from disk: {file_linkage}")
+    Z = np.load(file_linkage)
+elif not recompute and os.path.exists(file_distance_matrix):
+    print(f"Loading distance matrix from disk: {file_distance_matrix}")
+    distance_matrix = np.load(file_distance_matrix)
+    Z = linkage(distance_matrix, method=linkage_method)
+    np.save(file_linkage, Z)
+else:
+    print("Computing distance matrix and linkage")
+    t0 = time()
+    if compute_parallel:
+
+        def _metric_from_index(i, j):
+            return _wasserstein_distance(burst_matrix[i], burst_matrix[j])
+
+        with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+            distance_matrix = pool.starmap(
+                _metric_from_index,
+                [
+                    (i, j)
+                    for i in range(burst_matrix.shape[0] - 1)
+                    for j in range(i + 1, burst_matrix.shape[0])
+                ],
+            )
+    else:
+        distance_matrix = pdist(burst_matrix, metric=_wasserstein_distance)
+    t1 = time()
+    print(f"Distance matrix: {t1 - t0:.2f} s")
+    Z = linkage(distance_matrix, method=linkage_method)
+    t2 = time()
+    print(f"Linkage: {t2 - t1:.2f} s")
+    os.makedirs(folder_agglomerating_clustering, exist_ok=True)
+    np.save(file_distance_matrix, squareform(distance_matrix))
+    np.save(file_linkage, Z)
 
 # %% Cross-validate with Davies-Bouldin index
 n_clusters_range = range(2, 30)
