@@ -23,6 +23,7 @@ def extract_bursts(
     burst_length_threshold=None,
     pad_right=False,
     normalization=None,
+    min_length=None,
 ):
     """Extract bursts from data files.
 
@@ -46,6 +47,7 @@ def extract_bursts(
         pad_right (bool, optional): Pad bursts to the right with zeros. Defaults to False.
         normalization (str, optional): Normalization to apply to bursts.
             Can be None, 'zscore', 'peak', 'integral'. Defaults to None.
+        min_length (float, optional): Minimum length of burst. Defaults to None.
 
     Returns:
         df_cultures (pd.DataFrame): Dataframe with columns 'file_name', 'n_bursts', 'burst_start_end'.
@@ -80,6 +82,7 @@ def extract_bursts(
         burst_length_threshold,
         pad_right,
         bin_size,
+        min_length,
     )
     df_bursts = _normalize_bursts(df_bursts, normalization)
     burst_matrix = np.stack(df_bursts["burst"].values)
@@ -272,6 +275,7 @@ def _filter_bursts(
     burst_length_threshold,
     pad_right,
     bin_size,
+    min_length,
 ):
     print("Filter bursts (burst length, pad right)")
     if burst_length_threshold is not None:
@@ -283,6 +287,11 @@ def _filter_bursts(
         )
     else:
         burst_length_threshold = np.max(df_bursts["time_extend"])
+    if min_length is not None:
+        len_before = len(df_bursts)
+        df_bursts = df_bursts[df_bursts["time_extend"] >= min_length]
+        len_after = len(df_bursts)
+        print(f"Removed {len_before - len_after} bursts below threshold ({min_length} ms)")
     if pad_right:
         assert bin_size is not None, "bin_size must be specified if pad_right is True"
         print(f"Pad bursts to {burst_length_threshold} ms")

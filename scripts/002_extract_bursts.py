@@ -23,6 +23,7 @@ params_burst_extraction = {
     "burst_length_threshold": None,
     "pad_right": False,
     "normalization": "integral",
+    "min_length": 30,
 }
 
 
