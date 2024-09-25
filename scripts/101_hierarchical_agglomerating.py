@@ -65,10 +65,10 @@ file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
 if not recompute and os.path.exists(file_linkage):
     print(f"Loading linkage from disk: {file_linkage}")
     Z = np.load(file_linkage)
-    distance_matrix = squareform(np.load(file_distance_matrix))
+    distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
 elif not recompute and os.path.exists(file_distance_matrix):
     print(f"Loading distance matrix from disk: {file_distance_matrix}")
-    distance_matrix = squareform(np.load(file_distance_matrix))
+    distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
     Z = linkage(distance_matrix, method=linkage_method)
     np.save(file_linkage, Z)
 else:
@@ -111,10 +111,11 @@ else:
     t2 = time()
     print(f"Linkage: {t2 - t1:.2f} s")
     os.makedirs(folder_agglomerating_clustering, exist_ok=True)
-    np.save(file_distance_matrix, squareform(distance_matrix))
+    np.save(file_distance_matrix, squareform(distance_matrix, force="tomatrix"))
     np.save(file_linkage, Z)
 
 # %% Cross-validate with Davies-Bouldin index
+print("Computing Davies-Bouldin index...")
 n_clusters_range = range(2, 30)
 score_davies_bouldin = np.zeros(len(n_clusters_range))
 for _n_clusters in range(2, 30):
@@ -149,10 +150,8 @@ fig.show()
 fig.savefig(os.path.join(fig_path, "davies_bouldin.svg"))
 fig.savefig(os.path.join(fig_path, "davies_bouldin.pdf"))
 
-if n_clusters is None:
-    n_clusters = best_n_clusters
-
 # %% Cross-validate with self-built Davies-Bouldin index
+print("Computing my Davies-Bouldin index...")
 def _my_davies_bouldin_score(X, distance_matrix, labels):
     n_labels = len(np.unique(labels))
     intra_dists = np.zeros(n_labels)
@@ -173,7 +172,7 @@ def _my_davies_bouldin_score(X, distance_matrix, labels):
     scores = np.max(combined_intra_dists / centroid_distances, axis=1)
     return np.mean(scores)
 
-distance_matrix_square = squareform(distance_matrix)
+distance_matrix_square = squareform(distance_matrix, force="tomatrix")
 n_clusters_range = range(2, 30)
 score_davies_bouldin = np.zeros(len(n_clusters_range))
 for _n_clusters in range(2, 30):
@@ -208,6 +207,15 @@ fig.show()
 fig.savefig(os.path.join(fig_path, "davies_bouldin_my.svg"))
 fig.savefig(os.path.join(fig_path, "davies_bouldin_my.pdf"))
 
+if n_clusters is None:
+    print(f"Choosing the best number of clusters: {best_n_clusters} based on my Davies-Bouldin index")
+    n_clusters = best_n_clusters
+
+# %% get clusters from linkage
+print("Getting clusters from linkage...")
+labels = fcluster(Z, t=n_clusters, criterion="maxclust")
+df_bursts["cluster"] = labels
+
 # %% Define a color palette for the clusters
 palette = sns.color_palette("Set1", n_clusters)
 cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
@@ -218,20 +226,27 @@ cluster_colors = [
 ]
 # %%
 # Plot dendrogram with colored clusters
+print("Plotting dendrogram...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))
 sns.despine()
-dendrogram(
+
+color_threshold = Z[-(n_clusters - 1), 2]
+
+dendrogram_properties = dendrogram(
     Z,
     ax=ax,
     leaf_rotation=90,
     leaf_font_size=10,
     above_threshold_color="black",
-    color_threshold=Z[-(n_clusters - 1), 2],
+    color_threshold=color_threshold,
 )
 
 # Highlight the clusters with background colors
-x = np.arange(len(burst_matrix))
-for i, d in enumerate(ax.collections):
+# Count the number of elements in each cluster
+cluster_counts = np.bincount(labels)[1:]  # ignoring cluster 0
+cluster_index_dendrogram = [i for i in range(n_clusters) if cluster_counts[i] > 1]
+# (fix the situation where a cluster is only size 1 -> not present in ax.collections)
+for i, d in zip(cluster_index_dendrogram, ax.collections[:-1]):
     if i >= n_clusters:
         break
     color = cluster_colors[i]
@@ -248,16 +263,14 @@ fig.show()
 fig.savefig(os.path.join(fig_path, "dendrogram.svg"))
 fig.savefig(os.path.join(fig_path, "dendrogram.pdf"))
 
-# %% get clusters from linkage
-labels = fcluster(Z, t=n_clusters, criterion="maxclust")
-df_bursts["cluster"] = labels
-
 # %% PCA
+print("Computing PCA...")
 pca = PCA(n_components=2)
 pca.fit(burst_matrix)
 X_pca = pca.transform(burst_matrix)
 
 # %% plot clusters in PCA space
+print("Plotting PCA...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))
 sns.despine()
 for cluster in range(1, n_clusters + 1):
@@ -284,6 +297,7 @@ fig.savefig(os.path.join(fig_path, "pca_clusters.pdf"))
 
 
 # %% histogram of cluster sizes
+print("Plotting cluster sizes...")
 fig, ax = plt.subplots()
 sns.despine()
 # Count the number of elements in each cluster
@@ -301,6 +315,7 @@ fig.savefig(os.path.join(fig_path, "cluster_sizes.svg"))
 fig.savefig(os.path.join(fig_path, "cluster_sizes.pdf"))
 
 # %% plot average burst of each cluster
+print("Plotting average bursts...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))
 sns.despine()
 for cluster in range(1, n_clusters + 1):
@@ -320,6 +335,7 @@ fig.savefig(os.path.join(fig_path, "average_bursts.pdf"))
 
 
 # %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+print("Building df_cultures...")
 df_bursts_reset = df_bursts.reset_index(
     drop=False
 )  # reset index to access columns in groupby()
@@ -356,6 +372,7 @@ for i_cluster in range(1, n_clusters + 1):
     )
 
 # %% development plot
+print("Plotting development...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))
 sns.despine()
 days = df_bursts.index.get_level_values("day").unique().sort_values()
@@ -388,6 +405,7 @@ fig.savefig(os.path.join(fig_path, "fraction_clusters.pdf"))
 
 
 # %% development plot based on df_cultures
+print("Plotting development based on df_cultures...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
 sns.despine()
 days = df_cultures.index.get_level_values("day").unique().sort_values()
@@ -421,6 +439,7 @@ fig.savefig(os.path.join(fig_path, "fraction_clusters_df_cultures.svg"))
 fig.savefig(os.path.join(fig_path, "fraction_clusters_df_cultures.pdf"))
 
 # %% complexity plot (information)
+print("Plotting information...")
 # compute information based on cluster_rel columns
 columns = [f"cluster_rel_{i_cluster}" for i_cluster in range(1, n_clusters + 1)]
 df_cultures["information"] = df_cultures.apply(
@@ -447,6 +466,7 @@ fig.savefig(os.path.join(fig_path, "information.pdf"))
 
 
 # %% similarity between batches (vector product of cluster_rel)
+print("Computing similarity between batches...")
 def _similarity(x, y):
     return np.sum(
         [
@@ -526,6 +546,7 @@ fig.show()
 
 # %% plot a pie chart for each entry in df_cultures
 # position of the pie chart in the grid is determined by the day and i_culture
+print("Plotting pie charts...")
 colors = sns.color_palette("Set1", n_colors=n_clusters)
 nrows = df_cultures["i_culture"].max() + 1
 ncols = df_cultures.index.get_level_values("day").max() + 1
@@ -573,8 +594,11 @@ fig.legend(
 fig.tight_layout()
 fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
 fig.show()
+fig.savefig(os.path.join(fig_path, "pie_charts.svg"))
+fig.savefig(os.path.join(fig_path, "pie_charts.pdf"))
 
 # %% stats of each cluster
+print("Computing stats of each cluster...")
 for stat in [
     "time_orig",
     # "time_extend",
@@ -604,6 +628,7 @@ for stat in [
     fig.show()
 
 # %% example bursts
+print("Plotting example bursts...")
 np.random.seed(0)
 fig, axs = plt.subplots(nrows=3, figsize=(4.6 * cm, 7 * cm), constrained_layout=True)
 sns.despine()
@@ -628,3 +653,6 @@ axs[-1].set_xlabel("Time [ms]")
 fig.show()
 fig.savefig(os.path.join(fig_path, "example_bursts.svg"))
 fig.savefig(os.path.join(fig_path, "example_bursts.pdf"))
+
+
+print("Finished.")
