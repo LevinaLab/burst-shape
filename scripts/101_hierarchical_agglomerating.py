@@ -65,6 +65,7 @@ file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
 if not recompute and os.path.exists(file_linkage):
     print(f"Loading linkage from disk: {file_linkage}")
     Z = np.load(file_linkage)
+    distance_matrix = np.load(file_distance_matrix)
 elif not recompute and os.path.exists(file_distance_matrix):
     print(f"Loading distance matrix from disk: {file_distance_matrix}")
     distance_matrix = np.load(file_distance_matrix)
