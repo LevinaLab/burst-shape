@@ -24,6 +24,7 @@ params_burst_extraction = {
     "pad_right": False,
     "normalization": "integral",
     "min_length": 30,
+    "smoothing_kernel": 4,
 }
 
 

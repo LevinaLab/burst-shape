@@ -24,6 +24,7 @@ def extract_bursts(
     pad_right=False,
     normalization=None,
     min_length=None,
+    smoothing_kernel=None,
 ):
     """Extract bursts from data files.
 
@@ -48,6 +49,7 @@ def extract_bursts(
         normalization (str, optional): Normalization to apply to bursts.
             Can be None, 'zscore', 'peak', 'integral'. Defaults to None.
         min_length (float, optional): Minimum length of burst. Defaults to None.
+        smoothing_kernel (int, optional): Kernel size for smoothing burst. Defaults to None.
 
     Returns:
         df_cultures (pd.DataFrame): Dataframe with columns 'file_name', 'n_bursts', 'burst_start_end'.
@@ -76,6 +78,7 @@ def extract_bursts(
         n_bins,
         extend_left,
         extend_right,
+        smoothing_kernel,
     )
     df_bursts = _filter_bursts(
         df_bursts,
@@ -139,6 +142,7 @@ def _build_bursts_df(
     n_bins,
     extend_left,
     extend_right,
+    smoothing_kernel,
 ):
     df_bursts = pd.DataFrame(
         columns=[
@@ -261,6 +265,23 @@ def _build_bursts_df(
         )
     if bin_size is not None:
         df_bursts["burst"] = df_bursts["burst"] / bin_size * 1000
+
+    # smooth bursts
+    if smoothing_kernel is not None:
+        assert n_bins is not None, "n_bins must be specified if smoothing_kernel is not None"
+        print(f"Smooth bursts with kernel size {smoothing_kernel}")
+        for index in tqdm(df_bursts.index, desc="Smooth bursts"):
+            kernel_size_float = smoothing_kernel / df_bursts.at[index, "time_extend"] * n_bins
+            if kernel_size_float <= 1:
+                continue
+            kernel_size = np.ceil(kernel_size_float)
+            if kernel_size % 2 == 0:
+                kernel_size += 1
+            assert kernel_size >= 3, "Kernel size must be at least 3"
+            kernel = np.ones(int(kernel_size)) / kernel_size_float
+            kernel[[0, -1]] = (1 - (kernel_size - 2) / kernel_size_float) / 2
+            assert np.isclose(np.sum(kernel), 1), "Kernel must sum to 1"
+            df_bursts.at[index, "burst"] = np.convolve(df_bursts.at[index, "burst"], kernel, mode="same")
 
     # compute peak height and integral
     for index in tqdm(df_bursts.index, desc="Compute peak height and integral"):

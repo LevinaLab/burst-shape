@@ -17,7 +17,7 @@ from src import folders
 from src.persistence import load_burst_matrix, load_df_bursts
 from src.persistence.burst_extraction import _get_burst_folder
 
-burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30"
+burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 n_bursts = None  # if None uses all bursts
 compute_parallel = True  # if True uses double the memory but is faster
 recompute = False  # if False and available loads the data from disk
@@ -296,6 +296,8 @@ ax.set_xlabel("Cluster")
 ax.set_ylabel("Number of Bursts")
 ax.set_xticks(range(1, n_clusters + 1))
 fig.show()
+fig.savefig(os.path.join(fig_path, "cluster_sizes.svg"))
+fig.savefig(os.path.join(fig_path, "cluster_sizes.pdf"))
 
 # %% plot average burst of each cluster
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))

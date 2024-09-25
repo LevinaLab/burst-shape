@@ -22,6 +22,7 @@ _burst_extraction_defaults: dict = {
     "pad_right": False,
     "normalization": None,
     "min_length": None,
+    "smoothing_kernel": None,
 }
 
 
