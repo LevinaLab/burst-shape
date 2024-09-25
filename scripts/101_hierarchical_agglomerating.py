@@ -217,7 +217,7 @@ labels = fcluster(Z, t=n_clusters, criterion="maxclust")
 df_bursts["cluster"] = labels
 
 # %% Define a color palette for the clusters
-palette = sns.color_palette("Set1", n_clusters)
+palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
 cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
 # convert colors to string (hex format)
 cluster_colors = [
@@ -394,7 +394,7 @@ days = days[2:-2]
 fraction = fraction[2:-2]
 # fraction /= fraction.sum(axis=1)[:, None]
 for cluster in range(1, n_clusters + 1):
-    ax.plot(days, fraction[:, cluster - 1], color=palette[cluster - 1], linestyle="--")
+    ax.plot(days, fraction[:, cluster - 1], color=palette[cluster - 1]) # , linestyle="--")
 ax.set_xlabel("Day")
 ax.set_ylabel("Fraction")
 # ax.legend()
@@ -547,7 +547,7 @@ fig.show()
 # %% plot a pie chart for each entry in df_cultures
 # position of the pie chart in the grid is determined by the day and i_culture
 print("Plotting pie charts...")
-colors = sns.color_palette("Set1", n_colors=n_clusters)
+colors = palette #  sns.color_palette("Set1", n_colors=n_clusters)
 nrows = df_cultures["i_culture"].max() + 1
 ncols = df_cultures.index.get_level_values("day").max() + 1
 fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 15))
@@ -617,6 +617,8 @@ for stat in [
         log_scale=True,
         legend=False,
         hue="cluster",
+        linewidth=0.5,
+        inner=None,  # "quart",
     )
 
     if stat == "time_orig":
