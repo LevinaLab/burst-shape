@@ -19,6 +19,9 @@ burst_extraction_params = "burst_n_bins_50_normalization_integral"
 clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 cv_params = "cv"
+# manually remove some bursts for cross-validation
+rebalance_n_clusters = None  # if None nothing happens
+remove_cluster = [6, 7]  # if None remove bursts randomly beyond median cluster size
 
 # load cross-validation parameters
 cv_params = load_cv_params(burst_extraction_params, cv_params)
@@ -65,6 +68,51 @@ if cv_params is not None:
             df_bursts.loc[
                 idx_train, f"cluster_{n_clusters_}_cv_{i}"
             ] = clustering.labels_[n_clusters_]
+
+if rebalance_n_clusters is not None:
+    if remove_cluster is None:
+        # print number of bursts in each cluster
+        print(
+            f"Number of bursts in each cluster before re-balancing (n_clusters={rebalance_n_clusters}):"
+        )
+        median_bursts = int(
+            df_bursts[f"cluster_{rebalance_n_clusters}"].value_counts().median()
+        )
+        for i in range(rebalance_n_clusters):
+            print(
+                f"Cluster {i}: {df_bursts[f'cluster_{rebalance_n_clusters}'].value_counts()[i]}"
+            )
+        # re-balance clusters by dropping bursts randomly beyond number of median bursts
+        idx_drop = []
+        for i in range(rebalance_n_clusters):
+            idx = df_bursts[df_bursts[f"cluster_{rebalance_n_clusters}"] == i].index
+            # select randomly bursts beyond median
+            idx_drop.append(
+                np.random.choice(
+                    idx, size=max(0, len(idx) - median_bursts), replace=False
+                )
+            )
+        idx_drop = np.concatenate(idx_drop)
+        # get integer index to drop the same burst in the matrix as well
+        idx_drop_matrix = df_bursts.index.get_indexer(idx_drop)
+        df_bursts = df_bursts.drop(idx_drop)
+        burst_matrix = np.delete(burst_matrix, idx_drop_matrix, axis=0)
+        # print number of bursts in each cluster
+        print(
+            f"Number of bursts in each cluster after re-balancing (n_clusters={rebalance_n_clusters}):"
+        )
+        for i in range(rebalance_n_clusters):
+            print(
+                f"Cluster {i}: {df_bursts[f'cluster_{rebalance_n_clusters}'].value_counts()[i]}"
+            )
+    else:
+        # remove specific clusters
+        idx_drop = df_bursts[
+            df_bursts[f"cluster_{rebalance_n_clusters}"].isin(remove_cluster)
+        ].index
+        idx_drop_matrix = df_bursts.index.get_indexer(idx_drop)
+        df_bursts = df_bursts.drop(idx_drop)
+        burst_matrix = np.delete(burst_matrix, idx_drop_matrix, axis=0)
 
 
 # labels of n_clusters is saved in "cluster_{n_clusters}"

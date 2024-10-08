@@ -24,7 +24,7 @@ all_data = True  # set to False if you want to compute only cross-validation
 clustering_params = {
     "n_components_max": 30,
     "affinity": "precomputed",
-    "metric": "wasserstein",
+    "metric": "cosine",
     "n_neighbors": 10,
     "random_state": 0,
 }
