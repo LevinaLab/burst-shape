@@ -21,11 +21,12 @@ burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_
 n_bursts = None  # if None uses all bursts
 compute_parallel = True  # if True uses double the memory but is faster
 recompute = False  # if False and available loads the data from disk
+use_distance_matrix_when_reload = False # if False, skips all steps that require the distance matrix
 linkage_method = "complete"
 np.random.seed(0)
 
 # plot settings
-n_clusters = None # 3  # if None chooses the number of clusters with Davies-Bouldin index
+n_clusters = 9 # 3  # if None chooses the number of clusters with Davies-Bouldin index
 
 # plotting
 cm = 1 / 2.54  # centimeters in inches
@@ -65,7 +66,10 @@ file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
 if not recompute and os.path.exists(file_linkage):
     print(f"Loading linkage from disk: {file_linkage}")
     Z = np.load(file_linkage)
-    distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
+    if use_distance_matrix_when_reload:
+        distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
+    else:
+        distance_matrix = None
 elif not recompute and os.path.exists(file_distance_matrix):
     print(f"Loading distance matrix from disk: {file_distance_matrix}")
     distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
@@ -151,65 +155,66 @@ fig.savefig(os.path.join(fig_path, "davies_bouldin.svg"))
 fig.savefig(os.path.join(fig_path, "davies_bouldin.pdf"))
 
 # %% Cross-validate with self-built Davies-Bouldin index
-print("Computing my Davies-Bouldin index...")
-def _my_davies_bouldin_score(X, distance_matrix, labels):
-    n_labels = len(np.unique(labels))
-    intra_dists = np.zeros(n_labels)
-    centroids = np.zeros((n_labels, X.shape[1]))
-    for i in range(n_labels):
-        mask = labels == i + 1
-        assert np.sum(mask) > 0, f"Empty cluster {i}"
-        intra_dists[i] = np.mean(distance_matrix[mask][:, mask])
-        centroids[i] = X[mask].mean(axis=0)
-    centroid_distances = np.zeros((n_labels, n_labels))
-    for i in range(n_labels):
-        for j in range(i + 1, n_labels):
-            centroid_distance = _wasserstein_distance(centroids[i], centroids[j])
-            centroid_distances[i, j] = centroid_distance
-            centroid_distances[j, i] = centroid_distance
-    centroid_distances[centroid_distances == 0] = np.inf
-    combined_intra_dists = intra_dists[:, None] + intra_dists
-    scores = np.max(combined_intra_dists / centroid_distances, axis=1)
-    return np.mean(scores)
+if distance_matrix is not None:
+    print("Computing my Davies-Bouldin index...")
+    def _my_davies_bouldin_score(X, distance_matrix, labels):
+        n_labels = len(np.unique(labels))
+        intra_dists = np.zeros(n_labels)
+        centroids = np.zeros((n_labels, X.shape[1]))
+        for i in range(n_labels):
+            mask = labels == i + 1
+            assert np.sum(mask) > 0, f"Empty cluster {i}"
+            intra_dists[i] = np.mean(distance_matrix[mask][:, mask])
+            centroids[i] = X[mask].mean(axis=0)
+        centroid_distances = np.zeros((n_labels, n_labels))
+        for i in range(n_labels):
+            for j in range(i + 1, n_labels):
+                centroid_distance = _wasserstein_distance(centroids[i], centroids[j])
+                centroid_distances[i, j] = centroid_distance
+                centroid_distances[j, i] = centroid_distance
+        centroid_distances[centroid_distances == 0] = np.inf
+        combined_intra_dists = intra_dists[:, None] + intra_dists
+        scores = np.max(combined_intra_dists / centroid_distances, axis=1)
+        return np.mean(scores)
 
-distance_matrix_square = squareform(distance_matrix, force="tomatrix")
-n_clusters_range = range(2, 30)
-score_davies_bouldin = np.zeros(len(n_clusters_range))
-for _n_clusters in range(2, 30):
-    labels = fcluster(Z, t=_n_clusters, criterion="maxclust")
-    score_davies_bouldin[_n_clusters - 2] = _my_davies_bouldin_score(burst_matrix, distance_matrix_square, labels)
-fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
-sns.despine()
-ax.plot(
-    n_clusters_range,
-    score_davies_bouldin,
-    "o-",
-    label="Davies-Bouldin Index",
-    markersize=2,
-    linewidth=1,
-)
-# highlight the best number of clusters
-best_n_clusters = np.argmin(score_davies_bouldin) + 2
-ax.plot(
-    best_n_clusters,
-    score_davies_bouldin[best_n_clusters - 2],
-    "ro",
-    markersize=3,
-    label=f"Min: {best_n_clusters} clusters",
-)
-ax.set_xlabel("Number of Clusters")
-ax.set_xticks([3, 10, 20, 30])
-ax.set_yticks([])
-ax.set_ylabel("Davies-\nBouldin Index")
-# ax.legend(frameon=False)
-# fig.tight_layout()
-fig.show()
-fig.savefig(os.path.join(fig_path, "davies_bouldin_my.svg"))
-fig.savefig(os.path.join(fig_path, "davies_bouldin_my.pdf"))
+    distance_matrix_square = squareform(distance_matrix, force="tomatrix")
+    n_clusters_range = range(2, 30)
+    score_davies_bouldin = np.zeros(len(n_clusters_range))
+    for _n_clusters in range(2, 30):
+        labels = fcluster(Z, t=_n_clusters, criterion="maxclust")
+        score_davies_bouldin[_n_clusters - 2] = _my_davies_bouldin_score(burst_matrix, distance_matrix_square, labels)
+    fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
+    sns.despine()
+    ax.plot(
+        n_clusters_range,
+        score_davies_bouldin,
+        "o-",
+        label="Davies-Bouldin Index",
+        markersize=2,
+        linewidth=1,
+    )
+    # highlight the best number of clusters
+    best_n_clusters = np.argmin(score_davies_bouldin) + 2
+    ax.plot(
+        best_n_clusters,
+        score_davies_bouldin[best_n_clusters - 2],
+        "ro",
+        markersize=3,
+        label=f"Min: {best_n_clusters} clusters",
+    )
+    ax.set_xlabel("Number of Clusters")
+    ax.set_xticks([3, 10, 20, 30])
+    ax.set_yticks([])
+    ax.set_ylabel("Davies-\nBouldin Index")
+    # ax.legend(frameon=False)
+    # fig.tight_layout()
+    fig.show()
+    fig.savefig(os.path.join(fig_path, "davies_bouldin_my.svg"))
+    fig.savefig(os.path.join(fig_path, "davies_bouldin_my.pdf"))
 
-if n_clusters is None:
-    print(f"Choosing the best number of clusters: {best_n_clusters} based on my Davies-Bouldin index")
-    n_clusters = best_n_clusters
+    if n_clusters is None:
+        print(f"Choosing the best number of clusters: {best_n_clusters} based on my Davies-Bouldin index")
+        n_clusters = best_n_clusters
 
 # %% get clusters from linkage
 print("Getting clusters from linkage...")
