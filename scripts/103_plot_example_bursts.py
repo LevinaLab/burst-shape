@@ -6,9 +6,11 @@ from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import fcluster
 
 from src.folders import get_results_folder
-from src.persistence import load_df_bursts, load_burst_matrix
+from src.persistence import load_burst_matrix, load_df_bursts
 
-burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+burst_extraction_params = (
+    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+)
 # load bursts df
 df_bursts = load_df_bursts(burst_extraction_params)
 burst_matrix = load_burst_matrix(burst_extraction_params)
@@ -55,9 +57,7 @@ if not hasattr(index_to_plot, "__iter__"):
 
 for idx in index_to_plot:
     print(df_bursts_i.iloc[idx])
-    bins = np.linspace(
-        0, df_bursts_i.iloc[idx]["time_orig"], 51, endpoint=True
-    )
+    bins = np.linspace(0, df_bursts_i.iloc[idx]["time_orig"], 51, endpoint=True)
     bins_mid = (bins[1:] + bins[:-1]) / 2
     ax.plot(
         bins_mid,

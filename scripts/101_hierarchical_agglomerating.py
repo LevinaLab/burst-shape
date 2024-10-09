@@ -1,8 +1,7 @@
 """Test hierarchical clustering with Wasserstein distance."""
-import os
 import multiprocessing
+import os
 from time import time
-from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,25 +11,35 @@ from scipy.cluster.hierarchy import dendrogram, fcluster, linkage
 from scipy.spatial.distance import pdist, squareform
 from sklearn.decomposition import PCA
 from sklearn.metrics import davies_bouldin_score
+from tqdm import tqdm
 
 from src import folders
 from src.persistence import load_burst_matrix, load_df_bursts
 from src.persistence.burst_extraction import _get_burst_folder
 
-burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+burst_extraction_params = (
+    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+)
 n_bursts = None  # if None uses all bursts
 compute_parallel = True  # if True uses double the memory but is faster
 recompute = False  # if False and available loads the data from disk
-use_distance_matrix_when_reload = False # if False, skips all steps that require the distance matrix
+use_distance_matrix_when_reload = (
+    False  # if False, skips all steps that require the distance matrix
+)
 linkage_method = "complete"
 np.random.seed(0)
 
 # plot settings
-n_clusters = 9 # 3  # if None chooses the number of clusters with Davies-Bouldin index
+n_clusters = 9  # 3  # if None chooses the number of clusters with Davies-Bouldin index
 
 # plotting
 cm = 1 / 2.54  # centimeters in inches
 fig_path = folders.get_fig_folder()
+
+folder_agglomerating_clustering = os.path.join(
+    _get_burst_folder(burst_extraction_params),
+    f"agglomerating_clustering_linkage_{linkage_method}_n_bursts_{n_bursts}",
+)
 
 burst_matrix = load_burst_matrix(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
@@ -38,6 +47,7 @@ df_bursts = load_df_bursts(burst_extraction_params)
 np.random.seed(0)
 if n_bursts is not None:
     idx = np.random.choice(burst_matrix.shape[0], n_bursts, replace=False)
+    np.save(os.path.join(folder_agglomerating_clustering, "idx.npy"), idx)
     burst_matrix = burst_matrix[idx]
     df_bursts = df_bursts.iloc[idx]
 print(burst_matrix.shape)
@@ -54,10 +64,6 @@ def _wasserstein_distance(a, b):
 
 
 # %% cluster with linkage
-folder_agglomerating_clustering = os.path.join(
-    _get_burst_folder(burst_extraction_params),
-    f"agglomerating_clustering_linkage_{linkage_method}_n_bursts_{n_bursts}"
-)
 file_distance_matrix = os.path.join(
     folder_agglomerating_clustering, "distance_matrix.npy"
 )
@@ -98,8 +104,9 @@ else:
 
         def _metric_from_index(k):
             i, j = lookup_table[k]
-            distance_matrix[k] = _wasserstein_distance(burst_matrix_parallel[i], burst_matrix_parallel[j])
-
+            distance_matrix[k] = _wasserstein_distance(
+                burst_matrix_parallel[i], burst_matrix_parallel[j]
+            )
 
         # parallel computation of the distance matrix
         with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
@@ -157,6 +164,7 @@ fig.savefig(os.path.join(fig_path, "davies_bouldin.pdf"))
 # %% Cross-validate with self-built Davies-Bouldin index
 if distance_matrix is not None:
     print("Computing my Davies-Bouldin index...")
+
     def _my_davies_bouldin_score(X, distance_matrix, labels):
         n_labels = len(np.unique(labels))
         intra_dists = np.zeros(n_labels)
@@ -182,7 +190,9 @@ if distance_matrix is not None:
     score_davies_bouldin = np.zeros(len(n_clusters_range))
     for _n_clusters in range(2, 30):
         labels = fcluster(Z, t=_n_clusters, criterion="maxclust")
-        score_davies_bouldin[_n_clusters - 2] = _my_davies_bouldin_score(burst_matrix, distance_matrix_square, labels)
+        score_davies_bouldin[_n_clusters - 2] = _my_davies_bouldin_score(
+            burst_matrix, distance_matrix_square, labels
+        )
     fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
     sns.despine()
     ax.plot(
@@ -213,7 +223,9 @@ if distance_matrix is not None:
     fig.savefig(os.path.join(fig_path, "davies_bouldin_my.pdf"))
 
     if n_clusters is None:
-        print(f"Choosing the best number of clusters: {best_n_clusters} based on my Davies-Bouldin index")
+        print(
+            f"Choosing the best number of clusters: {best_n_clusters} based on my Davies-Bouldin index"
+        )
         n_clusters = best_n_clusters
 
 # %% get clusters from linkage
@@ -399,7 +411,9 @@ days = days[2:-2]
 fraction = fraction[2:-2]
 # fraction /= fraction.sum(axis=1)[:, None]
 for cluster in range(1, n_clusters + 1):
-    ax.plot(days, fraction[:, cluster - 1], color=palette[cluster - 1]) # , linestyle="--")
+    ax.plot(
+        days, fraction[:, cluster - 1], color=palette[cluster - 1]
+    )  # , linestyle="--")
 ax.set_xlabel("Day")
 ax.set_ylabel("Fraction")
 # ax.legend()
@@ -472,6 +486,8 @@ fig.savefig(os.path.join(fig_path, "information.pdf"))
 
 # %% similarity between batches (vector product of cluster_rel)
 print("Computing similarity between batches...")
+
+
 def _similarity(x, y):
     return np.sum(
         [
@@ -552,7 +568,7 @@ fig.show()
 # %% plot a pie chart for each entry in df_cultures
 # position of the pie chart in the grid is determined by the day and i_culture
 print("Plotting pie charts...")
-colors = palette #  sns.color_palette("Set1", n_colors=n_clusters)
+colors = palette  #  sns.color_palette("Set1", n_colors=n_clusters)
 nrows = df_cultures["i_culture"].max() + 1
 ncols = df_cultures.index.get_level_values("day").max() + 1
 fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 15))

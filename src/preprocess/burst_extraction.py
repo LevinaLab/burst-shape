@@ -268,10 +268,14 @@ def _build_bursts_df(
 
     # smooth bursts
     if smoothing_kernel is not None:
-        assert n_bins is not None, "n_bins must be specified if smoothing_kernel is not None"
+        assert (
+            n_bins is not None
+        ), "n_bins must be specified if smoothing_kernel is not None"
         print(f"Smooth bursts with kernel size {smoothing_kernel}")
         for index in tqdm(df_bursts.index, desc="Smooth bursts"):
-            kernel_size_float = smoothing_kernel / df_bursts.at[index, "time_extend"] * n_bins
+            kernel_size_float = (
+                smoothing_kernel / df_bursts.at[index, "time_extend"] * n_bins
+            )
             if kernel_size_float <= 1:
                 continue
             kernel_size = np.ceil(kernel_size_float)
@@ -281,7 +285,9 @@ def _build_bursts_df(
             kernel = np.ones(int(kernel_size)) / kernel_size_float
             kernel[[0, -1]] = (1 - (kernel_size - 2) / kernel_size_float) / 2
             assert np.isclose(np.sum(kernel), 1), "Kernel must sum to 1"
-            df_bursts.at[index, "burst"] = np.convolve(df_bursts.at[index, "burst"], kernel, mode="same")
+            df_bursts.at[index, "burst"] = np.convolve(
+                df_bursts.at[index, "burst"], kernel, mode="same"
+            )
 
     # compute peak height and integral
     for index in tqdm(df_bursts.index, desc="Compute peak height and integral"):
@@ -312,7 +318,9 @@ def _filter_bursts(
         len_before = len(df_bursts)
         df_bursts = df_bursts[df_bursts["time_extend"] >= min_length]
         len_after = len(df_bursts)
-        print(f"Removed {len_before - len_after} bursts below threshold ({min_length} ms)")
+        print(
+            f"Removed {len_before - len_after} bursts below threshold ({min_length} ms)"
+        )
     if pad_right:
         assert bin_size is not None, "bin_size must be specified if pad_right is True"
         print(f"Pad bursts to {burst_length_threshold} ms")
