@@ -67,6 +67,13 @@ if recompute_tsne or not os.path.exists(file_tsne):
     # pca initialization
     pca = PCA(n_components=2)
     pca_burst = pca.fit_transform(burst_matrix)
+    file_pca = os.path.join(
+        get_results_folder(),
+        burst_extraction_params,
+        clustering_params,
+        "pca.npy",
+    )
+    np.save(file_pca, pca_burst)
 
     # t-SNE
     n_points = distance_matrix.shape[0]
@@ -91,10 +98,11 @@ for i in range(n_clusters):
     ax.scatter(
         tsne_burst[labels == i + 1, 0],
         tsne_burst[labels == i + 1, 1],
-        s=5,
+        s=1,
         color=cluster_colors[i],
         label=f"cluster {i + 1}",
     )
-ax.legend()
+# legend with larger markers
+ax.legend(markerscale=10)
 ax.axis("off")
 fig.show()
