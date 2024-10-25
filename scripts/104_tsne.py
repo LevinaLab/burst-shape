@@ -4,6 +4,7 @@ import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import fcluster
+from scipy.spatial.distance import squareform
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
@@ -52,7 +53,7 @@ if recompute_tsne or not os.path.exists(file_tsne):
         clustering_params,
         "distance_matrix.npy",
     )
-    distance_matrix = np.load(distance_matrix_file)
+    distance_matrix = squareform(np.load(distance_matrix_file), force="tomatrix")
     burst_matrix = load_burst_matrix(burst_extraction_params)
     file_idx = os.path.join(
         get_results_folder(),

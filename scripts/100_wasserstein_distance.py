@@ -72,7 +72,7 @@ def _wasserstein_distance(a, b):
 # %% compute distance matrix
 if not recompute_distance_matrix and os.path.exists(file_distance_matrix):
     print(f"Loading distance matrix from disk: {file_distance_matrix}")
-    distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
+    distance_matrix = np.load(file_distance_matrix)  # vector-form
 else:
     print("Computing distance matrix and linkage")
     t0 = time()
@@ -112,7 +112,7 @@ else:
     print(f"Distance matrix: {t1 - t0:.2f} s")
     print(f"Saving distance matrix to disk: {file_distance_matrix}")
     os.makedirs(folder_agglomerating_clustering, exist_ok=True)
-    np.save(file_distance_matrix, squareform(distance_matrix, force="tomatrix"))
+    np.save(file_distance_matrix, distance_matrix)
 
 # %% compute linkage
 if not recompute_linkage and os.path.exists(file_linkage):

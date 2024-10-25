@@ -64,7 +64,7 @@ if use_distance_matrix_when_reload:
         )
     else:
         print(f"Loading distance matrix from {file_distance_matrix}")
-        distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
+        distance_matrix = np.load(file_distance_matrix)  # vector-form
 else:
     distance_matrix = None
 
