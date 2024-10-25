@@ -23,6 +23,7 @@ n_clusters = np.arange(2, 21, 1)
 n_clusters_initial = 9
 embedding_type = ["tsne", "pca"][0]
 
+
 ###############################################################################
 #                           Prepare data                                      #
 ###############################################################################
@@ -36,6 +37,8 @@ def get_cluster_colors(n_clusters_):
         for c in cluster_colors
     ]
     return cluster_colors
+
+
 cluster_colors = get_cluster_colors(n_clusters_initial)
 
 # load linkage -> labels
@@ -146,7 +149,7 @@ app.layout = html.Div(
             max=n_clusters[-1],
             step=1,
             value=n_clusters_initial,
-            tooltip={"placement": "bottom", 'always_visible': True},
+            tooltip={"placement": "bottom", "always_visible": True},
             vertical=True,
         ),
         # t-SNE plot

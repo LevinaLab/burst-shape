@@ -1,17 +1,14 @@
 """Test hierarchical clustering with Wasserstein distance."""
-import multiprocessing
 import os
-from time import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.cluster.hierarchy import dendrogram, fcluster, linkage
-from scipy.spatial.distance import pdist, squareform
+from scipy.cluster.hierarchy import dendrogram, fcluster
+from scipy.spatial.distance import squareform
 from sklearn.decomposition import PCA
 from sklearn.metrics import davies_bouldin_score
-from tqdm import tqdm
 
 from src import folders
 from src.persistence import load_burst_matrix, load_df_bursts
@@ -21,8 +18,6 @@ burst_extraction_params = (
     "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
 n_bursts = None  # if None uses all bursts
-compute_parallel = True  # if True uses double the memory but is faster
-recompute = False  # if False and available loads the data from disk
 use_distance_matrix_when_reload = (
     False  # if False, skips all steps that require the distance matrix
 )
@@ -40,7 +35,12 @@ folder_agglomerating_clustering = os.path.join(
     _get_burst_folder(burst_extraction_params),
     f"agglomerating_clustering_linkage_{linkage_method}_n_bursts_{n_bursts}",
 )
+file_distance_matrix = os.path.join(
+    folder_agglomerating_clustering, "distance_matrix.npy"
+)
+file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
 
+# load bursts
 burst_matrix = load_burst_matrix(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
 # select randomly bursts to reduce computation time
@@ -52,6 +52,22 @@ if n_bursts is not None:
     df_bursts = df_bursts.iloc[idx]
 print(burst_matrix.shape)
 
+if not os.path.exists(file_linkage):
+    raise FileNotFoundError(f"Linkage file not found: {file_linkage}")
+else:
+    print(f"Loading linkage from {file_linkage}")
+    Z = np.load(file_linkage)
+if use_distance_matrix_when_reload:
+    if not os.path.exists(file_distance_matrix):
+        raise FileNotFoundError(
+            f"Distance matrix file not found: {file_distance_matrix}"
+        )
+    else:
+        print(f"Loading distance matrix from {file_distance_matrix}")
+        distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
+else:
+    distance_matrix = None
+
 # %%
 
 
@@ -62,68 +78,6 @@ def _wasserstein_distance(a, b):
     b_cumsum /= b_cumsum[-1]
     return np.sum(np.abs(a_cumsum - b_cumsum))
 
-
-# %% cluster with linkage
-file_distance_matrix = os.path.join(
-    folder_agglomerating_clustering, "distance_matrix.npy"
-)
-file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
-
-if not recompute and os.path.exists(file_linkage):
-    print(f"Loading linkage from disk: {file_linkage}")
-    Z = np.load(file_linkage)
-    if use_distance_matrix_when_reload:
-        distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
-    else:
-        distance_matrix = None
-elif not recompute and os.path.exists(file_distance_matrix):
-    print(f"Loading distance matrix from disk: {file_distance_matrix}")
-    distance_matrix = squareform(np.load(file_distance_matrix), force="tovector")
-    Z = linkage(distance_matrix, method=linkage_method)
-    np.save(file_linkage, Z)
-else:
-    print("Computing distance matrix and linkage")
-    t0 = time()
-    if compute_parallel:
-        n = burst_matrix.shape[0]
-        size = n * (n - 1) // 2
-        # initialize shared memory array
-        distance_matrix = multiprocessing.Array("d", n * (n - 1) // 2, lock=False)
-        # convert the burst matrix to shared memory with lock=False
-        burst_matrix_parallel = np.frombuffer(
-            multiprocessing.Array("d", burst_matrix.size, lock=False)
-        ).reshape(burst_matrix.shape)
-        burst_matrix_parallel[:] = burst_matrix
-        # create a shared lookup table for the index of the distance matrix
-        lookup_table = np.zeros((size, 2), dtype=int)
-        k = 0
-        for i in tqdm(range(n - 1), desc="Computing lookup table"):
-            lookup_table[k : k + n - i - 1, 0] = i
-            lookup_table[k : k + n - i - 1, 1] = np.arange(i + 1, n)
-            k += n - i - 1
-
-        def _metric_from_index(k):
-            i, j = lookup_table[k]
-            distance_matrix[k] = _wasserstein_distance(
-                burst_matrix_parallel[i], burst_matrix_parallel[j]
-            )
-
-        # parallel computation of the distance matrix
-        with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-            pool.map(
-                _metric_from_index,
-                range(size),
-            )
-    else:
-        distance_matrix = pdist(burst_matrix, metric=_wasserstein_distance)
-    t1 = time()
-    print(f"Distance matrix: {t1 - t0:.2f} s")
-    Z = linkage(distance_matrix, method=linkage_method)
-    t2 = time()
-    print(f"Linkage: {t2 - t1:.2f} s")
-    os.makedirs(folder_agglomerating_clustering, exist_ok=True)
-    np.save(file_distance_matrix, squareform(distance_matrix, force="tomatrix"))
-    np.save(file_linkage, Z)
 
 # %% Cross-validate with Davies-Bouldin index
 print("Computing Davies-Bouldin index...")
@@ -279,6 +233,35 @@ fig.tight_layout()
 fig.show()
 fig.savefig(os.path.join(fig_path, "dendrogram.svg"))
 fig.savefig(os.path.join(fig_path, "dendrogram.pdf"))
+
+# %% Dendrogram with equally sized clusters (leaves are the clusters themselves)
+print("Plotting dendrogram with equally sized clusters...")
+fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))
+sns.despine()
+
+color_threshold = Z[-(n_clusters - 1), 2]
+
+dendrogram_properties = dendrogram(
+    Z,
+    ax=ax,
+    leaf_rotation=90,
+    leaf_font_size=10,
+    above_threshold_color="black",
+    truncate_mode="lastp",
+    p=n_clusters,
+    color_threshold=color_threshold,
+    show_leaf_counts=False,
+)
+
+ax.set_xlabel("Clusters")
+ax.set_ylabel("Distance")
+
+# remove x and y ticks
+ax.set_xticks([])
+ax.set_yticks([])
+
+fig.tight_layout()
+fig.show()
 
 # %% PCA
 print("Computing PCA...")
