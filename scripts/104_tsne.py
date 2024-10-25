@@ -12,10 +12,10 @@ from src.folders import get_results_folder
 from src.persistence import load_burst_matrix
 
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
 )
 clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
-n_clusters = 9
+n_clusters = 2
 
 recompute_tsne = False
 

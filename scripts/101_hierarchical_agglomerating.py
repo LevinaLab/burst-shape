@@ -15,11 +15,11 @@ from src.persistence import load_burst_matrix, load_df_bursts
 from src.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
 )
 n_bursts = None  # if None uses all bursts
 use_distance_matrix_when_reload = (
-    False  # if False, skips all steps that require the distance matrix
+    True  # if False, skips all steps that require the distance matrix
 )
 linkage_method = "complete"
 np.random.seed(0)
