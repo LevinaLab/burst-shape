@@ -1,3 +1,5 @@
+import base64
+import io
 import os
 
 import dash
@@ -111,6 +113,7 @@ app = dash.Dash(__name__)
 
 # Create the t-SNE scatter plot
 def update_tsne_plot(df_bursts):
+    global tsne_fig
     color_discrete_sequence = None
     color_discrete_map = None
     color_continuous_scale = None
@@ -215,12 +218,15 @@ def update_tsne_plot(df_bursts):
 
 # Create the initial t-SNE plot
 tsne_fig = update_tsne_plot(df_bursts)
+tsne_plot = dcc.Graph(id="tsne-plot", figure=tsne_fig, style={"flex": "1"})
 
 # Define layout of the Dash app
 app.layout = html.Div(
     [
         html.Div(
             [
+                html.Button("Download as PDF", id="download-button"),
+                dcc.Download(id="download-pdf"),
                 # drop-down menu for selecting what to plot
                 dcc.Dropdown(
                     id="embedding-type",
@@ -257,7 +263,7 @@ app.layout = html.Div(
             style={"flex": "0 0 100px", "display": "flex", "flex-direction": "column"},
         ),
         # t-SNE plot
-        dcc.Graph(id="tsne-plot", figure=tsne_fig, style={"flex": "1"}),
+        tsne_plot,
         # Time series plot of selected point
         dcc.Graph(id="timeseries-plot", style={"flex": "1"}),
         # Raster plot of selected point
@@ -265,6 +271,29 @@ app.layout = html.Div(
     ],
     style={"display": "flex", "flex-direction": "row", "height": "80vh"},
 )
+
+
+@app.callback(
+    Output("download-pdf", "data"),
+    Input("download-button", "n_clicks"),
+    Input("tsne-plot", "figure"),
+    prevent_initial_call=True
+)
+def download_pdf(n_clicks, figure):
+    ctx = dash.callback_context
+
+    # Check if the download button was clicked
+    if not ctx.triggered or ctx.triggered[0]['prop_id'].split('.')[0] != 'download-button':
+        raise dash.exceptions.PreventUpdate
+
+    # Create a BytesIO buffer to hold the PDF data
+    pdf_buffer = io.BytesIO()
+    fig = go.Figure(figure)
+    fig.write_image(pdf_buffer, format="pdf")
+    pdf_data = base64.b64encode(pdf_buffer.getvalue()).decode("utf-8")
+
+    return dcc.send_bytes(lambda x: x.write(pdf_buffer.getvalue()), "figure.pdf")
+
 
 @app.callback(
     Output("tsne-plot", "figure", allow_duplicate=True),
