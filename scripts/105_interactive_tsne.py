@@ -21,7 +21,7 @@ burst_extraction_params = (
 )
 clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 n_clusters = np.arange(2, 21, 1)
-n_clusters_initial = 9
+n_clusters_current = 9  # initial number of clusters
 embedding_type = ["tsne", "pca"][0]
 
 
@@ -40,7 +40,7 @@ def get_cluster_colors(n_clusters_):
     return cluster_colors
 
 
-cluster_colors = get_cluster_colors(n_clusters_initial)
+cluster_colors = get_cluster_colors(n_clusters_current)
 
 # load linkage -> labels
 print(f"Loading linkage from {get_results_folder()}")
@@ -66,21 +66,26 @@ if os.path.exists(file_idx):
     burst_matrix = burst_matrix[idx]
     df_bursts = df_bursts.iloc[idx]
 
-file_tsne = os.path.join(
-    get_results_folder(),
-    burst_extraction_params,
-    clustering_params,
-    "tsne.npy" if embedding_type == "tsne" else "pca.npy",
-)
-embedding = np.load(file_tsne)
+def _update_embedding(embedding_type_):
+    file_embedding = os.path.join(
+        get_results_folder(),
+        burst_extraction_params,
+        clustering_params,
+        "tsne.npy" if embedding_type_ == "tsne" else "pca.npy",
+    )
+    embedding = np.load(file_embedding)
+    df_bursts["embedding_x"] = embedding[:, 0]
+    df_bursts["embedding_y"] = embedding[:, 1]
+    return
+
+
+_update_embedding(embedding_type)
 
 # prepare for plotly
 for n_clusters_ in n_clusters:
     labels = fcluster(linkage, t=n_clusters_, criterion="maxclust")
     df_bursts[f"cluster_{n_clusters_}"] = [f"Cluster {label}" for label in labels]
 # df_bursts["cluster"] = [f"Cluster {label}" for label in labels]
-df_bursts["embedding_x"] = embedding[:, 0]
-df_bursts["embedding_y"] = embedding[:, 1]
 df_bursts.reset_index(inplace=True)
 
 # confirm burst_matrix and df_bursts["burst"] are the same
@@ -99,7 +104,8 @@ app = dash.Dash(__name__)
 
 
 # Create the t-SNE scatter plot
-def create_tsne_plot(df_bursts, n_clusters_):
+def update_tsne_plot(df_bursts):
+    n_clusters_ = n_clusters_current
     tsne_fig = px.scatter(
         df_bursts,
         x="embedding_x",
@@ -134,24 +140,35 @@ def create_tsne_plot(df_bursts, n_clusters_):
     return tsne_fig
 
 
-# Create the t-SNE plot
-tsne_fig = create_tsne_plot(df_bursts, n_clusters_initial)
-
-# Update the layout to enable cluster toggling
-
+# Create the initial t-SNE plot
+tsne_fig = update_tsne_plot(df_bursts)
 
 # Define layout of the Dash app
 app.layout = html.Div(
     [
-        # slider for selecting the number of clusters with label "slide to select number of clusters"
-        dcc.Slider(
-            id="n-clusters-slider",
-            min=n_clusters[0],
-            max=n_clusters[-1],
-            step=1,
-            value=n_clusters_initial,
-            tooltip={"placement": "bottom", "always_visible": True},
-            vertical=True,
+        html.Div(
+            [
+                # drop-down menu for selecting what to plot
+                dcc.Dropdown(
+                    id="embedding-type",
+                    options=[
+                        {"label": "t-SNE", "value": "tsne"},
+                        {"label": "PCA", "value": "pca"},
+                    ],
+                    value="tsne",
+                ),
+                # slider for selecting the number of clusters with label "slide to select number of clusters"
+                dcc.Slider(
+                    id="n-clusters-slider",
+                    min=n_clusters[0],
+                    max=n_clusters[-1],
+                    step=1,
+                    value=n_clusters_current,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                    vertical=True,
+                ),
+            ],
+            style={"flex": "0 0 100px", "display": "flex", "flex-direction": "column"},
         ),
         # t-SNE plot
         dcc.Graph(id="tsne-plot", figure=tsne_fig, style={"flex": "1"}),
@@ -164,16 +181,27 @@ app.layout = html.Div(
 )
 # ])
 
+@app.callback(
+    Output("tsne-plot", "figure", allow_duplicate=True),
+    [Input("embedding-type", "value")],
+    prevent_initial_call=True,
+)
+def update_embedding_type(embedding_type_):
+    _update_embedding(embedding_type_)
+    return update_tsne_plot(df_bursts)
+
 
 # Update t-SNE plot based on the selected number of clusters
 @app.callback(
-    Output("tsne-plot", "figure"),
+    Output("tsne-plot", "figure", allow_duplicate=True),
     [Input("n-clusters-slider", "value")],
+    prevent_initial_call=True,
 )
-def update_tsne_plot(n_clusters_):
+def update_tsne_plot_callback(n_clusters_):
     print(f"Updating t-SNE plot with {n_clusters_} clusters")
-    n_clusters_initial = n_clusters_
-    return create_tsne_plot(df_bursts, n_clusters_)
+    global n_clusters_current
+    n_clusters_current = n_clusters_
+    return update_tsne_plot(df_bursts)
 
 
 # Update time series plot based on the selected point in the t-SNE plot
@@ -191,7 +219,7 @@ def update_timeseries(selected_data):
         [
             f"{key}: {df_bursts.iloc[point_index][key]}"
             for key in [
-                f"cluster_{n_clusters_initial}",
+                f"cluster_{n_clusters_current}",
                 "batch",
                 "culture",
                 "day",
