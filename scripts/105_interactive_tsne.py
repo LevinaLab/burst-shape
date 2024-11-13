@@ -4,6 +4,7 @@ import dash
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objs as go
 import seaborn as sns
 from dash import dcc, html
 from dash.dependencies import Input, Output
@@ -16,7 +17,7 @@ from src.persistence import load_burst_matrix, load_df_bursts
 #                           Parameters                                        #
 ###############################################################################
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
 )
 clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 n_clusters = np.arange(2, 21, 1)
@@ -154,8 +155,10 @@ app.layout = html.Div(
         ),
         # t-SNE plot
         dcc.Graph(id="tsne-plot", figure=tsne_fig, style={"flex": "1"}),
-        # Time series plot
+        # Time series plot of selected point
         dcc.Graph(id="timeseries-plot", style={"flex": "1"}),
+        # Raster plot of selected point
+        dcc.Graph(id="raster-plot", style={"flex": "1"}),
     ],
     style={"display": "flex", "flex-direction": "row", "height": "80vh"},
 )
@@ -203,6 +206,84 @@ def update_timeseries(selected_data):
     )
     return timeseries_fig
 
+
+@app.callback(Output("raster-plot", "figure"), [Input("tsne-plot", "clickData")])
+def update_raster(selected_data):
+    if selected_data is None:
+        return px.line(pd.DataFrame(), title="Select a point to view time series")
+
+    # Extract index of selected point
+    point_index = selected_data["points"][0]["customdata"][0]
+    # print(f"point_index: {point_index}")
+    # print(df_bursts.iloc[point_index])
+
+    batch, culture, day = list(df_bursts.iloc[point_index][['batch', 'culture', 'day']])
+    # print(f"batch: {batch}, culture: {culture}, day: {day}")
+
+    # Load spike data
+    st, gid = np.loadtxt('../data/extracted/%s-%s-%s.spk.txt' % (batch, culture, day)).T
+    st = st * 1000
+
+    start_orig = df_bursts.iloc[point_index]['start_orig']
+    duration = df_bursts.iloc[point_index]['time_orig']
+    start = start_orig - 800
+    end = start_orig + 2000
+    if start_orig + duration > end:
+        end = start_orig + duration + 500
+    st, gid = st[(st >= start) & (st <= end)], gid[(st >= start) & (st <= end)]
+
+
+    # Create raster plot with '|' markers for spikes and no line connecting them
+    fig = go.Figure()
+    # Raster plot with vertical line markers
+    fig.add_trace(
+        go.Scatter(
+            x=st,
+            y=gid,
+            mode="markers",
+            marker=dict(
+                symbol="line-ns",
+                size=10,
+                # color=palette[i_cluster - 1],
+                line_width=1,
+            ),
+            name="Spikes"
+        )
+    )
+    # Vertical reference line for start and start + duration
+    fig.add_vline(x=start_orig, line_dash="dash", line_color="green")
+    fig.add_vline(x=start_orig + duration, line_dash="dash", line_color="red")
+    # add line indicating 1 second duration and add text "1s"
+    fig.add_shape(
+        type="line",
+        x0=start,
+        y0=-1,
+        x1=start + 1000,
+        y1=-1,
+        line=dict(
+            color="black",
+            width=5,
+        ),
+    )
+    fig.add_annotation(
+        x=start + 500,
+        y=-1,
+        text="1s",
+        showarrow=False,
+        yshift=-10,
+    )
+    # Update layout
+    fig.update_layout(
+        title="Raster plot",
+        xaxis_title="Time [ms]",
+        yaxis_title="Neuron ID",
+        xaxis=dict(range=[start, end], showgrid=False),
+        yaxis=dict(showticklabels=False, showgrid=False),
+        plot_bgcolor="white",
+        showlegend=False
+    )
+
+    return fig
 
 # Run the app
 if __name__ == "__main__":
