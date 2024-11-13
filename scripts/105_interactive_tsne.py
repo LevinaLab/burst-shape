@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
+import plotly.colors
 import seaborn as sns
 from dash import dcc, html
 from dash.dependencies import Input, Output
@@ -22,6 +23,7 @@ burst_extraction_params = (
 clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 n_clusters = np.arange(2, 21, 1)
 n_clusters_current = 9  # initial number of clusters
+color_by = "cluster"  # initial color by
 embedding_type = ["tsne", "pca"][0]
 
 
@@ -88,6 +90,10 @@ for n_clusters_ in n_clusters:
 # df_bursts["cluster"] = [f"Cluster {label}" for label in labels]
 df_bursts.reset_index(inplace=True)
 
+
+df_bursts["firing_rate"] = df_bursts["integral"] / df_bursts["time_orig"]
+df_bursts["batch_culture"] = df_bursts["batch"].astype(str) + "-" + df_bursts["culture"].astype(str)
+
 # confirm burst_matrix and df_bursts["burst"] are the same
 # for i in range(len(burst_matrix)):
 #     assert np.allclose(burst_matrix[i], df_bursts["burst"].iloc[i])
@@ -105,19 +111,74 @@ app = dash.Dash(__name__)
 
 # Create the t-SNE scatter plot
 def update_tsne_plot(df_bursts):
+    color_discrete_sequence = None
+    color_discrete_map = None
+    color_continuous_scale = None
+    category_orders = None
+    legend_title = None
+    color_log = None
+
+    match color_by:
+        case "cluster":
+            color = f"cluster_{n_clusters_current}"
+            color_discrete_sequence = get_cluster_colors(n_clusters_current)
+            category_orders = {
+                f"cluster_{n_clusters_current}": [
+                    f"Cluster {i}" for i in range(1, n_clusters_current + 1)
+                ]
+            }
+            legend_title = "Cluster"
+        case "batch":
+            color = "batch"
+            df_bursts[color] = df_bursts[color].astype(str)
+            color_discrete_sequence = px.colors.qualitative.Set1
+            category_orders = {color: sorted(df_bursts["batch"].unique(), key=int)}
+            legend_title = "Batch"
+        case "batch_culture":
+            color = "batch_culture"
+            df_bursts[color] = df_bursts[color].astype(str)
+            color_discrete_sequence = px.colors.qualitative.Set1
+            category_orders = {color: sorted(
+                df_bursts["batch_culture"].unique(),
+                key=lambda x: (int(x.split('-')[0]), int(x.split('-')[1])),
+            )}
+            legend_title = "Batch-Culture"
+        case "day":
+            color = "day"
+            df_bursts[color] = df_bursts[color].astype(str)
+            unique_days = sorted(df_bursts["day"].unique(), key=int)
+            category_orders = {color: unique_days}
+            viridis_colors = plotly.colors.sample_colorscale(px.colors.sequential.Viridis, [i / len(unique_days) for i in range(len(unique_days))])
+            color_discrete_map = {
+                str(day): viridis_colors[i]
+                for i, day in enumerate(unique_days)
+            }
+            legend_title = "Day"
+        case "time_orig":
+            color = np.log10(pd.to_numeric(df_bursts["time_orig"], errors='coerce'))
+            # df_bursts[color] = pd.to_numeric(df_bursts[color], errors='coerce')
+            color_continuous_scale = px.colors.sequential.Viridis
+            legend_title = "Duration"
+            color_log = True
+        case "firing_rate":
+            color = np.log10(pd.to_numeric(df_bursts["firing_rate"], errors='coerce'))
+            color_continuous_scale = px.colors.sequential.Viridis
+            legend_title = "Firing rate"
+            color_log = True
+        case _:
+            print(f"Invalid color_by: {color_by}")
+            raise ValueError(f"Invalid color_by: {color_by}")
+
     n_clusters_ = n_clusters_current
     tsne_fig = px.scatter(
         df_bursts,
         x="embedding_x",
         y="embedding_y",
-        color=f"cluster_{n_clusters_}",
-        color_discrete_sequence=get_cluster_colors(n_clusters_),
-        category_orders={
-            f"cluster_{n_clusters_}": [
-                f"Cluster {i}" for i in range(1, n_clusters_ + 1)
-            ]
-        },
-        labels={"color": "Cluster"},
+        color=color,
+        color_discrete_sequence=color_discrete_sequence,
+        color_discrete_map=color_discrete_map,
+        color_continuous_scale=color_continuous_scale,
+        category_orders=category_orders,
         hover_data={
             "embedding_x": False,
             "embedding_y": False,
@@ -132,8 +193,20 @@ def update_tsne_plot(df_bursts):
         custom_data=[df_bursts.index],
     )
 
+    if color_log is True:
+        c_min_max = [color.min(), color.max()]
+        tickvals = np.linspace(c_min_max[0], c_min_max[1], 5, endpoint=True)
+        tickvalues = [f"{10**v:.0f}" for v in tickvals]
+        tsne_fig.update_coloraxes(
+            colorbar=dict(
+                title=legend_title,
+                tickvals=tickvals,
+                ticktext=tickvalues,
+            )
+        )
+
     tsne_fig.update_layout(
-        legend_title="Clusters",
+        legend_title=legend_title,
         legend_itemclick="toggle",
         legend_itemdoubleclick="toggleothers",
     )
@@ -157,6 +230,19 @@ app.layout = html.Div(
                     ],
                     value="tsne",
                 ),
+                # drop-down menu for selecting which column to color by
+                dcc.Dropdown(
+                    id="color-by",
+                    options=[
+                        {"label": "Day", "value": "day"},
+                        {"label": "Culture", "value": "batch_culture"},
+                        {"label": "Batch", "value": "batch"},
+                        {"label": "Cluster", "value": "cluster"},
+                        {"label": "Duration", "value": "time_orig"},
+                        {"label": "Firing rate", "value": "firing_rate"},
+                    ],
+                    value="cluster",
+                ),
                 # slider for selecting the number of clusters with label "slide to select number of clusters"
                 dcc.Slider(
                     id="n-clusters-slider",
@@ -179,7 +265,6 @@ app.layout = html.Div(
     ],
     style={"display": "flex", "flex-direction": "row", "height": "80vh"},
 )
-# ])
 
 @app.callback(
     Output("tsne-plot", "figure", allow_duplicate=True),
@@ -191,13 +276,25 @@ def update_embedding_type(embedding_type_):
     return update_tsne_plot(df_bursts)
 
 
+# Update t-SNE plot based on the selected column to color by
+@app.callback(
+    Output("tsne-plot", "figure", allow_duplicate=True),
+    [Input("color-by", "value")],
+    prevent_initial_call=True,
+)
+def update_color_by(color_by_):
+    print(f"Updating t-SNE plot with color by {color_by_}")
+    global color_by
+    color_by = color_by_
+    return update_tsne_plot(df_bursts)
+
 # Update t-SNE plot based on the selected number of clusters
 @app.callback(
     Output("tsne-plot", "figure", allow_duplicate=True),
     [Input("n-clusters-slider", "value")],
     prevent_initial_call=True,
 )
-def update_tsne_plot_callback(n_clusters_):
+def update_n_clusters(n_clusters_):
     print(f"Updating t-SNE plot with {n_clusters_} clusters")
     global n_clusters_current
     n_clusters_current = n_clusters_
