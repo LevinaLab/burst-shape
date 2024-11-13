@@ -26,6 +26,7 @@ clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 n_clusters = np.arange(2, 21, 1)
 n_clusters_current = 9  # initial number of clusters
 color_by = "cluster"  # initial color by
+marker_size = 3  # initial marker size
 embedding_type = ["tsne", "pca"][0]
 
 
@@ -93,7 +94,7 @@ for n_clusters_ in n_clusters:
 df_bursts.reset_index(inplace=True)
 
 
-df_bursts["firing_rate"] = df_bursts["integral"] / df_bursts["time_orig"]
+df_bursts["firing_rate"] = df_bursts["integral"] / 50  # df_bursts["time_orig"]
 df_bursts["batch_culture"] = df_bursts["batch"].astype(str) + "-" + df_bursts["culture"].astype(str)
 
 # confirm burst_matrix and df_bursts["burst"] are the same
@@ -195,6 +196,7 @@ def update_tsne_plot(df_bursts):
         title="t-SNE plot",
         custom_data=[df_bursts.index],
     )
+    tsne_fig.update_traces(marker=dict(size=marker_size))
 
     if color_log is True:
         c_min_max = [color.min(), color.max()]
@@ -262,8 +264,21 @@ app.layout = html.Div(
             ],
             style={"flex": "0 0 100px", "display": "flex", "flex-direction": "column"},
         ),
-        # t-SNE plot
-        tsne_plot,
+        html.Div(
+            [
+                # t-SNE plot
+                tsne_plot,
+                dcc.Slider(
+                    id="marker-size-slider",
+                    min=1,
+                    max=10,
+                    step=1,
+                    value=marker_size,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                ),
+            ],
+            style={"display": "flex", "flex-direction": "column", "flex": "1"},
+        ),
         # Time series plot of selected point
         dcc.Graph(id="timeseries-plot", style={"flex": "1"}),
         # Raster plot of selected point
@@ -329,6 +344,16 @@ def update_n_clusters(n_clusters_):
     n_clusters_current = n_clusters_
     return update_tsne_plot(df_bursts)
 
+@app.callback(
+    Output("tsne-plot", "figure", allow_duplicate=True),
+    [Input("marker-size-slider", "value")],
+    prevent_initial_call=True,
+)
+def update_marker_size(marker_size_):
+    print(f"Updating t-SNE plot with marker size {marker_size_}")
+    global marker_size
+    marker_size = marker_size_
+    return update_tsne_plot(df_bursts)
 
 # Update time series plot based on the selected point in the t-SNE plot
 @app.callback(Output("timeseries-plot", "figure"), [Input("tsne-plot", "clickData")])
