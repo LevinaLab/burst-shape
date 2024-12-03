@@ -9,6 +9,7 @@ from src.folders import get_results_folder
 from .cross_validation_string import _cv_params_to_string
 
 _burst_extraction_defaults: dict = {
+    "dataset": "wagenaar",
     "maxISIstart": 5,
     "maxISIb": 5,
     "minBdur": 40,
@@ -22,6 +23,7 @@ _burst_extraction_defaults: dict = {
     "pad_right": False,
     "normalization": None,
     "min_length": None,
+    "min_firing_rate": None,
     "smoothing_kernel": None,
 }
 

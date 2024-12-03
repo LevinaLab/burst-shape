@@ -1,15 +1,20 @@
 import itertools
 import os
+import re
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from src.folders import get_data_folder
+from src.folders import get_data_folder, get_data_kapucu_folder
 from src.preprocess import burst_detection
+
+na = np.array
 
 
 def extract_bursts(
+    dataset: Literal["kapucu", "wagenaar"] = "wagenaar",
     data_folder=None,
     maxISIstart=5,
     maxISIb=5,
@@ -24,6 +29,7 @@ def extract_bursts(
     pad_right=False,
     normalization=None,
     min_length=None,
+    min_firing_rate=None,
     smoothing_kernel=None,
 ):
     """Extract bursts from data files.
@@ -31,6 +37,7 @@ def extract_bursts(
     All times in milliseconds.
 
     Args:
+        dataset (Literal["kapucu", "wagenaar"], optional): Dataset to extract bursts from.
         data_folder (str, optional): Path to folder containing data files. Defaults to None.
         maxISIstart (int, optional): Maximum inter-spike interval (ISI) for start of burst.
             Defaults to 5.
@@ -49,6 +56,7 @@ def extract_bursts(
         normalization (str, optional): Normalization to apply to bursts.
             Can be None, 'zscore', 'peak', 'integral'. Defaults to None.
         min_length (float, optional): Minimum length of burst. Defaults to None.
+        min_firing_rate (float, optional): Minimum firing rate of burst. Defaults to None.
         smoothing_kernel (int, optional): Kernel size for smoothing burst. Defaults to None.
 
     Returns:
@@ -60,17 +68,37 @@ def extract_bursts(
         burst_matrix (np.ndarray): Matrix of bursts. Shape (n_bursts, n_bins).
     """
     if data_folder is None:
-        data_folder = os.path.join(get_data_folder(), "extracted")
-    df_cultures = _get_data_from_file(data_folder)
-    df_cultures = _bursts_from_culture(
-        df_cultures,
-        data_folder,
-        maxISIstart,
-        maxISIb,
-        minBdur,
-        minIBI,
-        minSburst,
-    )
+        match dataset:
+            case "wagenaar":
+                data_folder = os.path.join(get_data_folder(), "extracted")
+            case "kapucu":
+                data_folder = get_data_kapucu_folder()
+    match dataset:
+        case "wagenaar":
+            df_cultures = _get_data_from_file(data_folder)
+            df_cultures = _bursts_from_culture(
+                df_cultures,
+                data_folder,
+                maxISIstart,
+                maxISIb,
+                minBdur,
+                minIBI,
+                minSburst,
+            )
+        case "kapucu":
+            df_cultures = _get_kapucu_data_from_file(data_folder)
+            df_cultures = _bursts_from_kapucu_culture(
+                df_cultures,
+                data_folder,
+                maxISIstart,
+                maxISIb,
+                minBdur,
+                minIBI,
+                minSburst,
+            )
+            # set index
+            df_cultures.set_index(["culture_type", "mea_number", "well_id", "DIV"], inplace=True)
+
     df_bursts = _build_bursts_df(
         df_cultures,
         data_folder,
@@ -79,6 +107,7 @@ def extract_bursts(
         extend_left,
         extend_right,
         smoothing_kernel,
+        dataset,
     )
     df_bursts = _filter_bursts(
         df_bursts,
@@ -86,6 +115,7 @@ def extract_bursts(
         pad_right,
         bin_size,
         min_length,
+        min_firing_rate,
     )
     df_bursts = _normalize_bursts(df_bursts, normalization)
     burst_matrix = np.stack(df_bursts["burst"].values)
@@ -135,6 +165,96 @@ def _bursts_from_culture(
     return df
 
 
+def _gid_to_numbers(gid):
+    for i, u_id in enumerate(np.unique(gid)):
+        gid[gid == u_id] = i
+    return gid
+
+
+def _get_kapucu_data_from_file(data_folder):
+    print(f"Build dataframe from files in {data_folder}")
+    res = list(os.walk(data_folder, topdown=True))
+    files = res[0][2]  # all file names
+    div_days = [f.split('_')[3] for f in files if 'DIV' in f]
+    types = [f.split('_')[0] for f in files if 'DIV' in f]
+    mea_n = [f.split('_')[2] for f in files if 'DIV' in f]
+
+    div_days = [re.findall(r'\d+', div) for div in div_days]
+    div_days = na(div_days, dtype=int).flatten()
+    indis = np.argsort(div_days)
+    div_days = div_days[indis]
+    types = na(types)[indis]
+    mea_n = na(mea_n)[indis]
+    files = na(files)[indis]
+
+    divs = []
+    # summaries = []
+    well_id = []
+    culture_type = []
+    mea_number = []
+    spks = []
+    for i, file_ in tqdm(enumerate(files), desc='Loading files'):
+        div = div_days[i]
+        type_ = types[i]
+        mea_ = mea_n[i]
+        spikes = pd.read_csv(os.path.join(data_folder, file_))
+        channels = spikes['Channel']
+        wells = [ch.split('_')[0] for ch in channels]
+        ch_n = [ch.split('_')[1] for ch in channels]
+        spikes['well'] = wells
+        spikes['ch_n'] = ch_n
+        # Extract spikes for different wells
+        # well_spikes= []
+        for well in np.unique(wells):
+            st = na(spikes['Time'][spikes['well'] == well])
+            gid = na(spikes['ch_n'][spikes['well'] == well])
+            spks.append([st, gid])
+            # summaries.append(get_summary([st,gid],type_))
+            divs.append(div)
+            well_id.append(well)
+            culture_type.append(type_)
+            mea_number.append(mea_)
+
+    # Cut the noise at the beginning of a recording
+    mask = spks[247][0] > 125
+    spks[247][0] = spks[247][0][mask]
+    spks[247][1] = spks[247][1][mask]
+    df = pd.DataFrame(
+        {'spikes': spks, 'DIV': divs, 'well_id': well_id, 'culture_type': culture_type, 'mea_number': mea_number, })
+    df["times"] = df["spikes"].apply(lambda x: x[0])
+    # delete "spikes" column
+    df.drop(columns=["spikes"], inplace=True)
+    print("Done")
+    return df
+
+
+def _bursts_from_kapucu_culture(
+    df,
+    data_folder,
+    maxISIstart,
+    maxISIb,
+    minBdur,
+    minIBI,
+    minSburst,
+):
+    df["n_bursts"] = pd.Series(dtype=object)
+    df["burst_start_end"] = pd.Series(dtype=object)
+    for index in tqdm(df.index, desc="Compute burst times for each culture"):
+        bursts_start_end = burst_detection.MI_bursts(
+            df.at[index, "times"] * 1000,
+            maxISIstart=maxISIstart,
+            maxISIb=maxISIb,
+            minBdur=minBdur,
+            minIBI=minIBI,
+            minSburst=minSburst,
+        )
+        df.at[index, "n_bursts"] = len(bursts_start_end)
+        df.at[index, "burst_start_end"] = bursts_start_end
+    assert df["n_bursts"].sum() > 0, "No bursts found"
+    return df
+
+
+
 def _build_bursts_df(
     df_cultures,
     data_folder,
@@ -143,6 +263,7 @@ def _build_bursts_df(
     extend_left,
     extend_right,
     smoothing_kernel,
+    dataset,
 ):
     df_bursts = pd.DataFrame(
         columns=[
@@ -155,37 +276,37 @@ def _build_bursts_df(
             "burst",
             "peak_height",
             "integral",
+            "firing_rate",
         ],
         index=pd.MultiIndex.from_tuples(
             itertools.chain.from_iterable(
                 [
                     [
-                        (batch, culture, day, i_burst)
+                        (*index, i_burst)
                         for i_burst in range(
-                            df_cultures.at[(batch, culture, day), "n_bursts"]
+                            df_cultures.at[index, "n_bursts"]
                         )
                     ]
-                    for batch, culture, day in df_cultures.index
+                    for index in df_cultures.index
                 ]
             ),
-            names=["batch", "culture", "day", "i_burst"],
+            names=[*df_cultures.index.names, "i_burst"],
         ),
     )
     for index in tqdm(df_cultures.index, desc="Build dataframe of bursts with times."):
-        batch, culture, day = index
         bursts_start_end = df_cultures.at[index, "burst_start_end"]
         for i_burst, (start, end) in enumerate(bursts_start_end):
             # df_bursts.at[(batch, culture, day, i_burst), "i_burst"] = i_burst
-            df_bursts.at[(batch, culture, day, i_burst), "start_orig"] = start
-            df_bursts.at[(batch, culture, day, i_burst), "end_orig"] = end
-            df_bursts.at[(batch, culture, day, i_burst), "start_extend"] = (
+            df_bursts.at[(*index, i_burst), "start_orig"] = start
+            df_bursts.at[(*index, i_burst), "end_orig"] = end
+            df_bursts.at[(*index, i_burst), "start_extend"] = (
                 start - extend_left
             )
-            df_bursts.at[(batch, culture, day, i_burst), "end_extend"] = (
+            df_bursts.at[(*index, i_burst), "end_extend"] = (
                 end + extend_right
             )
-            df_bursts.at[(batch, culture, day, i_burst), "time_orig"] = end - start
-            df_bursts.at[(batch, culture, day, i_burst), "time_extend"] = (
+            df_bursts.at[(*index, i_burst), "time_orig"] = end - start
+            df_bursts.at[(*index, i_burst), "time_extend"] = (
                 end - start + extend_left + extend_right
             )
 
@@ -196,29 +317,32 @@ def _build_bursts_df(
         bin_size is None or n_bins is None
     ), "Only one of bin_size and n_bins can be specified"
     for index in tqdm(df_cultures.index, desc="Extract bursts and bin them."):
-        batch, culture, day = index
         bursts_start_end = df_cultures.at[index, "burst_start_end"]
         if len(bursts_start_end) == 0:
             continue
-        file_name = df_cultures.at[index, "file_name"]
-        file_path = os.path.join(data_folder, file_name)
-        data = np.loadtxt(file_path)[:, 0] * 1000
+        match dataset:
+            case "wagenaar":
+                file_name = df_cultures.at[index, "file_name"]
+                file_path = os.path.join(data_folder, file_name)
+                data = np.loadtxt(file_path)[:, 0] * 1000
+            case "kapucu":
+                data = df_cultures.at[index, "times"] * 1000
         if bin_size is not None:
             time_max = np.max(data)
             bins = np.arange(0, time_max + bin_size, bin_size)
             counts, _ = np.histogram(data, bins=bins)
             for i_burst in range(len(bursts_start_end)):
-                index = (batch, culture, day, i_burst)
-                df_bursts.at[index, "burst"] = counts[
-                    int(np.floor(df_bursts.at[index, "start_extend"] / bin_size)) : int(
-                        np.ceil(df_bursts.at[index, "end_extend"] / bin_size)
+                index_burst = (*index, i_burst)
+                df_bursts.at[index_burst, "burst"] = counts[
+                    int(np.floor(df_bursts.at[index_burst, "start_extend"] / bin_size)) : int(
+                        np.ceil(df_bursts.at[index_burst, "end_extend"] / bin_size)
                     )
                 ]
         if n_bins is not None:
             if np.all(
                 [
-                    df_bursts.at[(batch, culture, day, i_burst), "start_extend"]
-                    > df_bursts.at[(batch, culture, day, i_burst - 1), "end_extend"]
+                    df_bursts.at[(*index, i_burst), "start_extend"]
+                    > df_bursts.at[(*index, i_burst - 1), "end_extend"]
                     for i_burst in range(1, len(bursts_start_end))
                 ]
             ):
@@ -227,9 +351,9 @@ def _build_bursts_df(
                     [
                         np.linspace(
                             df_bursts.at[
-                                (batch, culture, day, i_burst), "start_extend"
+                                (*index, i_burst), "start_extend"
                             ],
-                            df_bursts.at[(batch, culture, day, i_burst), "end_extend"],
+                            df_bursts.at[(*index, i_burst), "end_extend"],
                             n_bins + 1,
                             endpoint=True,
                         )
@@ -238,8 +362,7 @@ def _build_bursts_df(
                 )
                 counts, _ = np.histogram(data, bins=bins)
                 for i_burst in range(len(bursts_start_end)):
-                    index = (batch, culture, day, i_burst)
-                    df_bursts.at[index, "burst"] = counts[
+                    df_bursts.at[(*index, i_burst), "burst"] = counts[
                         (n_bins + 1) * i_burst : (n_bins + 1) * (i_burst + 1) - 1
                     ]
             else:
@@ -248,15 +371,15 @@ def _build_bursts_df(
                     f"Warning: some bursts overlap for {file_name}, binning one by one"
                 )
                 for i_burst in range(len(bursts_start_end)):
-                    index = (batch, culture, day, i_burst)
+                    index_burst = (*index, i_burst)
                     bins = np.linspace(
-                        df_bursts.at[index, "start_extend"],
-                        df_bursts.at[index, "end_extend"],
+                        df_bursts.at[index_burst, "start_extend"],
+                        df_bursts.at[index_burst, "end_extend"],
                         n_bins + 1,
                         endpoint=True,
                     )
                     counts, _ = np.histogram(data, bins=bins)
-                    df_bursts.at[index, "burst"] = counts
+                    df_bursts.at[index_burst, "burst"] = counts
 
     # convert bursts to firing rate (Hz)
     if n_bins is not None:
@@ -294,6 +417,7 @@ def _build_bursts_df(
         burst = df_bursts.at[index, "burst"]
         df_bursts.at[index, "peak_height"] = np.max(burst)
         df_bursts.at[index, "integral"] = np.sum(burst)
+        df_bursts.at[index, "firing_rate"] = np.mean(burst)
     return df_bursts
 
 
@@ -303,6 +427,7 @@ def _filter_bursts(
     pad_right,
     bin_size,
     min_length,
+    min_firing_rate,
 ):
     print("Filter bursts (burst length, pad right)")
     if burst_length_threshold is not None:
@@ -320,6 +445,13 @@ def _filter_bursts(
         len_after = len(df_bursts)
         print(
             f"Removed {len_before - len_after} bursts below threshold ({min_length} ms)"
+        )
+    if min_firing_rate is not None:
+        len_before = len(df_bursts)
+        df_bursts = df_bursts[df_bursts["firing_rate"] >= min_firing_rate]
+        len_after = len(df_bursts)
+        print(
+            f"Removed {len_before - len_after} bursts below threshold ({min_firing_rate} Hz)"
         )
     if pad_right:
         assert bin_size is not None, "bin_size must be specified if pad_right is True"
