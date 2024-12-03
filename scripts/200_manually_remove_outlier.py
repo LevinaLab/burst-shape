@@ -51,6 +51,9 @@ print(f"Indices from these clusters: {index[counts == 1]}")
 
 index_to_remove = index[counts == 1][0]
 
+print(f"Index to remove: {index_to_remove}")
+print(df_bursts.iloc[index_to_remove])
+
 fig, ax = plt.subplots(constrained_layout=True)
 ax.plot(range(50), burst_matrix[index_to_remove], label="from burst_matrix")
 ax.plot(range(50), df_bursts.iloc[index_to_remove]["burst"], linestyle="--", label="from df_bursts")
