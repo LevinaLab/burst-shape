@@ -20,11 +20,14 @@ from src.persistence import (
 from src.persistence.burst_extraction import _get_burst_folder
 
 # parameters which clustering to evaluate
-burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"#_outlier_removed"
+burst_extraction_params = (
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+)
 agglomerating_clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 cv_params = "cv"
 n_clusters = np.arange(2, 20)
-do_my_davies_bouldin = False  # requires large RAM because distance matrix is loaded
+do_my_davies_bouldin = True  # requires large RAM because distance matrix is loaded
 
 # load cross-validation parameters
 cv_params = load_cv_params(burst_extraction_params, cv_params)

@@ -15,7 +15,8 @@ from src.persistence.burst_extraction import (
 )
 
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
 n_bursts = None  # if None uses all bursts
 compute_parallel = True  # if True uses double the memory but is faster

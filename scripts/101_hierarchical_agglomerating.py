@@ -11,13 +11,14 @@ from src.persistence import load_burst_matrix, load_df_bursts
 from src.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
 agglomerating_clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 np.random.seed(0)
 
 # plot settings
-n_clusters = 9  # 3  # if None chooses the number of clusters with Davies-Bouldin index
+n_clusters = 3  # 9  # 3  # if None chooses the number of clusters with Davies-Bouldin index
 
 # plotting
 cm = 1 / 2.54  # centimeters in inches
@@ -26,9 +27,6 @@ fig_path = folders.get_fig_folder()
 folder_agglomerating_clustering = os.path.join(
     _get_burst_folder(burst_extraction_params),
     agglomerating_clustering_params,
-)
-file_distance_matrix = os.path.join(
-    folder_agglomerating_clustering, "distance_matrix.npy"
 )
 file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
 
@@ -126,7 +124,7 @@ fig.show()
 
 # %% histogram of cluster sizes
 print("Plotting cluster sizes...")
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
 sns.despine()
 # Count the number of elements in each cluster
 cluster_counts = np.bincount(labels)[1:]  # ignoring cluster 0
@@ -136,8 +134,9 @@ ax.bar(range(1, n_clusters + 1), cluster_counts, color=palette)
 for i, count in enumerate(cluster_counts):
     ax.text(i + 1, count, str(count), ha="center", va="bottom")
 ax.set_xlabel("Cluster")
-ax.set_ylabel("Number of Bursts")
+ax.set_ylabel("#Bursts")
 ax.set_xticks(range(1, n_clusters + 1))
+# fig.tight_layout()
 fig.show()
 fig.savefig(os.path.join(fig_path, "cluster_sizes.svg"))
 fig.savefig(os.path.join(fig_path, "cluster_sizes.pdf"))

@@ -2,7 +2,7 @@ from src.cross_validation.split import split_training_and_validation_data
 from src.persistence import load_df_bursts, save_cv_params, save_df_bursts
 
 # parameters
-burst_extraction_params = "burst_n_bins_50_normalization_integral"
+burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
 cv_params = {
     "type": "kfold",
     "n_splits": 5,

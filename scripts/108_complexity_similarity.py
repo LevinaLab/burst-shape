@@ -12,7 +12,7 @@ from src.persistence import load_burst_matrix, load_df_bursts
 from src.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
 )
 agglomerating_clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 np.random.seed(0)
@@ -498,7 +498,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
 
     match column:
         case "day":
-            time_range = np.arange(7, 35)
+            time_range = np.array(df_.index.get_level_values(column).unique().sort_values())  #  np.arange(7, 35)
         case "week":
             time_range = np.arange(1, 5)
         case _:
@@ -516,7 +516,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
         time_range,
         np.nanmean(similarity_batch_day, axis=1),
         color="black",
-        linewidth=2,
+        linewidth=3,
         label="within batches"
     )
     ax.axhline(
@@ -535,7 +535,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
         time_range,
         np.nanmean(similarity_notbatch_day, axis=1),
         color="red",
-        linewidth=2,
+        linewidth=3,
         linestyle=":",
         label="between batches",
     )
@@ -543,7 +543,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
         (time_range[1:] + time_range[:-1]) / 2,
         np.nanmean(next_existing_day_similarity[:-1, :], axis=1),
         color="green",
-        linewidth=2,
+        linewidth=3,
         linestyle="--",
         label=f"{column}-to-{column}",
     )
@@ -551,5 +551,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
     ax.set_ylabel("Similarity")
     ax.set_xlabel(column)
     fig.show()
+    fig.savefig(os.path.join(fig_path, f"similarity_{column}.svg"))
+    fig.savefig(os.path.join(fig_path, f"similarity_{column}.pdf"))
 
 print("Finished.")
