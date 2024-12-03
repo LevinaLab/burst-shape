@@ -13,15 +13,20 @@ from dash import dcc, html
 from dash.dependencies import Input, Output
 from scipy.cluster.hierarchy import fcluster
 
-from src.folders import get_results_folder
+from src.folders import get_results_folder, get_data_kapucu_folder
 from src.persistence import load_burst_matrix, load_df_bursts
 
 ###############################################################################
 #                           Parameters                                        #
 ###############################################################################
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
+
+dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
+
 clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
 n_clusters = np.arange(2, 21, 1)
 n_clusters_current = 9  # initial number of clusters
@@ -93,9 +98,13 @@ for n_clusters_ in n_clusters:
 # df_bursts["cluster"] = [f"Cluster {label}" for label in labels]
 df_bursts.reset_index(inplace=True)
 
-
 df_bursts["firing_rate"] = df_bursts["integral"] / 50  # df_bursts["time_orig"]
-df_bursts["batch_culture"] = df_bursts["batch"].astype(str) + "-" + df_bursts["culture"].astype(str)
+match dataset:
+    case "wagenaar":
+        df_bursts["batch_culture"] = df_bursts["batch"].astype(str) + "-" + df_bursts["culture"].astype(str)
+    case "kapucu":
+        df_bursts["batch"] = df_bursts["culture_type"].astype(str) + "-" + df_bursts["mea_number"].astype(str)
+        df_bursts["batch_culture"] = df_bursts["batch"].astype(str) + "-" + df_bursts["well_id"].astype(str)
 
 # confirm burst_matrix and df_bursts["burst"] are the same
 # for i in range(len(burst_matrix)):
@@ -136,21 +145,29 @@ def update_tsne_plot(df_bursts):
             color = "batch"
             df_bursts[color] = df_bursts[color].astype(str)
             color_discrete_sequence = px.colors.qualitative.Set1
-            category_orders = {color: sorted(df_bursts["batch"].unique(), key=int)}
+            match dataset:
+                case "wagenaar":
+                    category_orders = {color: sorted(df_bursts["batch"].unique(), key=int)}
+                case "kapucu":
+                    category_orders = {color: sorted(df_bursts["batch"].unique())}
             legend_title = "Batch"
         case "batch_culture":
             color = "batch_culture"
             df_bursts[color] = df_bursts[color].astype(str)
             color_discrete_sequence = px.colors.qualitative.Set1
-            category_orders = {color: sorted(
-                df_bursts["batch_culture"].unique(),
-                key=lambda x: (int(x.split('-')[0]), int(x.split('-')[1])),
-            )}
+            match dataset:
+                case "wagenaar":
+                    category_orders = {color: sorted(
+                        df_bursts["batch_culture"].unique(),
+                        key=lambda x: (int(x.split('-')[0]), int(x.split('-')[1])),
+                    )}
+                case "kapucu":
+                    category_orders = {color: sorted(df_bursts["batch_culture"].unique())}
             legend_title = "Batch-Culture"
         case "day":
-            color = "day"
+            color = "day" if dataset == "wagenaar" else "DIV"
             df_bursts[color] = df_bursts[color].astype(str)
-            unique_days = sorted(df_bursts["day"].unique(), key=int)
+            unique_days = sorted(df_bursts[color].unique(), key=int)
             category_orders = {color: unique_days}
             viridis_colors = plotly.colors.sample_colorscale(px.colors.sequential.Viridis, [i / len(unique_days) for i in range(len(unique_days))])
             color_discrete_map = {
@@ -187,9 +204,9 @@ def update_tsne_plot(df_bursts):
             "embedding_x": False,
             "embedding_y": False,
             f"cluster_{n_clusters_}": True,
-            "batch": True,
-            "culture": True,
-            "day": True,
+            # "batch": dataset == "wagenaar",
+            # "culture": dataset == "wagenaar",
+            # "day": dataset == "wagenaar",
             "start_orig": True,
             "time_orig": True,
         },
@@ -366,19 +383,36 @@ def update_timeseries(selected_data):
 
     # Create time series plot and title
     # Title should be the same as hovering info in t-SNE plot
-    title = "Time series for " + ", ".join(
-        [
-            f"{key}: {df_bursts.iloc[point_index][key]}"
-            for key in [
-                f"cluster_{n_clusters_current}",
-                "batch",
-                "culture",
-                "day",
-                "start_orig",
-                "time_orig",
-            ]
-        ]
-    )
+    match dataset:
+        case "wagenaar":
+            title = "Time series for " + ", ".join(
+                [
+                    f"{key}: {df_bursts.iloc[point_index][key]}"
+                    for key in [
+                        f"cluster_{n_clusters_current}",
+                        "batch",
+                        "culture",
+                        "day",
+                        "start_orig",
+                        "time_orig",
+                    ]
+                ]
+            )
+        case "kapucu":
+            title = "Time series for " + ", ".join(
+                [
+                    f"{key}: {df_bursts.iloc[point_index][key]}"
+                    for key in [
+                        f"cluster_{n_clusters_current}",
+                        "batch",
+                        "culture_type",
+                        "mea_number",
+                        "well_id",
+                        "start_orig",
+                        "time_orig",
+                    ]
+                ]
+            )
     timeseries_fig = px.line(
         df_bursts.iloc[point_index]["burst"],
         title=title,
@@ -396,13 +430,34 @@ def update_raster(selected_data):
     # print(f"point_index: {point_index}")
     # print(df_bursts.iloc[point_index])
 
-    batch, culture, day = list(df_bursts.iloc[point_index][['batch', 'culture', 'day']])
-    # print(f"batch: {batch}, culture: {culture}, day: {day}")
+    match dataset:
+        case "wagenaar":
+            batch, culture, day = list(df_bursts.iloc[point_index][['batch', 'culture', 'day']])
+            # print(f"batch: {batch}, culture: {culture}, day: {day}")
 
-    # Load spike data
-    st, gid = np.loadtxt('../data/extracted/%s-%s-%s.spk.txt' % (batch, culture, day)).T
-    st = st * 1000
+            # Load spike data
+            st, gid = np.loadtxt('../data/extracted/%s-%s-%s.spk.txt' % (batch, culture, day)).T
+            st = st * 1000
+        case "kapucu":
+            culture_type, mea_number, well_id, div_day = list(df_bursts.iloc[point_index][['culture_type', 'mea_number', 'well_id', 'DIV']])
+            # print(f"culture_type: {culture_type}, mea_number: {mea_number}, well_id: {well_id}, div_day: {div_day}")
 
+            # Load spike data
+            data_folder = get_data_kapucu_folder()
+            path_time_series = os.path.join(data_folder, "_".join([culture_type, "20517" if culture_type == "hPSC" else "190617", mea_number, f"DIV{div_day}", "spikes.csv"]))
+            # print(path_time_series)
+            # print(os.path.exists(path_time_series))
+            spikes = pd.read_csv(path_time_series)
+            # print(spikes)
+            spikes[['well', 'ch_n']] = spikes['Channel'].str.split('_', expand=True)
+            # print(spikes)
+            spikes = spikes[spikes['well'] == well_id]
+            # print(spikes)
+            st = spikes['Time'].values
+            gid = spikes['ch_n'].values
+            st = st * 1000
+
+    # cut out a window around the burst
     start_orig = df_bursts.iloc[point_index]['start_orig']
     duration = df_bursts.iloc[point_index]['time_orig']
     start = start_orig - 800
@@ -410,6 +465,8 @@ def update_raster(selected_data):
     if start_orig + duration > end:
         end = start_orig + duration + 500
     st, gid = st[(st >= start) & (st <= end)], gid[(st >= start) & (st <= end)]
+
+
 
 
     # Create raster plot with '|' markers for spikes and no line connecting them
