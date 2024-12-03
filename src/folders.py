@@ -4,6 +4,7 @@ import os
 _project_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _data_folder = "data"
+_data_kapucu_folder = "data_kapucu"
 _fig_folder = "figures"
 _results_folder = "results"
 
@@ -16,6 +17,14 @@ def get_data_folder():
     """
     return os.path.join(_project_folder, _data_folder)
 
+
+def get_data_kapucu_folder():
+    """Returns the path to the kapuca data folder.
+
+    Returns:
+        str: path to the kapuca data folder
+    """
+    return os.path.join(get_data_folder(), _data_kapucu_folder)
 
 def get_fig_folder():
     """Returns the path to the figure folder.

@@ -1,81 +1,42 @@
-import os
-import numpy as np
-
-import pandas as pd
-from matplotlib import pyplot as plt
-from tqdm import tqdm
-
 from src.folders import get_data_kapucu_folder
+from src.persistence import (
+    save_burst_extraction_params,
+    save_burst_matrix,
+    save_df_bursts,
+    save_df_cultures,
+)
+from src.preprocess import burst_extraction
 
-na = np.array
-path = get_data_kapucu_folder()
-
-res = list(os.walk(path, topdown=True))
-files = res[0][2]  # all file names
-div_days = [f.split('_')[3] for f in files if 'DIV' in f]
-types = [f.split('_')[0] for f in files if 'DIV' in f]
-mea_n = [f.split('_')[2] for f in files if 'DIV' in f]
-import re
-
-div_days = [re.findall(r'\d+', div) for div in div_days]
-div_days = na(div_days, dtype=int).flatten()
-indis = np.argsort(div_days)
-div_days = div_days[indis]
-types = na(types)[indis]
-mea_n = na(mea_n)[indis]
-files = na(files)[indis]
-
-
-# %%
-def gid_to_numbers(gid):
-    for i, u_id in enumerate(np.unique(gid)):
-        gid[gid == u_id] = i
-    return gid
+# parameters
+params_burst_extraction = {
+    "dataset": "kapucu",
+    "maxISIstart": 5,
+    "maxISIb": 5,
+    "minBdur": 40,
+    "minIBI": 40,
+    "minSburst": 50,
+    "bin_size": None,
+    "n_bins": 50,
+    "extend_left": 0,
+    "extend_right": 0,
+    "burst_length_threshold": None,
+    "pad_right": False,
+    "normalization": "integral",
+    "min_length": 30,
+    # "min_firing_rate": 3162,  # 10 ** 3.5,
+    "smoothing_kernel": 4,
+}
 
 
-divs = []
-# summaries = []
-well_id = []
-culture_type = []
-mea_number = []
-spks = []
-for i, file_ in tqdm(enumerate(files), desc='Loading files'):
-    div = div_days[i]
-    type_ = types[i]
-    mea_ = mea_n[i]
-    spikes = pd.read_csv(os.path.join(path, file_))
-    channels = spikes['Channel']
-    wells = [ch.split('_')[0] for ch in channels]
-    ch_n = [ch.split('_')[1] for ch in channels]
-    spikes['well'] = wells
-    spikes['ch_n'] = ch_n
-    # Extract spikes for different wells
-    # well_spikes= []
-    for well in np.unique(wells):
-        st = na(spikes['Time'][spikes['well'] == well])
-        gid = na(spikes['ch_n'][spikes['well'] == well])
-        spks.append([st, gid])
-        # summaries.append(get_summary([st,gid],type_))
-        divs.append(div)
-        well_id.append(well)
-        culture_type.append(type_)
-        mea_number.append(mea_)
+# extract bursts
+df_cultures, df_bursts, burst_matrix = burst_extraction.extract_bursts(
+    data_folder=get_data_kapucu_folder(),
+    **params_burst_extraction,
+)
 
-# Cut the noise at the beginning of a recording
-mask = spks[247][0] > 125
-spks[247][0] = spks[247][0][mask]
-spks[247][1] = spks[247][1][mask]
-# %%
-data_stacked = pd.DataFrame({
-    'spikes':spks,'DIV':divs,'well_id':well_id, 'culture_type':culture_type,'mea_number':mea_number,
-})
-data_stacked["times"] = data_stacked["spikes"].apply(lambda x: x[0])
-# %%
-plt.plot(spks[30][0],spks[30][1],'|')
-plt.show()
-# %%
-plt.figure()
+# save
+save_burst_extraction_params(params_burst_extraction)
 
-sc,bin_= np.histogram(spks[30][0],np.arange(0,600,0.01))
-plt.plot(bin_[1:],sc,'-')
-plt.show()
+save_df_cultures(df_cultures, params_burst_extraction)
+save_df_bursts(df_bursts, params_burst_extraction)
+save_burst_matrix(burst_matrix, params_burst_extraction)
