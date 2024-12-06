@@ -4,7 +4,10 @@ from sklearn.manifold import TSNE
 
 from src.persistence import load_burst_matrix, load_clustering_labels, load_df_bursts
 
-burst_extraction_params = "burst_n_bins_50_normalization_integral"
+burst_extraction_params = (
+    # "burst_n_bins_50_normalization_integral"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+)
 clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 
@@ -22,15 +25,18 @@ for n_clusters_ in clustering.n_clusters:
 bursts = load_burst_matrix(burst_extraction_params)
 
 # %% tsne on bursts
+n_points = len(bursts)
 tsne_burst = TSNE(
     n_components=2,
-    perplexity=50,
+    perplexity=n_points / 100,
+    learning_rate=n_points / 12,
+    early_exaggeration=4,
     n_jobs=12,
     verbose=1,
 ).fit_transform(bursts)
 
 # %% plot tsne
-for n_clusters_ in [8]:  # [2, 3, 4, 5]:
+for n_clusters_ in [2, 3, 4, 5, 6, 7]:
     fig, ax = plt.subplots(figsize=(8, 8))
     sns.despine()
     sns.scatterplot(

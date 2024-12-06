@@ -18,14 +18,17 @@ from src.spectral_clustering import SpectralClusteringModified, compute_affinity
 
 # choose parameters for clustering
 n_jobs = 12
-burst_extraction_params = "burst_n_bins_50_normalization_integral"
+burst_extraction_params = (
+    # "burst_n_bins_50_normalization_integral"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+)
 cv_params = "cv"  # set to None if not using cross-validation or to specific cv_params
 all_data = True  # set to False if you want to compute only cross-validation
 clustering_params = {
     "n_components_max": 30,
     "affinity": "precomputed",
-    "metric": "cosine",
-    "n_neighbors": 10,
+    "metric": "wasserstein",
+    "n_neighbors": 150,
     "random_state": 0,
 }
 

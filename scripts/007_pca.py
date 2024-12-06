@@ -5,7 +5,10 @@ from sklearn.decomposition import PCA
 
 from src.persistence import load_burst_matrix, load_clustering_labels, load_df_bursts
 
-burst_extraction_params = "burst_n_bins_50_normalization_integral"
+burst_extraction_params = (
+    # "burst_n_bins_50_normalization_integral"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+)
 clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 
