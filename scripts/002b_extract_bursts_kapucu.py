@@ -10,11 +10,11 @@ from src.preprocess import burst_extraction
 # parameters
 params_burst_extraction = {
     "dataset": "kapucu",
-    "maxISIstart": 5,
-    "maxISIb": 5,
-    "minBdur": 40,
-    "minIBI": 40,
-    "minSburst": 50,
+    "maxISIstart": 20,  # 5
+    "maxISIb": 20,  # 5
+    "minBdur": 50,  # 40
+    "minIBI": 500,  # 50
+    "minSburst": 100,
     "bin_size": None,
     "n_bins": 50,
     "extend_left": 0,
