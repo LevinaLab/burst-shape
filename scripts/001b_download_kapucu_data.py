@@ -1,6 +1,7 @@
 import os
-import numpy as np
 import subprocess
+
+import numpy as np
 
 from src.folders import get_data_kapucu_folder
 
@@ -24,7 +25,7 @@ if load:
 
 
 ipsc_days = np.arange(7, 66)  # [7,10,11,14,17,18,21,24,25,28]
-url = 'https://gin.g-node.org/NeuroGroup_TUNI/Comparative_MEA_dataset/raw/master/Data/hPSC_MEA1/hPSC_MEA1_spikes_noise_explogs/hPSC_20517_MEA1_DIV%s_spikes.csv'
+url = "https://gin.g-node.org/NeuroGroup_TUNI/Comparative_MEA_dataset/raw/master/Data/hPSC_MEA1/hPSC_MEA1_spikes_noise_explogs/hPSC_20517_MEA1_DIV%s_spikes.csv"
 
 # path = '../../../data/iPSCcsCTX/'
 load = True
@@ -36,7 +37,7 @@ if load:
 
 # %
 ipsc_days = np.arange(7, 66)  # [7,10,11,14,17,18,21,24,25,28]
-url = 'https://gin.g-node.org/NeuroGroup_TUNI/Comparative_MEA_dataset/raw/master/Data/hPSC_MEA2/hPSC_MEA2_spikes_noise_explogs/hPSC_20517_MEA2_DIV%s_spikes.csv'
+url = "https://gin.g-node.org/NeuroGroup_TUNI/Comparative_MEA_dataset/raw/master/Data/hPSC_MEA2/hPSC_MEA2_spikes_noise_explogs/hPSC_20517_MEA2_DIV%s_spikes.csv"
 
 # path = '../../data/iPSCcsCTX/'
 load = True

@@ -97,7 +97,9 @@ def extract_bursts(
                 minSburst,
             )
             # set index
-            df_cultures.set_index(["culture_type", "mea_number", "well_id", "DIV"], inplace=True)
+            df_cultures.set_index(
+                ["culture_type", "mea_number", "well_id", "DIV"], inplace=True
+            )
 
     df_bursts = _build_bursts_df(
         df_cultures,
@@ -175,11 +177,11 @@ def _get_kapucu_data_from_file(data_folder):
     print(f"Build dataframe from files in {data_folder}")
     res = list(os.walk(data_folder, topdown=True))
     files = res[0][2]  # all file names
-    div_days = [f.split('_')[3] for f in files if 'DIV' in f]
-    types = [f.split('_')[0] for f in files if 'DIV' in f]
-    mea_n = [f.split('_')[2] for f in files if 'DIV' in f]
+    div_days = [f.split("_")[3] for f in files if "DIV" in f]
+    types = [f.split("_")[0] for f in files if "DIV" in f]
+    mea_n = [f.split("_")[2] for f in files if "DIV" in f]
 
-    div_days = [re.findall(r'\d+', div) for div in div_days]
+    div_days = [re.findall(r"\d+", div) for div in div_days]
     div_days = na(div_days, dtype=int).flatten()
     indis = np.argsort(div_days)
     div_days = div_days[indis]
@@ -193,21 +195,21 @@ def _get_kapucu_data_from_file(data_folder):
     culture_type = []
     mea_number = []
     spks = []
-    for i, file_ in tqdm(enumerate(files), desc='Loading files'):
+    for i, file_ in tqdm(enumerate(files), desc="Loading files"):
         div = div_days[i]
         type_ = types[i]
         mea_ = mea_n[i]
         spikes = pd.read_csv(os.path.join(data_folder, file_))
-        channels = spikes['Channel']
-        wells = [ch.split('_')[0] for ch in channels]
-        ch_n = [ch.split('_')[1] for ch in channels]
-        spikes['well'] = wells
-        spikes['ch_n'] = ch_n
+        channels = spikes["Channel"]
+        wells = [ch.split("_")[0] for ch in channels]
+        ch_n = [ch.split("_")[1] for ch in channels]
+        spikes["well"] = wells
+        spikes["ch_n"] = ch_n
         # Extract spikes for different wells
         # well_spikes= []
         for well in np.unique(wells):
-            st = na(spikes['Time'][spikes['well'] == well])
-            gid = na(spikes['ch_n'][spikes['well'] == well])
+            st = na(spikes["Time"][spikes["well"] == well])
+            gid = na(spikes["ch_n"][spikes["well"] == well])
             spks.append([st, gid])
             # summaries.append(get_summary([st,gid],type_))
             divs.append(div)
@@ -220,7 +222,14 @@ def _get_kapucu_data_from_file(data_folder):
     spks[247][0] = spks[247][0][mask]
     spks[247][1] = spks[247][1][mask]
     df = pd.DataFrame(
-        {'spikes': spks, 'DIV': divs, 'well_id': well_id, 'culture_type': culture_type, 'mea_number': mea_number, })
+        {
+            "spikes": spks,
+            "DIV": divs,
+            "well_id": well_id,
+            "culture_type": culture_type,
+            "mea_number": mea_number,
+        }
+    )
     df["times"] = df["spikes"].apply(lambda x: x[0])
     # delete "spikes" column
     df.drop(columns=["spikes"], inplace=True)
@@ -254,7 +263,6 @@ def _bursts_from_kapucu_culture(
     return df
 
 
-
 def _build_bursts_df(
     df_cultures,
     data_folder,
@@ -283,9 +291,7 @@ def _build_bursts_df(
                 [
                     [
                         (*index, i_burst)
-                        for i_burst in range(
-                            df_cultures.at[index, "n_bursts"]
-                        )
+                        for i_burst in range(df_cultures.at[index, "n_bursts"])
                     ]
                     for index in df_cultures.index
                 ]
@@ -299,12 +305,8 @@ def _build_bursts_df(
             # df_bursts.at[(batch, culture, day, i_burst), "i_burst"] = i_burst
             df_bursts.at[(*index, i_burst), "start_orig"] = start
             df_bursts.at[(*index, i_burst), "end_orig"] = end
-            df_bursts.at[(*index, i_burst), "start_extend"] = (
-                start - extend_left
-            )
-            df_bursts.at[(*index, i_burst), "end_extend"] = (
-                end + extend_right
-            )
+            df_bursts.at[(*index, i_burst), "start_extend"] = start - extend_left
+            df_bursts.at[(*index, i_burst), "end_extend"] = end + extend_right
             df_bursts.at[(*index, i_burst), "time_orig"] = end - start
             df_bursts.at[(*index, i_burst), "time_extend"] = (
                 end - start + extend_left + extend_right
@@ -334,9 +336,9 @@ def _build_bursts_df(
             for i_burst in range(len(bursts_start_end)):
                 index_burst = (*index, i_burst)
                 df_bursts.at[index_burst, "burst"] = counts[
-                    int(np.floor(df_bursts.at[index_burst, "start_extend"] / bin_size)) : int(
-                        np.ceil(df_bursts.at[index_burst, "end_extend"] / bin_size)
-                    )
+                    int(
+                        np.floor(df_bursts.at[index_burst, "start_extend"] / bin_size)
+                    ) : int(np.ceil(df_bursts.at[index_burst, "end_extend"] / bin_size))
                 ]
         if n_bins is not None:
             if np.all(
@@ -350,9 +352,7 @@ def _build_bursts_df(
                 bins = np.concatenate(
                     [
                         np.linspace(
-                            df_bursts.at[
-                                (*index, i_burst), "start_extend"
-                            ],
+                            df_bursts.at[(*index, i_burst), "start_extend"],
                             df_bursts.at[(*index, i_burst), "end_extend"],
                             n_bins + 1,
                             endpoint=True,

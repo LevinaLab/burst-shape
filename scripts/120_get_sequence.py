@@ -9,40 +9,29 @@ import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.cluster.hierarchy import  fcluster
+from scipy.cluster.hierarchy import fcluster
 from tqdm import tqdm
 
 from src.persistence import load_df_bursts
+from src.persistence.agglomerative_clustering import get_agglomerative_labels
 from src.persistence.burst_extraction import _get_burst_folder
 
-burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
-)
-agglomerating_clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
+burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+agglomerating_clustering_params = "agglomerating_clustering_linkage_complete"
 np.random.seed(0)
 
 # plot settings
 n_clusters = 5  # CHOOSE NUMBER OF CLUSTERS HERE
 
-folder_agglomerating_clustering = os.path.join(
-    _get_burst_folder(burst_extraction_params),
-    agglomerating_clustering_params,
-)
-file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
-
 # load bursts
 df_bursts = load_df_bursts(burst_extraction_params)
 df_bursts = df_bursts.sort_index()
 
-if not os.path.exists(file_linkage):
-    raise FileNotFoundError(f"Linkage file not found: {file_linkage}")
-else:
-    print(f"Loading linkage from {file_linkage}")
-    Z = np.load(file_linkage)
-
 # %% get clusters from linkage
 print("Getting clusters from linkage...")
-labels = fcluster(Z, t=n_clusters, criterion="maxclust")
+labels = get_agglomerative_labels(
+    n_clusters, burst_extraction_params, agglomerating_clustering_params
+)
 df_bursts["cluster"] = labels
 
 # Define a color palette for the clusters
@@ -90,4 +79,3 @@ for index in tqdm(df_cultures.index):
     assert df_select.index.is_monotonic_increasing
     assert df_select["start_orig"].is_monotonic_increasing
     df_cultures.at[index, "sequence"] = df_select["cluster"].to_list()
-

@@ -7,44 +7,38 @@ import seaborn as sns
 from scipy.cluster.hierarchy import dendrogram, fcluster
 
 from src import folders
-from src.persistence import load_burst_matrix, load_df_bursts
+from src.persistence import load_burst_matrix, load_df_bursts, load_linkage
+from src.persistence.agglomerative_clustering import get_agglomerative_labels
 from src.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
-agglomerating_clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
+agglomerating_clustering_params = "agglomerating_clustering_linkage_complete"
 np.random.seed(0)
 
 # plot settings
-n_clusters = 3  # 9  # 3  # if None chooses the number of clusters with Davies-Bouldin index
+n_clusters = (
+    3  # 9  # 3  # if None chooses the number of clusters with Davies-Bouldin index
+)
 
 # plotting
 cm = 1 / 2.54  # centimeters in inches
 fig_path = folders.get_fig_folder()
-
-folder_agglomerating_clustering = os.path.join(
-    _get_burst_folder(burst_extraction_params),
-    agglomerating_clustering_params,
-)
-file_linkage = os.path.join(folder_agglomerating_clustering, "linkage.npy")
 
 # load bursts
 burst_matrix = load_burst_matrix(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
 np.random.seed(0)
 
-if not os.path.exists(file_linkage):
-    raise FileNotFoundError(f"Linkage file not found: {file_linkage}")
-else:
-    print(f"Loading linkage from {file_linkage}")
-    Z = np.load(file_linkage)
+Z = load_linkage(burst_extraction_params, agglomerating_clustering_params)
 
 # %% get clusters from linkage
 print("Getting clusters from linkage...")
-labels = fcluster(Z, t=n_clusters, criterion="maxclust")
-df_bursts["cluster"] = labels
+df_bursts["cluster"] = get_agglomerative_labels(
+    n_clusters, burst_extraction_params, agglomerating_clustering_params
+)
 
 # %% Define a color palette for the clusters
 palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
@@ -73,7 +67,7 @@ dendrogram_properties = dendrogram(
 
 # Highlight the clusters with background colors
 # Count the number of elements in each cluster
-cluster_counts = np.bincount(labels)[1:]  # ignoring cluster 0
+cluster_counts = np.bincount(df_bursts["cluster"])[1:]  # ignoring cluster 0
 cluster_index_dendrogram = [i for i in range(n_clusters) if cluster_counts[i] > 1]
 # (fix the situation where a cluster is only size 1 -> not present in ax.collections)
 for i, d in zip(cluster_index_dendrogram, ax.collections[:-1]):
@@ -127,7 +121,7 @@ print("Plotting cluster sizes...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
 sns.despine()
 # Count the number of elements in each cluster
-cluster_counts = np.bincount(labels)[1:]  # ignoring cluster 0
+cluster_counts = np.bincount(df_bursts["cluster"])[1:]  # ignoring cluster 0
 # Create a bar plot with the correct colors
 ax.bar(range(1, n_clusters + 1), cluster_counts, color=palette)
 # write numerical values on top of the bars
@@ -146,7 +140,7 @@ print("Plotting average bursts...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))
 sns.despine()
 for cluster in range(1, n_clusters + 1):
-    cluster_bursts = burst_matrix[labels == cluster]
+    cluster_bursts = burst_matrix[df_bursts["cluster"] == cluster]
     ax.plot(
         cluster_bursts.mean(axis=0),
         color=palette[cluster - 1],

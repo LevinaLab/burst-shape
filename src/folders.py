@@ -26,6 +26,7 @@ def get_data_kapucu_folder():
     """
     return os.path.join(get_data_folder(), _data_kapucu_folder)
 
+
 def get_fig_folder():
     """Returns the path to the figure folder.
 

@@ -1,31 +1,23 @@
-import os
-
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
-from scipy.cluster.hierarchy import fcluster
 
-from src.folders import get_results_folder
 from src.persistence import load_burst_matrix, load_df_bursts
+from src.persistence.agglomerative_clustering import get_agglomerative_labels
 
 burst_extraction_params = (
     "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
+agglomerative_clustering_params = "agglomerating_clustering_linkage_complete"
 # load bursts df
 df_bursts = load_df_bursts(burst_extraction_params)
 burst_matrix = load_burst_matrix(burst_extraction_params)
-# load labels
-linkage_file = os.path.join(
-    get_results_folder(),
-    burst_extraction_params,
-    "agglomerating_clustering_linkage_complete_n_bursts_None",
-    "linkage.npy",
-)
-linkage = np.load(linkage_file)
 
 n_clusters = 9
 palette = sns.color_palette(n_colors=n_clusters)
-labels = fcluster(linkage, t=n_clusters, criterion="maxclust")
+labels = get_agglomerative_labels(
+    n_clusters, burst_extraction_params, agglomerative_clustering_params
+)
 df_bursts["cluster"] = labels
 
 #####################################

@@ -9,13 +9,26 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from src.folders import get_results_folder
-from src.persistence import load_burst_matrix
+from src.persistence import (
+    load_burst_matrix,
+    load_distance_matrix,
+    load_tsne,
+    save_pca,
+    save_tsne,
+    tsne_exists,
+)
+from src.persistence.agglomerative_clustering import get_agglomerative_labels
 
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
-clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
+agglomerating_clustering_params = (
+    None  # not plotting labels
+    # "agglomerating_clustering_linkage_complete"
+    # "agglomerating_clustering_linkage_ward"
+)
 n_clusters = 3
 
 recompute_tsne = False
@@ -29,53 +42,24 @@ cluster_colors = [
     for c in cluster_colors
 ]
 
-# load linkage -> labels
-print(f"Loading linkage from {get_results_folder()}")
-linkage_file = os.path.join(
-    get_results_folder(),
-    burst_extraction_params,
-    clustering_params,
-    "linkage.npy",
-)
-linkage = np.load(linkage_file)
-labels = fcluster(linkage, t=n_clusters, criterion="maxclust")
+# load labels
+try:
+    labels = get_agglomerative_labels(
+        n_clusters, burst_extraction_params, agglomerating_clustering_params
+    )
+except ValueError:
+    labels = None
+    print(f"Labels not found. Run without labels and just computing embeddings.")
 
 # %% compute or load t-SNE
-file_tsne = os.path.join(
-    get_results_folder(),
-    burst_extraction_params,
-    clustering_params,
-    "tsne.npy",
-)
-if recompute_tsne or not os.path.exists(file_tsne):
-    distance_matrix_file = os.path.join(
-        get_results_folder(),
-        burst_extraction_params,
-        clustering_params,
-        "distance_matrix.npy",
-    )
-    distance_matrix = squareform(np.load(distance_matrix_file), force="tomatrix")
+if recompute_tsne or not tsne_exists(burst_extraction_params):
+    distance_matrix = load_distance_matrix(burst_extraction_params, form="matrix")
     burst_matrix = load_burst_matrix(burst_extraction_params)
-    file_idx = os.path.join(
-        get_results_folder(),
-        burst_extraction_params,
-        clustering_params,
-        "idx.npy",
-    )
-    if os.path.exists(file_idx):
-        idx = np.load(file_idx)
-        burst_matrix = burst_matrix[idx]
 
     # pca initialization
     pca = PCA(n_components=2)
     pca_burst = pca.fit_transform(burst_matrix)
-    file_pca = os.path.join(
-        get_results_folder(),
-        burst_extraction_params,
-        clustering_params,
-        "pca.npy",
-    )
-    np.save(file_pca, pca_burst)
+    save_pca(pca_burst, burst_extraction_params)
 
     # t-SNE
     n_points = distance_matrix.shape[0]
@@ -89,21 +73,24 @@ if recompute_tsne or not os.path.exists(file_tsne):
         verbose=1,
         metric="precomputed",
     ).fit_transform(distance_matrix)
-    np.save(file_tsne, tsne_burst)
+    save_tsne(tsne_burst, burst_extraction_params)
 else:
-    print(f"Loading t-SNE from {file_tsne}")
-    tsne_burst = np.load(file_tsne)
+    print(f"Loading t-SNE from file.")  # {file_tsne}")
+    tsne_burst = load_tsne(burst_extraction_params)
 
 # %% plot t-SNE
 fig, ax = plt.subplots(figsize=(7, 7), constrained_layout=True)
-for i in range(n_clusters):
-    ax.scatter(
-        tsne_burst[labels == i + 1, 0],
-        tsne_burst[labels == i + 1, 1],
-        s=1,
-        color=cluster_colors[i],
-        label=f"cluster {i + 1}",
-    )
+if labels is None:
+    ax.scatter(tsne_burst[:, 0], tsne_burst[:, 1], s=1, color="k", label="data")
+else:
+    for i in range(n_clusters):
+        ax.scatter(
+            tsne_burst[labels == i + 1, 0],
+            tsne_burst[labels == i + 1, 1],
+            s=1,
+            color=cluster_colors[i],
+            label=f"cluster {i + 1}",
+        )
 # legend with larger markers
 ax.legend(markerscale=10)
 ax.axis("off")

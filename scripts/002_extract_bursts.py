@@ -53,7 +53,9 @@ Name: (3, 5, 13, 4), dtype: object
 """
 try:
     # identify index of outlier by start_orig being close (within 1) to 10530.52
-    index_to_remove = df_bursts[df_bursts["start_orig"].between(10529.52, 10531.52)].index
+    index_to_remove = df_bursts[
+        df_bursts["start_orig"].between(10529.52, 10531.52)
+    ].index
     assert len(index_to_remove) == 1
     index_to_remove = index_to_remove[0]
     # get iloc index
@@ -61,7 +63,9 @@ try:
     print(f"Index to remove: {index_to_remove}")
     print(df_bursts.iloc[index_to_remove])
     # assert that the burst is the same in the burst_matrix
-    assert np.allclose(burst_matrix[index_to_remove], df_bursts.iloc[index_to_remove]["burst"])
+    assert np.allclose(
+        burst_matrix[index_to_remove], df_bursts.iloc[index_to_remove]["burst"]
+    )
     df_bursts = df_bursts.drop(df_bursts.iloc[index_to_remove].name)
     burst_matrix = np.delete(burst_matrix, index_to_remove, axis=0)
 except AssertionError:

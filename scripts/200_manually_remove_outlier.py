@@ -6,8 +6,12 @@ from scipy.cluster.hierarchy import fcluster
 from scipy.spatial.distance import squareform
 
 from src import folders
-from src.persistence import save_df_bursts, save_burst_matrix
-from src.persistence.burst_extraction import _get_burst_folder, load_burst_matrix, load_df_bursts
+from src.persistence import save_burst_matrix, save_df_bursts
+from src.persistence.burst_extraction import (
+    _get_burst_folder,
+    load_burst_matrix,
+    load_df_bursts,
+)
 
 # %% load settings
 burst_extraction_params = (
@@ -56,7 +60,12 @@ print(df_bursts.iloc[index_to_remove])
 
 fig, ax = plt.subplots(constrained_layout=True)
 ax.plot(range(50), burst_matrix[index_to_remove], label="from burst_matrix")
-ax.plot(range(50), df_bursts.iloc[index_to_remove]["burst"], linestyle="--", label="from df_bursts")
+ax.plot(
+    range(50),
+    df_bursts.iloc[index_to_remove]["burst"],
+    linestyle="--",
+    label="from df_bursts",
+)
 ax.legend(title="outlier")
 fig.show()
 

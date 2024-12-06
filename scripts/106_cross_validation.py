@@ -14,17 +14,31 @@ from tqdm import tqdm
 from src import folders
 from src.persistence import (
     load_burst_matrix,
+    load_clustering_labels,
     load_cv_params,
     load_df_bursts,
+    load_distance_matrix,
 )
+from src.persistence.agglomerative_clustering import get_agglomerative_labels
 from src.persistence.burst_extraction import _get_burst_folder
 
 # parameters which clustering to evaluate
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
-agglomerating_clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
+clustering_params = (
+    # "agglomerating_clustering_linkage_complete"
+    # "agglomerating_clustering_linkage_ward"
+    # "agglomerating_clustering_linkage_average"
+    # "agglomerating_clustering_linkage_single"
+    # "spectral_affinity_precomputed_metric_wasserstein"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+)
+
+clustering_type = clustering_params.split("_")[0]
+labels_params = "labels"  #  needed for spectral clustering if not default "labels"
 cv_params = "cv"
 n_clusters = np.arange(2, 20)
 do_my_davies_bouldin = True  # requires large RAM because distance matrix is loaded
@@ -54,23 +68,62 @@ df_bursts = pd.concat(
     [df_bursts, pd.DataFrame(columns=column_names, dtype=int)], axis=1
 )
 
-# TODO load labels
-folder_agglomerating_clustering = os.path.join(
-    _get_burst_folder(burst_extraction_params),
-    agglomerating_clustering_params,
-)
+# load labels
+match clustering_type:
+    case "agglomerating":
+        folder_agglomerating_clustering = os.path.join(
+            _get_burst_folder(burst_extraction_params),
+            clustering_params,
+        )
 
-for i_split in tqdm([None,] + list(range(n_splits)), desc="labels to dataframe"):
-    cv_string = "" if i_split is None else f"_cv_{i_split}"
-    idx_train = slice(None) if i_split is None else df_bursts.index[df_bursts[f"cv_{i_split}_train"]]
-    linkage = np.load(os.path.join(
-        folder_agglomerating_clustering,
-        f"linkage{cv_string}.npy"
-    ))
-    for n_clusters_ in n_clusters:
-        df_bursts.loc[
-            idx_train, f"cluster_{n_clusters_}{cv_string}"
-        ] = fcluster(linkage, t=n_clusters_, criterion="maxclust")
+        for i_split in tqdm(
+            [
+                None,
+            ]
+            + list(range(n_splits)),
+            desc="labels to dataframe",
+        ):
+            cv_string = "" if i_split is None else f"_cv_{i_split}"
+            idx_train = (
+                slice(None)
+                if i_split is None
+                else df_bursts.index[df_bursts[f"cv_{i_split}_train"]]
+            )
+            for n_clusters_ in n_clusters:
+                df_bursts.loc[
+                    idx_train, f"cluster_{n_clusters_}{cv_string}"
+                ] = get_agglomerative_labels(
+                    n_clusters_,
+                    burst_extraction_params,
+                    clustering_params,
+                    cv_params,
+                    i_split,
+                )
+    case "spectral":
+        for i_split in tqdm(
+            [
+                None,
+            ]
+            + list(range(n_splits)),
+            desc="labels to dataframe",
+        ):
+            cv_string = "" if i_split is None else f"_cv_{i_split}"
+            idx_train = (
+                slice(None)
+                if i_split is None
+                else df_bursts.index[df_bursts[f"cv_{i_split}_train"]]
+            )
+            clustering = load_clustering_labels(
+                clustering_params,
+                burst_extraction_params,
+                labels_params,
+                cv_params,
+                i_split,
+            )
+            for n_clusters_ in n_clusters:
+                df_bursts.loc[idx_train, f"cluster_{n_clusters_}{cv_string}"] = (
+                    clustering.labels_[n_clusters_] + 1
+                )
 
 
 ###############################################################################
@@ -88,7 +141,9 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
             linewidth=1,
             alpha=0.5,
             color="black",
-            label=[f"{score_abbreviation} with split {i}" for i in range(score.shape[1])]
+            label=[
+                f"{score_abbreviation} with split {i}" for i in range(score.shape[1])
+            ],
         )
         score_mean = score.mean(axis=1)
         score_std = score.std(axis=1)
@@ -121,6 +176,7 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
     ax.set_ylabel(ylabel)
     fig.show()
 
+
 # %% mutual information score
 # this accounts for permutation of labels
 # Note: adjusted mutual information score has exact same result because of large numbers
@@ -141,7 +197,7 @@ _plot_score(
     mi_score,
     ylabel="Mutual information score",
     score_abbreviation="MI",
-    highlight="max"
+    highlight="max",
 )
 
 # %% adjusted rand index (ARI)
@@ -161,10 +217,7 @@ for i_n_cluster, n_clusters_ in tqdm(
 
 # plot n_clusters vs ARI
 _plot_score(
-    ari_score,
-    ylabel="Adjusted Rand Index",
-    score_abbreviation="ARI",
-    highlight="max"
+    ari_score, ylabel="Adjusted Rand Index", score_abbreviation="ARI", highlight="max"
 )
 
 # %% Fowlkes-Mallows scores
@@ -194,19 +247,17 @@ db_scores = np.zeros(len(n_clusters))
 for i_n_cluster, n_clusters_ in tqdm(
     enumerate(n_clusters), total=len(n_clusters), desc="compute Davies-Bouldin score"
 ):
-    db_scores[i_n_cluster] = davies_bouldin_score(burst_matrix, df_bursts[f"cluster_{n_clusters_}"])
+    db_scores[i_n_cluster] = davies_bouldin_score(
+        burst_matrix, df_bursts[f"cluster_{n_clusters_}"]
+    )
 
 _plot_score(
-    db_scores,
-    ylabel="Davies-Bouldin Score",
-    score_abbreviation="DB",
-    highlight="min"
+    db_scores, ylabel="Davies-Bouldin Score", score_abbreviation="DB", highlight="min"
 )
 
 # %% Cross-validate with self-built Davies-Bouldin index
 if do_my_davies_bouldin:
     print("Computing my Davies-Bouldin index...")
-
 
     def _wasserstein_distance(a, b):
         a_cumsum = np.cumsum(a)
@@ -214,7 +265,6 @@ if do_my_davies_bouldin:
         a_cumsum /= a_cumsum[-1]
         b_cumsum /= b_cumsum[-1]
         return np.sum(np.abs(a_cumsum - b_cumsum))
-
 
     def _my_davies_bouldin_score(X, distance_matrix, labels):
         n_labels = len(np.unique(labels))
@@ -236,15 +286,14 @@ if do_my_davies_bouldin:
         scores = np.max(combined_intra_dists / centroid_distances, axis=1)
         return np.mean(scores)
 
-
-    file_distance_matrix = os.path.join(
-        folder_agglomerating_clustering, "distance_matrix.npy"
+    distance_matrix_square = load_distance_matrix(
+        burst_extraction_params, clustering_params, form="matrix"
     )
-    distance_matrix = np.load(file_distance_matrix)  # vector-form
-    distance_matrix_square = squareform(distance_matrix, force="tomatrix")
     my_db_score = np.zeros(len(n_clusters))
     for i_n_cluster, n_clusters_ in tqdm(
-            enumerate(n_clusters), total=len(n_clusters), desc="compute my Davies-Bouldin score"
+        enumerate(n_clusters),
+        total=len(n_clusters),
+        desc="compute my Davies-Bouldin score",
     ):
         my_db_score[i_n_cluster] = _my_davies_bouldin_score(
             burst_matrix, distance_matrix_square, df_bursts[f"cluster_{n_clusters_}"]
@@ -253,6 +302,5 @@ if do_my_davies_bouldin:
         my_db_score,
         ylabel="Davies-Bouldin Score",
         score_abbreviation="DB",
-        highlight="min"
+        highlight="min",
     )
-

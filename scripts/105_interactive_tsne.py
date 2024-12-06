@@ -5,16 +5,16 @@ import os
 import dash
 import numpy as np
 import pandas as pd
+import plotly.colors
 import plotly.express as px
 import plotly.graph_objs as go
-import plotly.colors
 import seaborn as sns
 from dash import dcc, html
 from dash.dependencies import Input, Output
-from scipy.cluster.hierarchy import fcluster
 
-from src.folders import get_results_folder, get_data_kapucu_folder
-from src.persistence import load_burst_matrix, load_df_bursts
+from src.folders import get_data_kapucu_folder
+from src.persistence import load_clustering_labels, load_df_bursts, load_pca, load_tsne
+from src.persistence.agglomerative_clustering import get_agglomerative_labels
 
 ###############################################################################
 #                           Parameters                                        #
@@ -22,12 +22,22 @@ from src.persistence import load_burst_matrix, load_df_bursts
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
-    "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
 
 dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
 
-clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
+clustering_params = (
+    # "agglomerating_clustering_linkage_complete"
+    # "agglomerating_clustering_linkage_ward"
+    # "agglomerating_clustering_linkage_average"
+    # "agglomerating_clustering_linkage_single"
+    # "spectral_affinity_precomputed_metric_wasserstein"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+)
+clustering_type = clustering_params.split("_")[0]
+labels_params = None  #  needed for spectral clustering if not default "labels"
 n_clusters = np.arange(2, 21, 1)
 n_clusters_current = 9  # initial number of clusters
 color_by = "cluster"  # initial color by
@@ -52,38 +62,41 @@ def get_cluster_colors(n_clusters_):
 
 cluster_colors = get_cluster_colors(n_clusters_current)
 
-# load linkage -> labels
-print(f"Loading linkage from {get_results_folder()}")
-linkage_file = os.path.join(
-    get_results_folder(),
-    burst_extraction_params,
-    clustering_params,
-    "linkage.npy",
-)
-linkage = np.load(linkage_file)
-# labels = fcluster(linkage, t=n_clusters, criterion="maxclust")
-
-burst_matrix = load_burst_matrix(burst_extraction_params)
+# get df_bursts and labels
 df_bursts = load_df_bursts(burst_extraction_params)
-file_idx = os.path.join(
-    get_results_folder(),
-    burst_extraction_params,
-    clustering_params,
-    "idx.npy",
-)
-if os.path.exists(file_idx):
-    idx = np.load(file_idx)
-    burst_matrix = burst_matrix[idx]
-    df_bursts = df_bursts.iloc[idx]
+match clustering_type:
+    case "agglomerating":
+        # load labels
+        for n_clusters_ in n_clusters:
+            labels = get_agglomerative_labels(
+                n_clusters_, burst_extraction_params, clustering_params
+            )
+            df_bursts[f"cluster_{n_clusters_}"] = [
+                f"Cluster {label}" for label in labels
+            ]
+        # df_bursts["cluster"] = [f"Cluster {label}" for label in labels]
+    case "spectral":
+        if labels_params is None:
+            labels_params = "labels"
+        clustering = load_clustering_labels(
+            clustering_params,
+            burst_extraction_params,
+            labels_params,
+            None,
+            i_split=None,
+        )
+        for n_clusters_ in n_clusters:
+            df_bursts[f"cluster_{n_clusters_}"] = [
+                f"Cluster {label + 1}" for label in clustering.labels_[n_clusters_]
+            ]
+
 
 def _update_embedding(embedding_type_):
-    file_embedding = os.path.join(
-        get_results_folder(),
-        burst_extraction_params,
-        clustering_params,
-        "tsne.npy" if embedding_type_ == "tsne" else "pca.npy",
-    )
-    embedding = np.load(file_embedding)
+    match embedding_type_:
+        case "tsne":
+            embedding = load_tsne(burst_extraction_params)
+        case "pca":
+            embedding = load_pca(burst_extraction_params)
     df_bursts["embedding_x"] = embedding[:, 0]
     df_bursts["embedding_y"] = embedding[:, 1]
     return
@@ -92,19 +105,23 @@ def _update_embedding(embedding_type_):
 _update_embedding(embedding_type)
 
 # prepare for plotly
-for n_clusters_ in n_clusters:
-    labels = fcluster(linkage, t=n_clusters_, criterion="maxclust")
-    df_bursts[f"cluster_{n_clusters_}"] = [f"Cluster {label}" for label in labels]
-# df_bursts["cluster"] = [f"Cluster {label}" for label in labels]
 df_bursts.reset_index(inplace=True)
 
 df_bursts["firing_rate"] = df_bursts["integral"] / 50  # df_bursts["time_orig"]
 match dataset:
     case "wagenaar":
-        df_bursts["batch_culture"] = df_bursts["batch"].astype(str) + "-" + df_bursts["culture"].astype(str)
+        df_bursts["batch_culture"] = (
+            df_bursts["batch"].astype(str) + "-" + df_bursts["culture"].astype(str)
+        )
     case "kapucu":
-        df_bursts["batch"] = df_bursts["culture_type"].astype(str) + "-" + df_bursts["mea_number"].astype(str)
-        df_bursts["batch_culture"] = df_bursts["batch"].astype(str) + "-" + df_bursts["well_id"].astype(str)
+        df_bursts["batch"] = (
+            df_bursts["culture_type"].astype(str)
+            + "-"
+            + df_bursts["mea_number"].astype(str)
+        )
+        df_bursts["batch_culture"] = (
+            df_bursts["batch"].astype(str) + "-" + df_bursts["well_id"].astype(str)
+        )
 
 # confirm burst_matrix and df_bursts["burst"] are the same
 # for i in range(len(burst_matrix)):
@@ -147,7 +164,9 @@ def update_tsne_plot(df_bursts):
             color_discrete_sequence = px.colors.qualitative.Set1
             match dataset:
                 case "wagenaar":
-                    category_orders = {color: sorted(df_bursts["batch"].unique(), key=int)}
+                    category_orders = {
+                        color: sorted(df_bursts["batch"].unique(), key=int)
+                    }
                 case "kapucu":
                     category_orders = {color: sorted(df_bursts["batch"].unique())}
             legend_title = "Batch"
@@ -157,32 +176,38 @@ def update_tsne_plot(df_bursts):
             color_discrete_sequence = px.colors.qualitative.Set1
             match dataset:
                 case "wagenaar":
-                    category_orders = {color: sorted(
-                        df_bursts["batch_culture"].unique(),
-                        key=lambda x: (int(x.split('-')[0]), int(x.split('-')[1])),
-                    )}
+                    category_orders = {
+                        color: sorted(
+                            df_bursts["batch_culture"].unique(),
+                            key=lambda x: (int(x.split("-")[0]), int(x.split("-")[1])),
+                        )
+                    }
                 case "kapucu":
-                    category_orders = {color: sorted(df_bursts["batch_culture"].unique())}
+                    category_orders = {
+                        color: sorted(df_bursts["batch_culture"].unique())
+                    }
             legend_title = "Batch-Culture"
         case "day":
             color = "day" if dataset == "wagenaar" else "DIV"
             df_bursts[color] = df_bursts[color].astype(str)
             unique_days = sorted(df_bursts[color].unique(), key=int)
             category_orders = {color: unique_days}
-            viridis_colors = plotly.colors.sample_colorscale(px.colors.sequential.Viridis, [i / len(unique_days) for i in range(len(unique_days))])
+            viridis_colors = plotly.colors.sample_colorscale(
+                px.colors.sequential.Viridis,
+                [i / len(unique_days) for i in range(len(unique_days))],
+            )
             color_discrete_map = {
-                str(day): viridis_colors[i]
-                for i, day in enumerate(unique_days)
+                str(day): viridis_colors[i] for i, day in enumerate(unique_days)
             }
             legend_title = "Day"
         case "time_orig":
-            color = np.log10(pd.to_numeric(df_bursts["time_orig"], errors='coerce'))
+            color = np.log10(pd.to_numeric(df_bursts["time_orig"], errors="coerce"))
             # df_bursts[color] = pd.to_numeric(df_bursts[color], errors='coerce')
             color_continuous_scale = px.colors.sequential.Viridis
             legend_title = "Duration"
             color_log = True
         case "firing_rate":
-            color = np.log10(pd.to_numeric(df_bursts["firing_rate"], errors='coerce'))
+            color = np.log10(pd.to_numeric(df_bursts["firing_rate"], errors="coerce"))
             color_continuous_scale = px.colors.sequential.Viridis
             legend_title = "Firing rate"
             color_log = True
@@ -309,13 +334,16 @@ app.layout = html.Div(
     Output("download-pdf", "data"),
     Input("download-button", "n_clicks"),
     Input("tsne-plot", "figure"),
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
 def download_pdf(n_clicks, figure):
     ctx = dash.callback_context
 
     # Check if the download button was clicked
-    if not ctx.triggered or ctx.triggered[0]['prop_id'].split('.')[0] != 'download-button':
+    if (
+        not ctx.triggered
+        or ctx.triggered[0]["prop_id"].split(".")[0] != "download-button"
+    ):
         raise dash.exceptions.PreventUpdate
 
     # Create a BytesIO buffer to hold the PDF data
@@ -349,6 +377,7 @@ def update_color_by(color_by_):
     color_by = color_by_
     return update_tsne_plot(df_bursts)
 
+
 # Update t-SNE plot based on the selected number of clusters
 @app.callback(
     Output("tsne-plot", "figure", allow_duplicate=True),
@@ -361,6 +390,7 @@ def update_n_clusters(n_clusters_):
     n_clusters_current = n_clusters_
     return update_tsne_plot(df_bursts)
 
+
 @app.callback(
     Output("tsne-plot", "figure", allow_duplicate=True),
     [Input("marker-size-slider", "value")],
@@ -371,6 +401,7 @@ def update_marker_size(marker_size_):
     global marker_size
     marker_size = marker_size_
     return update_tsne_plot(df_bursts)
+
 
 # Update time series plot based on the selected point in the t-SNE plot
 @app.callback(Output("timeseries-plot", "figure"), [Input("tsne-plot", "clickData")])
@@ -432,42 +463,58 @@ def update_raster(selected_data):
 
     match dataset:
         case "wagenaar":
-            batch, culture, day = list(df_bursts.iloc[point_index][['batch', 'culture', 'day']])
+            batch, culture, day = list(
+                df_bursts.iloc[point_index][["batch", "culture", "day"]]
+            )
             # print(f"batch: {batch}, culture: {culture}, day: {day}")
 
             # Load spike data
-            st, gid = np.loadtxt('../data/extracted/%s-%s-%s.spk.txt' % (batch, culture, day)).T
+            st, gid = np.loadtxt(
+                "../data/extracted/%s-%s-%s.spk.txt" % (batch, culture, day)
+            ).T
             st = st * 1000
         case "kapucu":
-            culture_type, mea_number, well_id, div_day = list(df_bursts.iloc[point_index][['culture_type', 'mea_number', 'well_id', 'DIV']])
+            culture_type, mea_number, well_id, div_day = list(
+                df_bursts.iloc[point_index][
+                    ["culture_type", "mea_number", "well_id", "DIV"]
+                ]
+            )
             # print(f"culture_type: {culture_type}, mea_number: {mea_number}, well_id: {well_id}, div_day: {div_day}")
 
             # Load spike data
             data_folder = get_data_kapucu_folder()
-            path_time_series = os.path.join(data_folder, "_".join([culture_type, "20517" if culture_type == "hPSC" else "190617", mea_number, f"DIV{div_day}", "spikes.csv"]))
+            path_time_series = os.path.join(
+                data_folder,
+                "_".join(
+                    [
+                        culture_type,
+                        "20517" if culture_type == "hPSC" else "190617",
+                        mea_number,
+                        f"DIV{div_day}",
+                        "spikes.csv",
+                    ]
+                ),
+            )
             # print(path_time_series)
             # print(os.path.exists(path_time_series))
             spikes = pd.read_csv(path_time_series)
             # print(spikes)
-            spikes[['well', 'ch_n']] = spikes['Channel'].str.split('_', expand=True)
+            spikes[["well", "ch_n"]] = spikes["Channel"].str.split("_", expand=True)
             # print(spikes)
-            spikes = spikes[spikes['well'] == well_id]
+            spikes = spikes[spikes["well"] == well_id]
             # print(spikes)
-            st = spikes['Time'].values
-            gid = spikes['ch_n'].values
+            st = spikes["Time"].values
+            gid = spikes["ch_n"].values.astype(int)
             st = st * 1000
 
     # cut out a window around the burst
-    start_orig = df_bursts.iloc[point_index]['start_orig']
-    duration = df_bursts.iloc[point_index]['time_orig']
-    start = start_orig - 800
-    end = start_orig + 2000
-    if start_orig + duration > end:
-        end = start_orig + duration + 500
+    start_orig = df_bursts.iloc[point_index]["start_orig"]
+    duration = df_bursts.iloc[point_index]["time_orig"]
+    start = start_orig - max(800, duration)
+    end = start_orig + max(2000, 2 * duration)
+    # if start_orig + duration > end:
+    #     end = start_orig + duration + 500
     st, gid = st[(st >= start) & (st <= end)], gid[(st >= start) & (st <= end)]
-
-
-
 
     # Create raster plot with '|' markers for spikes and no line connecting them
     fig = go.Figure()
@@ -483,7 +530,7 @@ def update_raster(selected_data):
                 # color=palette[i_cluster - 1],
                 line_width=1,
             ),
-            name="Spikes"
+            name="Spikes",
         )
     )
     # Vertical reference line for start and start + duration
@@ -516,10 +563,11 @@ def update_raster(selected_data):
         xaxis=dict(range=[start, end], showgrid=False),
         yaxis=dict(showticklabels=False, showgrid=False),
         plot_bgcolor="white",
-        showlegend=False
+        showlegend=False,
     )
 
     return fig
+
 
 # Run the app
 if __name__ == "__main__":
