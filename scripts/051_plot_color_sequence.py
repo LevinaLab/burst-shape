@@ -5,12 +5,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
-from scipy.cluster.hierarchy import fcluster
 
 from src.folders import get_data_folder, get_data_kapucu_folder
-from src.persistence import load_df_bursts, load_df_cultures
+from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
@@ -18,7 +16,16 @@ burst_extraction_params = (
     # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 )
-agglomerating_clustering_params = "agglomerating_clustering_linkage_complete"
+clustering_params = (
+    # "agglomerating_clustering_linkage_complete"
+    # "agglomerating_clustering_linkage_ward"
+    # "agglomerating_clustering_linkage_average"
+    # "agglomerating_clustering_linkage_single"
+    # "spectral_affinity_precomputed_metric_wasserstein"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+)
+clustering_type = clustering_params.split("_")[0]
+labels_params = "labels"
 n_clusters = 5
 
 plot_raster = False
@@ -29,10 +36,20 @@ dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
 df_cultures = load_df_cultures(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
 
-print("Getting clusters from linkage...")
-df_bursts["cluster"] = get_agglomerative_labels(
-    n_clusters, burst_extraction_params, agglomerating_clustering_params
-)
+match clustering_type:
+    case "agglomerating":
+        print("Getting clusters from linkage...")
+        df_bursts["cluster"] = get_agglomerative_labels(
+            n_clusters, burst_extraction_params, clustering_type
+        )
+    case "spectral":
+        print("Getting clusters from spectral clustering...")
+        df_bursts["cluster"] = (
+            load_clustering_labels(
+                clustering_params, burst_extraction_params, labels_params
+            ).labels_[n_clusters]
+            + 1
+        )
 
 # Define a color palette for the clusters
 palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
@@ -45,7 +62,7 @@ cluster_colors = [
 
 # %% Plot examples of burst extraction
 # idx = 110  # batch 1, culture 1, day 19
-bin_size = 10  # ms
+bin_size = 100  # ms
 
 # choose index
 match dataset:
