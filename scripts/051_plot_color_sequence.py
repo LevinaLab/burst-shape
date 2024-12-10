@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from src.folders import get_data_folder, get_data_kapucu_folder
 from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
+from src.persistence.spike_times import get_kapucu_spike_times, get_wagenaar_spike_times
 
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
@@ -28,7 +29,7 @@ clustering_type = clustering_params.split("_")[0]
 labels_params = "labels"
 n_clusters = 5
 
-plot_raster = False
+plot_raster = True
 
 dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
 
@@ -98,42 +99,9 @@ data = np.histogram(data, bins=bins)[0] / (bin_size / 1000)
 if plot_raster:
     match dataset:
         case "wagenaar":
-            st, gid = np.loadtxt(
-                os.path.join(
-                    get_data_folder(), "extracted", df_cultures.loc[idx].file_name
-                )
-            ).T
-            st *= 1000
-            gid = gid.astype(int)
+            st, gid = get_wagenaar_spike_times(df_cultures, idx)
         case "kapucu":
-            culture_type, mea_number, well_id, div_day = idx
-            # print(f"culture_type: {culture_type}, mea_number: {mea_number}, well_id: {well_id}, div_day: {div_day}")
-
-            # Load spike data
-            data_folder = get_data_kapucu_folder()
-            path_time_series = os.path.join(
-                data_folder,
-                "_".join(
-                    [
-                        culture_type,
-                        "20517" if culture_type == "hPSC" else "190617",
-                        mea_number,
-                        f"DIV{div_day}",
-                        "spikes.csv",
-                    ]
-                ),
-            )
-            # print(path_time_series)
-            # print(os.path.exists(path_time_series))
-            spikes = pd.read_csv(path_time_series)
-            # print(spikes)
-            spikes[["well", "ch_n"]] = spikes["Channel"].str.split("_", expand=True)
-            # print(spikes)
-            spikes = spikes[spikes["well"] == well_id]
-            # print(spikes)
-            st = spikes["Time"].values
-            gid = spikes["ch_n"].values.astype(int)
-            st = st * 1000
+            st, gid = get_kapucu_spike_times(df_cultures, idx)
 
 fig, axs = plt.subplots(
     2 if plot_raster else 1,

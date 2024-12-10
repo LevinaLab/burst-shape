@@ -231,6 +231,8 @@ def _get_kapucu_data_from_file(data_folder):
         }
     )
     df["times"] = df["spikes"].apply(lambda x: x[0])
+    df["gid"] = df["spikes"].apply(lambda x: x[1])
+    df["gid"] = df["gid"].apply(_gid_to_numbers)
     # delete "spikes" column
     df.drop(columns=["spikes"], inplace=True)
     print("Done")

@@ -1,6 +1,5 @@
 import base64
 import io
-import os
 
 import dash
 import numpy as np
@@ -12,9 +11,15 @@ import seaborn as sns
 from dash import dcc, html
 from dash.dependencies import Input, Output
 
-from src.folders import get_data_kapucu_folder
-from src.persistence import load_clustering_labels, load_df_bursts, load_pca, load_tsne
+from src.persistence import (
+    load_clustering_labels,
+    load_df_bursts,
+    load_df_cultures,
+    load_pca,
+    load_tsne,
+)
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
+from src.persistence.spike_times import get_kapucu_spike_times
 
 ###############################################################################
 #                           Parameters                                        #
@@ -39,7 +44,7 @@ clustering_params = (
 clustering_type = clustering_params.split("_")[0]
 labels_params = None  #  needed for spectral clustering if not default "labels"
 n_clusters = np.arange(2, 21, 1)
-n_clusters_current = 9  # initial number of clusters
+n_clusters_current = 5  # initial number of clusters
 color_by = "cluster"  # initial color by
 marker_size = 3  # initial marker size
 embedding_type = ["tsne", "pca"][0]
@@ -63,6 +68,7 @@ def get_cluster_colors(n_clusters_):
 cluster_colors = get_cluster_colors(n_clusters_current)
 
 # get df_bursts and labels
+df_cultures = load_df_cultures(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
 match clustering_type:
     case "agglomerating":
@@ -256,6 +262,7 @@ def update_tsne_plot(df_bursts):
         legend_title=legend_title,
         legend_itemclick="toggle",
         legend_itemdoubleclick="toggleothers",
+        plot_bgcolor="white",
     )
     return tsne_fig
 
@@ -269,64 +276,74 @@ app.layout = html.Div(
     [
         html.Div(
             [
-                html.Button("Download as PDF", id="download-button"),
-                dcc.Download(id="download-pdf"),
-                # drop-down menu for selecting what to plot
-                dcc.Dropdown(
-                    id="embedding-type",
-                    options=[
-                        {"label": "t-SNE", "value": "tsne"},
-                        {"label": "PCA", "value": "pca"},
+                html.Div(
+                    [
+                        html.Button("Download as PDF", id="download-button"),
+                        dcc.Download(id="download-pdf"),
+                        # drop-down menu for selecting what to plot
+                        dcc.Dropdown(
+                            id="embedding-type",
+                            options=[
+                                {"label": "t-SNE", "value": "tsne"},
+                                {"label": "PCA", "value": "pca"},
+                            ],
+                            value="tsne",
+                        ),
+                        # drop-down menu for selecting which column to color by
+                        dcc.Dropdown(
+                            id="color-by",
+                            options=[
+                                {"label": "Day", "value": "day"},
+                                {"label": "Culture", "value": "batch_culture"},
+                                {"label": "Batch", "value": "batch"},
+                                {"label": "Cluster", "value": "cluster"},
+                                {"label": "Duration", "value": "time_orig"},
+                                {"label": "Firing rate", "value": "firing_rate"},
+                            ],
+                            value="cluster",
+                        ),
+                        # slider for selecting the number of clusters with label "slide to select number of clusters"
+                        dcc.Slider(
+                            id="n-clusters-slider",
+                            min=n_clusters[0],
+                            max=n_clusters[-1],
+                            step=1,
+                            value=n_clusters_current,
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            vertical=True,
+                        ),
                     ],
-                    value="tsne",
+                    style={
+                        "flex": "0 0 100px",
+                        "display": "flex",
+                        "flex-direction": "column",
+                    },
                 ),
-                # drop-down menu for selecting which column to color by
-                dcc.Dropdown(
-                    id="color-by",
-                    options=[
-                        {"label": "Day", "value": "day"},
-                        {"label": "Culture", "value": "batch_culture"},
-                        {"label": "Batch", "value": "batch"},
-                        {"label": "Cluster", "value": "cluster"},
-                        {"label": "Duration", "value": "time_orig"},
-                        {"label": "Firing rate", "value": "firing_rate"},
+                html.Div(
+                    [
+                        # t-SNE plot
+                        tsne_plot,
+                        dcc.Slider(
+                            id="marker-size-slider",
+                            min=1,
+                            max=10,
+                            step=1,
+                            value=marker_size,
+                            tooltip={"placement": "bottom", "always_visible": True},
+                        ),
                     ],
-                    value="cluster",
+                    style={"display": "flex", "flex-direction": "column", "flex": "1"},
                 ),
-                # slider for selecting the number of clusters with label "slide to select number of clusters"
-                dcc.Slider(
-                    id="n-clusters-slider",
-                    min=n_clusters[0],
-                    max=n_clusters[-1],
-                    step=1,
-                    value=n_clusters_current,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    vertical=True,
-                ),
+                # Time series plot of selected point
+                dcc.Graph(id="timeseries-plot", style={"flex": "1"}),
+                # Raster plot of selected point
+                dcc.Graph(id="raster-plot", style={"flex": "1"}),
             ],
-            style={"flex": "0 0 100px", "display": "flex", "flex-direction": "column"},
+            style={"display": "flex", "flex-direction": "row", "height": "50vh"},
         ),
-        html.Div(
-            [
-                # t-SNE plot
-                tsne_plot,
-                dcc.Slider(
-                    id="marker-size-slider",
-                    min=1,
-                    max=10,
-                    step=1,
-                    value=marker_size,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                ),
-            ],
-            style={"display": "flex", "flex-direction": "column", "flex": "1"},
-        ),
-        # Time series plot of selected point
-        dcc.Graph(id="timeseries-plot", style={"flex": "1"}),
-        # Raster plot of selected point
-        dcc.Graph(id="raster-plot", style={"flex": "1"}),
+        dcc.Graph(id="firing-rate", style={"flex": "1"}),
     ],
-    style={"display": "flex", "flex-direction": "row", "height": "80vh"},
+    style={"display": "flex", "flex-direction": "column"},
 )
 
 
@@ -404,13 +421,26 @@ def update_marker_size(marker_size_):
 
 
 # Update time series plot based on the selected point in the t-SNE plot
-@app.callback(Output("timeseries-plot", "figure"), [Input("tsne-plot", "clickData")])
-def update_timeseries(selected_data):
+@app.callback(
+    Output("timeseries-plot", "figure"),
+    [Input("tsne-plot", "clickData"), Input("firing-rate", "clickData")],
+    prevent_initial_call=True,
+)
+def update_timeseries(tsne_click_data, firing_rate_click_data):
+    # Determine which plot was clicked
+    ctx = dash.callback_context
+    if ctx.triggered[0]["prop_id"].split(".")[0] == "firing-rate":
+        selected_data = firing_rate_click_data
+    else:
+        selected_data = tsne_click_data
     if selected_data is None:
         return px.line(pd.DataFrame(), title="Select a point to view time series")
 
     # Extract index of selected point
-    point_index = selected_data["points"][0]["customdata"][0]
+    if "customdata" in selected_data["points"][0]:
+        point_index = selected_data["points"][0]["customdata"][0]
+    else:
+        return dash.no_update
 
     # Create time series plot and title
     # Title should be the same as hovering info in t-SNE plot
@@ -447,19 +477,40 @@ def update_timeseries(selected_data):
     timeseries_fig = px.line(
         df_bursts.iloc[point_index]["burst"],
         title=title,
+        line_shape="linear",
+        line_dash_sequence=["solid"],
+    )
+    timeseries_fig.update_traces(line=dict(color="black"))
+    timeseries_fig.update_layout(
+        xaxis_title="Time [ms]",
+        yaxis_title="Amplitude [a.u.]",
+        plot_bgcolor="white",
     )
     return timeseries_fig
 
 
-@app.callback(Output("raster-plot", "figure"), [Input("tsne-plot", "clickData")])
-def update_raster(selected_data):
+@app.callback(
+    [
+        Output("raster-plot", "figure"),
+        Output("firing-rate", "figure"),
+    ],
+    [Input("tsne-plot", "clickData"), Input("firing-rate", "clickData")],
+    prevent_initial_call=True,
+)
+def update_raster(tsne_click_data, firing_rate_click_data):
+    ctx = dash.callback_context
+    if ctx.triggered[0]["prop_id"].split(".")[0] == "firing-rate":
+        selected_data = firing_rate_click_data
+    else:
+        selected_data = tsne_click_data
     if selected_data is None:
         return px.line(pd.DataFrame(), title="Select a point to view time series")
 
     # Extract index of selected point
-    point_index = selected_data["points"][0]["customdata"][0]
-    # print(f"point_index: {point_index}")
-    # print(df_bursts.iloc[point_index])
+    if "customdata" in selected_data["points"][0]:
+        point_index = selected_data["points"][0]["customdata"][0]
+    else:
+        return dash.no_update, dash.no_update
 
     match dataset:
         case "wagenaar":
@@ -473,39 +524,33 @@ def update_raster(selected_data):
                 "../data/extracted/%s-%s-%s.spk.txt" % (batch, culture, day)
             ).T
             st = st * 1000
+            title_firing_rate = (
+                f"Firing rate for batch {batch}, culture {culture}, day {day}"
+            )
         case "kapucu":
             culture_type, mea_number, well_id, div_day = list(
                 df_bursts.iloc[point_index][
                     ["culture_type", "mea_number", "well_id", "DIV"]
                 ]
             )
-            # print(f"culture_type: {culture_type}, mea_number: {mea_number}, well_id: {well_id}, div_day: {div_day}")
-
-            # Load spike data
-            data_folder = get_data_kapucu_folder()
-            path_time_series = os.path.join(
-                data_folder,
-                "_".join(
-                    [
-                        culture_type,
-                        "20517" if culture_type == "hPSC" else "190617",
-                        mea_number,
-                        f"DIV{div_day}",
-                        "spikes.csv",
-                    ]
-                ),
+            st, gid = get_kapucu_spike_times(
+                df_cultures, (culture_type, mea_number, well_id, div_day)
             )
-            # print(path_time_series)
-            # print(os.path.exists(path_time_series))
-            spikes = pd.read_csv(path_time_series)
-            # print(spikes)
-            spikes[["well", "ch_n"]] = spikes["Channel"].str.split("_", expand=True)
-            # print(spikes)
-            spikes = spikes[spikes["well"] == well_id]
-            # print(spikes)
-            st = spikes["Time"].values
-            gid = spikes["ch_n"].values.astype(int)
-            st = st * 1000
+            df_plot = df_bursts[
+                (df_bursts["culture_type"] == culture_type)
+                & (df_bursts["mea_number"] == mea_number)
+                & (df_bursts["well_id"] == well_id)
+                & (df_bursts["DIV"] == div_day)
+            ]
+            title_firing_rate = (
+                f"Firing rate for {culture_type} {mea_number}, {well_id}, DIV {div_day}"
+            )
+
+    # trace of firing rate
+    bin_size = 100  # ms
+    times_all = np.arange(0, st.max() + bin_size, bin_size)
+    firing_rate = np.histogram(st, bins=times_all)[0] / (bin_size / 1000)
+    times_all = 0.5 * (times_all[1:] + times_all[:-1])
 
     # cut out a window around the burst
     start_orig = df_bursts.iloc[point_index]["start_orig"]
@@ -517,9 +562,9 @@ def update_raster(selected_data):
     st, gid = st[(st >= start) & (st <= end)], gid[(st >= start) & (st <= end)]
 
     # Create raster plot with '|' markers for spikes and no line connecting them
-    fig = go.Figure()
+    fig_raster = go.Figure()
     # Raster plot with vertical line markers
-    fig.add_trace(
+    fig_raster.add_trace(
         go.Scatter(
             x=st,
             y=gid,
@@ -534,10 +579,10 @@ def update_raster(selected_data):
         )
     )
     # Vertical reference line for start and start + duration
-    fig.add_vline(x=start_orig, line_dash="dash", line_color="green")
-    fig.add_vline(x=start_orig + duration, line_dash="dash", line_color="red")
+    fig_raster.add_vline(x=start_orig, line_dash="dash", line_color="green")
+    fig_raster.add_vline(x=start_orig + duration, line_dash="dash", line_color="red")
     # add line indicating 1 second duration and add text "1s"
-    fig.add_shape(
+    fig_raster.add_shape(
         type="line",
         x0=start,
         y0=-1,
@@ -548,7 +593,7 @@ def update_raster(selected_data):
             width=5,
         ),
     )
-    fig.add_annotation(
+    fig_raster.add_annotation(
         x=start + 500,
         y=-1,
         text="1s",
@@ -556,7 +601,7 @@ def update_raster(selected_data):
         yshift=-10,
     )
     # Update layout
-    fig.update_layout(
+    fig_raster.update_layout(
         title="Raster plot",
         xaxis_title="Time [ms]",
         yaxis_title="Neuron ID",
@@ -566,7 +611,87 @@ def update_raster(selected_data):
         showlegend=False,
     )
 
-    return fig
+    fig_firing_rate = go.Figure()
+    # line plot of firing rate in black
+    fig_firing_rate.add_trace(
+        go.Scatter(
+            x=times_all,
+            y=firing_rate,
+            mode="lines",
+            name="Firing rate",
+            line=dict(color="black"),
+        )
+    )
+    # Collect all burst start and end times
+    burst_starts = []
+    burst_ends = []
+    burst_colors = []
+    burst_index = []
+
+    color = f"cluster_{n_clusters_current}"
+    color_discrete_sequence = get_cluster_colors(n_clusters_current)
+    for i_burst in df_plot.index:
+        burst_starts.append(df_plot.loc[i_burst].start_orig)
+        burst_ends.append(df_plot.loc[i_burst].end_orig)
+        burst_colors.append(
+            color_discrete_sequence[int(df_plot.loc[i_burst][color].split(" ")[1]) - 1]
+        )
+        burst_index.append(i_burst)
+
+    # Add vertical lines for all burst windows
+    for start, end, color, index in zip(
+        burst_starts, burst_ends, burst_colors, burst_index
+    ):
+        fig_firing_rate.add_trace(
+            go.Scatter(
+                x=[start, start, end, end],
+                y=[0, max(firing_rate), max(firing_rate), 0],
+                mode="lines",
+                line=dict(color=color, width=2),
+                fill="toself",
+                fillcolor=color,
+                opacity=0.5,
+                name="Burst",
+                hoverinfo="x+name",
+                customdata=[index],
+            )
+        )
+
+    # put a big arrow on the current burst
+    fig_firing_rate.add_annotation(
+        x=start_orig + 0.5 * duration,
+        y=max(firing_rate) * 0.9,
+        ax=start_orig + 0.5 * duration,
+        ay=max(firing_rate) * 1,
+        xref="x",
+        yref="y",
+        axref="x",
+        ayref="y",
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1,
+        arrowwidth=2,
+        arrowcolor="black",
+        text="Current burst",
+        font=dict(family="Courier New, monospace", size=16, color="black"),
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=1,
+        borderpad=4,
+        opacity=0.8,
+    )
+    # update layout
+    fig_firing_rate.update_layout(
+        title=title_firing_rate + f", {len(burst_starts)} bursts",
+        xaxis_title="Time [ms]",
+        yaxis_title="Rate [Hz]",
+        # xaxis=dict(range=[start, end], showgrid=False),
+        # yaxis=dict(showgrid=False),
+        plot_bgcolor="white",
+        showlegend=False,
+    )
+
+    return fig_raster, fig_firing_rate
 
 
 # Run the app
