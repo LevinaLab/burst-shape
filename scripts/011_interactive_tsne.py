@@ -28,7 +28,8 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
     # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
 )
 
 dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
@@ -55,7 +56,7 @@ embedding_type = ["tsne", "pca"][0]
 ###############################################################################
 # define colors
 def get_cluster_colors(n_clusters_):
-    palette = sns.color_palette(n_colors=n_clusters_)
+    palette = sns.color_palette("Set1", n_colors=n_clusters_)
     cluster_colors = [palette[i - 1] for i in range(1, n_clusters_ + 1)]
     # convert colors to string (hex format)
     cluster_colors = [

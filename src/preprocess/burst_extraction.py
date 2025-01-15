@@ -112,6 +112,7 @@ def extract_bursts(
         dataset,
     )
     df_bursts = _filter_bursts(
+        df_cultures,
         df_bursts,
         burst_length_threshold,
         pad_right,
@@ -423,7 +424,27 @@ def _build_bursts_df(
     return df_bursts
 
 
+def _remove_bursts(
+    df_cultures, df_bursts, index_to_remove
+):
+    for index_burst in df_bursts.index[index_to_remove]:
+        index_culture = index_burst[:-1]
+        df_cultures.at[index_culture, "n_bursts"] = df_cultures.at[index_culture, "n_bursts"] - 1
+        start_orig = df_bursts.at[index_burst, "start_orig"]
+        df_cultures.at[index_culture, "burst_start_end"] = [
+            start_end
+            for start_end in df_cultures.at[index_culture, "burst_start_end"]
+            if not np.isclose(start_orig, start_end[0])
+        ]
+        assert df_cultures.at[index_culture, "n_bursts"] == len(
+            df_cultures.at[index_culture, "burst_start_end"]
+        )
+    df_bursts = df_bursts[~index_to_remove]
+    assert df_cultures["n_bursts"].sum() == len(df_bursts)
+    return df_cultures, df_bursts
+
 def _filter_bursts(
+    df_cultures,
     df_bursts,
     burst_length_threshold,
     pad_right,
@@ -431,10 +452,11 @@ def _filter_bursts(
     min_length,
     min_firing_rate,
 ):
-    print("Filter bursts (burst length, pad right)")
+    print("Filter bursts (burst length, min_firing_rate, pad right)")
     if burst_length_threshold is not None:
         len_before = len(df_bursts)
-        df_bursts = df_bursts[df_bursts["time_extend"] <= burst_length_threshold]
+        index_to_remove = df_bursts["time_extend"] > burst_length_threshold
+        df_cultures, df_bursts = _remove_bursts(df_cultures, df_bursts, index_to_remove)
         len_after = len(df_bursts)
         print(
             f"Removed {len_before - len_after} bursts above threshold ({burst_length_threshold} ms)"
@@ -443,14 +465,16 @@ def _filter_bursts(
         burst_length_threshold = np.max(df_bursts["time_extend"])
     if min_length is not None:
         len_before = len(df_bursts)
-        df_bursts = df_bursts[df_bursts["time_extend"] >= min_length]
+        index_to_remove = df_bursts["time_extend"] < min_length
+        df_cultures, df_bursts = _remove_bursts(df_cultures, df_bursts, index_to_remove)
         len_after = len(df_bursts)
         print(
             f"Removed {len_before - len_after} bursts below threshold ({min_length} ms)"
         )
     if min_firing_rate is not None:
         len_before = len(df_bursts)
-        df_bursts = df_bursts[df_bursts["firing_rate"] >= min_firing_rate]
+        index_to_remove = df_bursts["firing_rate"] < min_firing_rate
+        df_cultures, df_bursts = _remove_bursts(df_cultures, df_bursts, index_to_remove)
         len_after = len(df_bursts)
         print(
             f"Removed {len_before - len_after} bursts below threshold ({min_firing_rate} Hz)"

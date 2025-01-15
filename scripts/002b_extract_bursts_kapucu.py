@@ -23,7 +23,7 @@ params_burst_extraction = {
     "pad_right": False,
     "normalization": "integral",
     "min_length": 30,
-    # "min_firing_rate": 3162,  # 10 ** 3.5,
+    "min_firing_rate": 316,  # 10**2.5,
     "smoothing_kernel": 4,
 }
 

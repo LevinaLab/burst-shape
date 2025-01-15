@@ -5,12 +5,25 @@ from matplotlib import pyplot as plt
 from src.persistence import load_clustering_labels, load_df_bursts
 
 # which clustering to plot
-n_clusters = 8
+n_clusters = 4
 col_cluster = f"cluster_{n_clusters}"
 
 # parameters which clustering to plot
-burst_extraction_params = "burst_n_bins_50_normalization_integral"
-clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
+# parameters which clustering to evaluate
+burst_extraction_params = (
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+)
+clustering_params = (
+    # "agglomerating_clustering_linkage_complete"
+    # "agglomerating_clustering_linkage_ward"
+    # "agglomerating_clustering_linkage_average"
+    # "agglomerating_clustering_linkage_single"
+    # "spectral_affinity_precomputed_metric_wasserstein"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+)
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
 cv_split = (
