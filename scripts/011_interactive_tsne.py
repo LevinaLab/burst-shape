@@ -16,6 +16,7 @@ from src.persistence import (
     load_df_bursts,
     load_df_cultures,
     load_pca,
+    load_spectral_embedding,
     load_tsne,
 )
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
@@ -48,7 +49,7 @@ n_clusters = np.arange(2, 21, 1)
 n_clusters_current = 5  # initial number of clusters
 color_by = "cluster"  # initial color by
 marker_size = 3  # initial marker size
-embedding_type = ["tsne", "pca"][0]
+embedding_type = ["tsne", "pca", "spectral"][0]
 
 
 ###############################################################################
@@ -104,6 +105,10 @@ def _update_embedding(embedding_type_):
             embedding = load_tsne(burst_extraction_params)
         case "pca":
             embedding = load_pca(burst_extraction_params)
+        case "spectral":
+            embedding = load_spectral_embedding(
+                burst_extraction_params, clustering_params
+            )
     df_bursts["embedding_x"] = embedding[:, 0]
     df_bursts["embedding_y"] = embedding[:, 1]
     return
@@ -287,6 +292,7 @@ app.layout = html.Div(
                             options=[
                                 {"label": "t-SNE", "value": "tsne"},
                                 {"label": "PCA", "value": "pca"},
+                                {"label": "Spectral", "value": "spectral"},
                             ],
                             value="tsne",
                         ),

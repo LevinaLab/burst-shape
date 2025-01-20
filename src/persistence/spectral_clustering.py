@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 
+import numpy as np
 import scipy.sparse
 
 from .burst_extraction import _get_burst_folder
@@ -220,3 +221,53 @@ def load_affinity_matrix(
     with open(path, "rb") as f:
         affinity_matrix = scipy.sparse.load_npz(f)
     return affinity_matrix
+
+
+def _get_spectral_embedding_file(burst_extraction_params, params_spectral_clustering):
+    return os.path.join(
+        _get_spectral_clustering_folder(
+            params_spectral_clustering, burst_extraction_params
+        ),
+        "spectral_embedding.npy",
+    )
+
+
+def load_spectral_embedding(
+    burst_extraction_params,
+    params_spectral_clustering,
+):
+    """Load spectral embedding."""
+    return np.load(
+        _get_spectral_embedding_file(
+            burst_extraction_params,
+            params_spectral_clustering,
+        )
+    )
+
+
+def save_spectral_embedding(
+    spectral_embedding,
+    burst_extraction_params,
+    params_spectral_clustering,
+):
+    """Save spectral embedding."""
+    np.save(
+        _get_spectral_embedding_file(
+            burst_extraction_params,
+            params_spectral_clustering,
+        ),
+        spectral_embedding,
+    )
+
+
+def spectral_embedding_exists(
+    burst_extraction_params,
+    params_spectral_clustering,
+):
+    """Check if spectral embedding exists."""
+    return os.path.exists(
+        _get_spectral_embedding_file(
+            burst_extraction_params,
+            params_spectral_clustering,
+        )
+    )

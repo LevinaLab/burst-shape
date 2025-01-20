@@ -1,17 +1,12 @@
-import os
-
-import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
-from scipy.cluster.hierarchy import fcluster
-from scipy.spatial.distance import squareform
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from src.folders import get_results_folder
 from src.persistence import (
     load_burst_matrix,
     load_distance_matrix,
+    load_spectral_embedding,
     load_tsne,
     save_pca,
     save_tsne,
@@ -30,6 +25,13 @@ agglomerating_clustering_params = (
     # "agglomerating_clustering_linkage_complete"
     # "agglomerating_clustering_linkage_ward"
 )
+spectral_clustering_params = (  # required for spectral embedding initialization
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+)
+tsne_params = {
+    "initialization": ["pca", "spectral"][0],
+}
+
 n_clusters = 3
 
 recompute_tsne = False
@@ -53,19 +55,32 @@ except ValueError:
     print(f"Labels not found. Run without labels and just computing embeddings.")
 
 # %% compute or load t-SNE
-if recompute_tsne or not tsne_exists(burst_extraction_params):
+if recompute_tsne or not tsne_exists(burst_extraction_params, tsne_params):
     distance_matrix = load_distance_matrix(burst_extraction_params, form="matrix")
     burst_matrix = load_burst_matrix(burst_extraction_params)
 
-    # pca initialization
-    pca = PCA(n_components=2)
-    pca_burst = pca.fit_transform(burst_matrix)
-    save_pca(pca_burst, burst_extraction_params)
+    # initalization
+    match tsne_params["initialization"]:
+        case "pca":
+            # pca initialization
+            pca = PCA(n_components=2)
+            pca_burst = pca.fit_transform(burst_matrix)
+            save_pca(pca_burst, burst_extraction_params)
+            init = pca_burst
+        case "spectral":
+            spectral_embedding = load_spectral_embedding(
+                burst_extraction_params, spectral_clustering_params
+            )
+            init = spectral_embedding
+        case _:
+            raise ValueError(
+                f"Unknown initialization: {tsne_params['initialization']}."
+            )
 
     # t-SNE
     n_points = distance_matrix.shape[0]
     tsne_burst = TSNE(
-        init=pca_burst,
+        init=init,
         n_components=2,
         perplexity=n_points / 100,
         learning_rate=n_points / 12,
@@ -74,10 +89,10 @@ if recompute_tsne or not tsne_exists(burst_extraction_params):
         verbose=1,
         metric="precomputed",
     ).fit_transform(distance_matrix)
-    save_tsne(tsne_burst, burst_extraction_params)
+    save_tsne(tsne_burst, burst_extraction_params, tsne_params)
 else:
     print(f"Loading t-SNE from file.")  # {file_tsne}")
-    tsne_burst = load_tsne(burst_extraction_params)
+    tsne_burst = load_tsne(burst_extraction_params, tsne_params)
 
 # %% plot t-SNE
 fig, ax = plt.subplots(figsize=(7, 7), constrained_layout=True)

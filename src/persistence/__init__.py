@@ -15,11 +15,14 @@ from .spectral_clustering import (
     load_affinity_matrix,
     load_clustering_labels,
     load_clustering_maps,
+    load_spectral_embedding,
     save_affinity_matrix,
     save_clustering_labels,
     save_clustering_maps,
     save_clustering_params,
     save_labels_params,
+    save_spectral_embedding,
+    spectral_embedding_exists,
 )
 
 __all__ = [
@@ -52,4 +55,7 @@ __all__ = [
     "save_tsne",
     "load_tsne",
     "tsne_exists",
+    "save_spectral_embedding",
+    "load_spectral_embedding",
+    "spectral_embedding_exists",
 ]

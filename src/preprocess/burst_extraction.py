@@ -424,12 +424,12 @@ def _build_bursts_df(
     return df_bursts
 
 
-def _remove_bursts(
-    df_cultures, df_bursts, index_to_remove
-):
+def _remove_bursts(df_cultures, df_bursts, index_to_remove):
     for index_burst in df_bursts.index[index_to_remove]:
         index_culture = index_burst[:-1]
-        df_cultures.at[index_culture, "n_bursts"] = df_cultures.at[index_culture, "n_bursts"] - 1
+        df_cultures.at[index_culture, "n_bursts"] = (
+            df_cultures.at[index_culture, "n_bursts"] - 1
+        )
         start_orig = df_bursts.at[index_burst, "start_orig"]
         df_cultures.at[index_culture, "burst_start_end"] = [
             start_end
@@ -442,6 +442,7 @@ def _remove_bursts(
     df_bursts = df_bursts[~index_to_remove]
     assert df_cultures["n_bursts"].sum() == len(df_bursts)
     return df_cultures, df_bursts
+
 
 def _filter_bursts(
     df_cultures,
