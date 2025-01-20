@@ -1,8 +1,8 @@
 import dash
-import pandas as pd
-from dash import dcc, html, Input, Output
-import plotly.graph_objects as go
 import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from dash import Input, Output, dcc, html
 from plotly.subplots import make_subplots
 
 from src.persistence import load_df_cultures
@@ -23,7 +23,9 @@ df_cultures = load_df_cultures(burst_extraction_params)
 # unique culture_type - mea_number - well_id combinations
 pivot_table = pd.pivot_table(
     data=df_cultures,
-    index=["culture_type", "mea_number", "well_id"] if dataset == "kapucu" else ["batch", "culture"],
+    index=["culture_type", "mea_number", "well_id"]
+    if dataset == "kapucu"
+    else ["batch", "culture"],
     columns="DIV" if dataset == "kapucu" else "day",
     values="n_bursts",
     aggfunc="mean",
@@ -37,10 +39,10 @@ z = pivot_table.to_numpy()
 
 # Custom Colorscale
 colorscale = [
-    [0, 'blue'],       # Empty cells (None or np.nan)
-    [1e-5, 'blue'],       # Zero values
-    [1.1e-5, 'yellow'],     # Start of gradient
-    [1.0, 'red'],         # End of gradient
+    [0, "blue"],  # Empty cells (None or np.nan)
+    [1e-5, "blue"],  # Zero values
+    [1.1e-5, "yellow"],  # Start of gradient
+    [1.0, "red"],  # End of gradient
 ]
 
 # Dash App
@@ -48,37 +50,38 @@ app = dash.Dash(__name__)
 
 app.layout = html.Div(
     [
-        dcc.Graph(id='matrix-plot', config={'displayModeBar': False},
-                  style={'flex': '1'}),  # Takes 2 parts
+        dcc.Graph(
+            id="matrix-plot", config={"displayModeBar": False}, style={"flex": "1"}
+        ),  # Takes 2 parts
         # html.Div(id='selected-cell', style={'marginTop': '20px', 'flex': '1'}),  # Takes 1 part
-        dcc.Graph(id='whole-recording', config={'displayModeBar': False},
-                  style={'flex': '2'}),  # Takes 3 parts
+        dcc.Graph(
+            id="whole-recording", config={"displayModeBar": False}, style={"flex": "2"}
+        ),  # Takes 3 parts
     ],
-    style={
-        'display': 'flex',
-        'flexDirection': 'column',
-        'height': '100vh'
-    }
+    style={"display": "flex", "flexDirection": "column", "height": "100vh"},
 )
+
 
 @app.callback(
     [
-        Output('matrix-plot', 'figure'),
+        Output("matrix-plot", "figure"),
         # Output('selected-cell', 'children'),
-        Output('whole-recording', 'figure'),
-     ],
-    [Input('matrix-plot', 'clickData')]
+        Output("whole-recording", "figure"),
+    ],
+    [Input("matrix-plot", "clickData")],
 )
 def update_plot(click_data):
     # Create the heatmap
-    fig = go.Figure(data=go.Heatmap(
-        z=z,
-        x=days,
-        y=subjects,
-        colorscale=colorscale,
-        showscale=True,  # Show color legend
-        hoverongaps=False  # Avoid hover info for empty cells
-    ))
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z,
+            x=days,
+            y=subjects,
+            colorscale=colorscale,
+            showscale=True,  # Show color legend
+            hoverongaps=False,  # Avoid hover info for empty cells
+        )
+    )
     fig.update_layout(
         title="Subject-Day Matrix",
         xaxis_title="Days",
@@ -90,9 +93,9 @@ def update_plot(click_data):
 
     # Handle cell click
     if click_data:
-        x = click_data['points'][0]['x']  # Day label
+        x = click_data["points"][0]["x"]  # Day label
         div_day = int(x[1:])
-        y = click_data['points'][0]['y']  # Subject label
+        y = click_data["points"][0]["y"]  # Subject label
         index_select = y.split("-")
         if dataset == "wagenaar":
             index_select = [int(x) for x in index_select]
@@ -117,7 +120,9 @@ def update_plot(click_data):
             fillcolor="rgba(0, 0, 0, 0)",  # Transparent fill
         )
 
-        fig_whole = _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_text)
+        fig_whole = _create_fig_whole_timeseries(
+            df_cultures, index_select, div_day, selected_text
+        )
     else:
         selected_text = "Click on a cell to see details."
         fig_whole = go.Figure()
@@ -127,30 +132,28 @@ def update_plot(click_data):
 
     return fig, fig_whole
 
+
 def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_text):
     match dataset:
         case "kapucu":
             index = (*index_select, div_day)
             st, gid = get_kapucu_spike_times(
-                df_cultures, index,
+                df_cultures,
+                index,
             )
             # st = np.array(st)
             st /= 1000  # convert to seconds
         case "wagenaar":
             index = (*index_select, div_day)
-            st, gid = np.loadtxt(
-                "../data/extracted/%s-%s-%s.spk.txt" % index
-            ).T
+            st, gid = np.loadtxt("../data/extracted/%s-%s-%s.spk.txt" % index).T
 
     # trace of firing rate
-    bin_size = .1  # s
+    bin_size = 0.1  # s
     times_all = np.arange(0, st.max() + bin_size, bin_size)
     firing_rate = np.histogram(st, bins=times_all)[0] / (bin_size)  #  / 1000)
     times_all = 0.5 * (times_all[1:] + times_all[:-1])
 
-    fig_whole = make_subplots(
-        rows=2, cols=1, shared_xaxes=True, x_title="Time [s]"
-    )
+    fig_whole = make_subplots(rows=2, cols=1, shared_xaxes=True, x_title="Time [s]")
     # line plot of firing rate in black
     fig_whole.add_trace(
         go.Scatter(
@@ -164,7 +167,7 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
         1,
     )
 
-    color="red"
+    color = "red"
     for row, y_max in zip([1, 2], [max(firing_rate), max(gid)]):
         x_coords, y_coords = [], []
         for (start, end), _ in zip(
@@ -187,7 +190,6 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
                 # customdata=list(range(df_cultures.at[index, "n_bursts"])),
             )
         )
-
 
     fig_whole.add_trace(
         go.Scattergl(
@@ -216,8 +218,9 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
         plot_bgcolor="white",
         showlegend=False,
     )
-    fig_whole.update_traces(hoverinfo='skip')
+    fig_whole.update_traces(hoverinfo="skip")
     return fig_whole
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run_server(debug=True)
