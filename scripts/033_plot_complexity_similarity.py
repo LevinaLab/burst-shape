@@ -5,19 +5,42 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.cluster.hierarchy import fcluster
 
 from src import folders
-from src.persistence import load_burst_matrix, load_df_bursts
-from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.burst_extraction import _get_burst_folder
+from src.persistence import load_burst_matrix, load_clustering_labels, load_df_bursts
+from src.plot import get_cluster_colors
 
-burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-agglomerating_clustering_params = "agglomerating_clustering_linkage_complete"
+apply_smoothing = False
+
+# which clustering to plot
+n_clusters = 4
+col_cluster = f"cluster_{n_clusters}"
+
+# parameters which clustering to plot
+burst_extraction_params = (
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+)
+dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
+
+clustering_params = (
+    # "agglomerating_clustering_linkage_complete"
+    # "agglomerating_clustering_linkage_ward"
+    # "agglomerating_clustering_linkage_average"
+    # "agglomerating_clustering_linkage_single"
+    # "spectral_affinity_precomputed_metric_wasserstein"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+)
+labels_params = "labels"
+cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
+cv_split = (
+    None  # set to None for plotting the whole clustering, set to int for specific split
+)
+
 np.random.seed(0)
 
 # plot settings
-n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index
+# n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index
 
 # plotting
 cm = 1 / 2.54  # centimeters in inches
@@ -28,21 +51,32 @@ burst_matrix = load_burst_matrix(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
 np.random.seed(0)
 
+match dataset:
+    case "wagenaar":
+        index_names = ["batch", "culture", "day"]
+    case "kapucu":
+        index_names = ["culture_type", "mea_number", "well_id", "DIV"]
+
 # %% get clusters from linkage
-print("Getting clusters from linkage...")
-labels = get_agglomerative_labels(
-    n_clusters, burst_extraction_params, agglomerating_clustering_params
+# print("Getting clusters from linkage...")
+# labels = get_agglomerative_labels(
+#     n_clusters, burst_extraction_params, agglomerating_clustering_params
+# )
+clustering = load_clustering_labels(
+    clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
 )
-df_bursts["cluster"] = labels
+df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
 
 # Define a color palette for the clusters
-palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
-cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
+# palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
+# cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
 # convert colors to string (hex format)
-cluster_colors = [
-    f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
-    for c in cluster_colors
-]
+# cluster_colors = [
+#     f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
+#     for c in cluster_colors
+# ]
+palette = get_cluster_colors(n_clusters)
+cluster_colors = get_cluster_colors(n_clusters)
 
 
 # %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
@@ -50,34 +84,40 @@ print("Building df_cultures...")
 df_bursts_reset = df_bursts.reset_index(
     drop=False
 )  # reset index to access columns in groupby()
-df_cultures = df_bursts_reset.groupby(["batch", "culture", "day"]).agg(
+df_cultures = df_bursts_reset.groupby(index_names).agg(
     n_bursts=pd.NamedAgg(column="i_burst", aggfunc="count")
 )
 
 # for all unique combinations of batch and culture
-unique_batch_culture = df_cultures.reset_index()[["batch", "culture"]].drop_duplicates()
+unique_batch_culture = df_cultures.reset_index()[index_names[:-1]].drop_duplicates()
 # sort by batch and culture
-unique_batch_culture.sort_values(["batch", "culture"], inplace=True)
+unique_batch_culture.sort_values(index_names[:-1], inplace=True)
 # assign an index to each unique combination
 unique_batch_culture["i_culture"] = np.arange(len(unique_batch_culture))  # [::-1]
-unique_batch_culture.set_index(["batch", "culture"], inplace=True)
+unique_batch_culture.set_index(index_names[:-1], inplace=True)
 
 df_cultures["i_culture"] = pd.Series(
     data=(
         df_cultures.reset_index().apply(
-            lambda x: unique_batch_culture.loc[(x["batch"], x["culture"]), "i_culture"],
+            lambda x: unique_batch_culture.loc[
+                tuple(
+                    [x[index_label] for index_label in index_names[:-1]]
+                ),  # (x["batch"], x["culture"]),
+                "i_culture",
+            ],
             axis=1,
         )
     ).values,
     index=df_cultures.index,
     dtype=int,
 )
+
 # dd cluster information
 for i_cluster in range(1, n_clusters + 1):
     col_cluster = "cluster"
-    df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(
-        ["batch", "culture", "day"]
-    )[col_cluster].agg(lambda x: np.sum(x == i_cluster))
+    df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(index_names)[
+        col_cluster
+    ].agg(lambda x: np.sum(x == i_cluster))
     df_cultures[f"cluster_rel_{i_cluster}"] = (
         df_cultures[f"cluster_abs_{i_cluster}"] / df_cultures["n_bursts"]
     )
@@ -87,10 +127,10 @@ for i_cluster in range(1, n_clusters + 1):
 df_cultures_reset = df_cultures.reset_index()
 
 # Add a new 'week' column representing the week of each 'day'
-df_cultures_reset["week"] = df_cultures_reset["day"] // 7
+df_cultures_reset["week"] = df_cultures_reset[index_names[-1]] // 7
 
 # Group by batch, culture, and week, then average the values within each week
-df_cultures_weeks = df_cultures_reset.groupby(["batch", "culture", "week"]).agg(
+df_cultures_weeks = df_cultures_reset.groupby([*index_names[:-1], "week"]).agg(
     n_bursts=("n_bursts", "mean"),
     i_culture=(
         "i_culture",
@@ -101,10 +141,10 @@ df_cultures_weeks = df_cultures_reset.groupby(["batch", "culture", "week"]).agg(
 # For cluster-related columns, average them for each week as well
 for i_cluster in range(1, n_clusters + 1):
     df_cultures_weeks[f"cluster_abs_{i_cluster}"] = df_cultures_reset.groupby(
-        ["batch", "culture", "week"]
+        [*index_names[:-1], "week"]
     )[f"cluster_abs_{i_cluster}"].mean()
     df_cultures_weeks[f"cluster_rel_{i_cluster}"] = df_cultures_reset.groupby(
-        ["batch", "culture", "week"]
+        [*index_names[:-1], "week"]
     )[f"cluster_rel_{i_cluster}"].mean()
 
 # Reset index if needed, otherwise keep it as is for hierarchical indexing
@@ -116,23 +156,26 @@ del df_cultures_reset
 print("Plotting development...")
 fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm))
 sns.despine()
-days = df_bursts.index.get_level_values("day").unique().sort_values()
+days = df_bursts.index.get_level_values(index_names[-1]).unique().sort_values()
 fraction = np.zeros((len(days), n_clusters))
 for i, day in enumerate(days):
     for cluster in range(1, n_clusters + 1):
         fraction[i, cluster - 1] = np.mean(
-            df_bursts[df_bursts.index.get_level_values("day") == day]["cluster"]
+            df_bursts[df_bursts.index.get_level_values(index_names[-1]) == day][
+                "cluster"
+            ]
             == cluster
         )
 # for cluster in range(1, n_clusters + 1):
 # ax.plot(days, fraction[:, cluster - 1], color=palette[cluster - 1], label=f"Cluster {cluster}")
 # smooth fraction by moving average over 5 days
-for cluster in range(1, n_clusters + 1):
-    fraction[:, cluster - 1] = np.convolve(
-        fraction[:, cluster - 1], np.ones(5) / 5, mode="same"
-    )
-days = days[2:-2]
-fraction = fraction[2:-2]
+if apply_smoothing is True:
+    for cluster in range(1, n_clusters + 1):
+        fraction[:, cluster - 1] = np.convolve(
+            fraction[:, cluster - 1], np.ones(5) / 5, mode="same"
+        )
+    days = days[2:-2]
+    fraction = fraction[2:-2]
 # fraction /= fraction.sum(axis=1)[:, None]
 for cluster in range(1, n_clusters + 1):
     ax.plot(
@@ -149,7 +192,7 @@ fig.savefig(os.path.join(fig_path, "fraction_clusters.pdf"))
 
 # %% development plot based on df_cultures
 print("Plotting development based on df_cultures...")
-for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
+for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
     fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
     sns.despine()
     days = df_.index.get_level_values(column).unique().sort_values()
@@ -159,14 +202,15 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
             fraction[i, cluster - 1] = np.mean(
                 df_[df_.index.get_level_values(column) == day][f"cluster_rel_{cluster}"]
             )
-    if column == "day":
-        # smooth fraction by moving average over 5 days
-        for cluster in range(1, n_clusters + 1):
-            fraction[:, cluster - 1] = np.convolve(
-                fraction[:, cluster - 1], np.ones(5) / 5, mode="same"
-            )
-        days = days[2:-2]
-        fraction = fraction[2:-2]
+    if column == index_names[-1]:
+        if apply_smoothing is True:
+            # smooth fraction by moving average over 5 days
+            for cluster in range(1, n_clusters + 1):
+                fraction[:, cluster - 1] = np.convolve(
+                    fraction[:, cluster - 1], np.ones(5) / 5, mode="same"
+                )
+            days = days[2:-2]
+            fraction = fraction[2:-2]
     # fraction /= fraction.sum(axis=1)[:, None]
     for cluster in range(1, n_clusters + 1):
         ax.plot(
@@ -183,7 +227,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
 
 # %% complexity plot (information)
 print("Plotting information...")
-for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
+for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
     # compute information based on cluster_rel columns
     columns = [f"cluster_rel_{i_cluster}" for i_cluster in range(1, n_clusters + 1)]
     df_["information"] = df_.apply(
@@ -199,10 +243,11 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
         information[i] = df_[df_.index.get_level_values(column) == day][
             "information"
         ].mean()
-    if column == "day":
-        # smooth information by moving average over 5 days
-        information = np.convolve(information, np.ones(5) / 5, mode="valid")
-        days = days[2:-2]
+    if column == index_names[-1]:
+        if apply_smoothing is True:
+            # smooth information by moving average over 5 days
+            information = np.convolve(information, np.ones(5) / 5, mode="valid")
+            days = days[2:-2]
     ax.plot(days, information, color="black")
     ax.set_xlabel("column")
     ax.set_ylabel("Info [bits]")
@@ -251,29 +296,29 @@ similarity_random = _similarity_df(df_cultures.sample(frac=1))
 similarity_batch_random = np.array(
     [
         _similarity_df(
-            df_cultures[df_cultures.index.get_level_values("batch") == batch]
+            df_cultures[df_cultures.index.get_level_values(index_names[0]) == batch]
         ).mean()
-        for batch in df_cultures.index.get_level_values("batch").unique()
+        for batch in df_cultures.index.get_level_values(index_names[0]).unique()
     ]
 ).flatten()
 similarity_same_day = np.array(
     [
         _similarity_df(
-            df_cultures[df_cultures.index.get_level_values("day") == day]
+            df_cultures[df_cultures.index.get_level_values(index_names[-1]) == day]
         ).mean()
-        for day in df_cultures.index.get_level_values("day").unique()
+        for day in df_cultures.index.get_level_values(index_names[-1]).unique()
     ]
 ).flatten()
 similarity_batch_day = np.array(
     [
         _similarity_df(
             df_cultures[
-                (df_cultures.index.get_level_values("day") == day)
-                & (df_cultures.index.get_level_values("batch") == batch)
+                (df_cultures.index.get_level_values(index_names[-1]) == day)
+                & (df_cultures.index.get_level_values(index_names[0]) == batch)
             ]
         ).mean()
-        for day in df_cultures.index.get_level_values("day").unique()
-        for batch in df_cultures.index.get_level_values("batch").unique()
+        for day in df_cultures.index.get_level_values(index_names[-1]).unique()
+        for batch in df_cultures.index.get_level_values(index_names[0]).unique()
     ]
 ).flatten()
 
@@ -295,7 +340,7 @@ fig.show()
 # %% plot a pie chart for each entry in df_cultures
 # position of the pie chart in the grid is determined by the day and i_culture
 print("Plotting pie charts...")
-for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
+for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
     colors = palette  #  sns.color_palette("Set1", n_colors=n_clusters)
     nrows = df_["i_culture"].max() + 1
     ncols = df_.index.get_level_values(column).max() + 1
@@ -305,7 +350,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
     for ax in axs.flatten():
         ax.axis("off")
     for index in df_.index:
-        i_day = index[2]
+        i_day = index[len(index_names) - 1]
         i_culture = df_.loc[index, "i_culture"]
         ax = axs[i_culture, i_day]
         ax.axis("on")
@@ -329,14 +374,14 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
 
     # write batches on the left
     batch_label_pos = np.linspace(0.04, 0.97, nrows, endpoint=True)[::-1]
-    for (batch, culture), row in unique_batch_culture.iterrows():
+    for index, row in unique_batch_culture.iterrows():
         i_culture = row["i_culture"]
         fig.text(
             0.05,
             batch_label_pos[i_culture],
             fontsize=12,
             va="center",
-            s=f"Batch {batch}",
+            s=f"Batch {index[0]}",
         )
 
     fig.legend(
@@ -391,15 +436,15 @@ def _cosine_similarity_df(df_selection, df_selection2=None):
     return similarities
 
 
-for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
+for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
     # print("Random across whole dataframe", _cosine_similarity_df(df_cultures).mean())
     similarity_random = _cosine_similarity_df(df_.sample(frac=1))
     similarity_batch_random = np.array(
         [
             _cosine_similarity_df(
-                df_[df_.index.get_level_values("batch") == batch]
+                df_[df_.index.get_level_values(index_names[0]) == batch]
             ).mean()
-            for batch in df_.index.get_level_values("batch").unique()
+            for batch in df_.index.get_level_values(index_names[0]).unique()
         ]
     ).flatten()
     similarity_same_day = np.array(
@@ -414,10 +459,10 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
                 _cosine_similarity_df(
                     df_[
                         (df_.index.get_level_values(column) == day)
-                        & (df_.index.get_level_values("batch") == batch)
+                        & (df_.index.get_level_values(index_names[0]) == batch)
                     ]
                 ).mean()
-                for batch in df_.index.get_level_values("batch").unique()
+                for batch in df_.index.get_level_values(index_names[0]).unique()
             ]
             for day in df_.index.get_level_values(column).unique().sort_values()
         ]
@@ -432,24 +477,27 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
                                 _cosine_similarity_df(
                                     df_[
                                         (df_.index.get_level_values(column) == day)
-                                        & (df_.index.get_level_values("batch") == batch)
+                                        & (
+                                            df_.index.get_level_values(index_names[0])
+                                            == batch
+                                        )
                                     ],
                                     df_[
                                         (df_.index.get_level_values(column) == day)
                                         & (
-                                            df_.index.get_level_values("batch")
+                                            df_.index.get_level_values(index_names[0])
                                             == batch2
                                         )
                                     ],
                                 ).mean()
                                 for batch2 in df_.index.get_level_values(
-                                    "batch"
+                                    index_names[0]
                                 ).unique()
                                 if batch2 != batch
                             ]
                         )
                     )
-                    for batch in df_.index.get_level_values("batch").unique()
+                    for batch in df_.index.get_level_values(index_names[0]).unique()
                 ]
                 for day in df_.index.get_level_values(column).unique().sort_values()
             ]
@@ -469,7 +517,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
 
     unique_days = sorted(df_.index.get_level_values(column).unique())
     n_days = len(unique_days)
-    batch_culture_pairs = df_.groupby(["batch", "culture"]).groups.keys()
+    batch_culture_pairs = df_.groupby([index_names[0], index_names[1]]).groups.keys()
 
     # Initialize an array filled with NaNs to ensure correct shape
     next_existing_day_similarity = np.full((n_days, len(batch_culture_pairs)), np.nan)
@@ -478,8 +526,8 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
     for idx, (batch, culture) in enumerate(batch_culture_pairs):
         # Select data for the current batch and culture
         group = df_[
-            (df_.index.get_level_values("batch") == batch)
-            & (df_.index.get_level_values("culture") == culture)
+            (df_.index.get_level_values(index_names[0]) == batch)
+            & (df_.index.get_level_values(index_names[1]) == culture)
         ]
         days = sorted(group.index.get_level_values(column).unique())
 
@@ -509,15 +557,14 @@ for df_, column in zip([df_cultures, df_cultures_weeks], ["day", "week"]):
     ax.set_ylabel("Similarity")
     fig.show()
 
-    match column:
-        case "day":
-            time_range = np.array(
-                df_.index.get_level_values(column).unique().sort_values()
-            )  #  np.arange(7, 35)
-        case "week":
-            time_range = np.arange(1, 5)
-        case _:
-            raise NotImplementedError(f"Unknown column: {column}")
+    if column == index_names[-1]:
+        time_range = np.array(
+            df_.index.get_level_values(column).unique().sort_values()
+        )  #  np.arange(7, 35)
+    elif column == "week":
+        time_range = np.arange(1, 5)
+    else:
+        raise NotImplementedError(f"Unknown column: {column}")
     fig, ax = plt.subplots(figsize=(10 * cm, 7 * cm), constrained_layout=True)
     sns.despine()
     ax.plot(

@@ -1,5 +1,4 @@
-import base64
-import io
+import os
 
 import dash
 import numpy as np
@@ -7,10 +6,10 @@ import pandas as pd
 import plotly.colors
 import plotly.express as px
 import plotly.graph_objs as go
-import seaborn as sns
 from dash import dcc, html
 from dash.dependencies import Input, Output
 
+from src.folders import get_fig_folder
 from src.persistence import (
     load_clustering_labels,
     load_df_bursts,
@@ -21,6 +20,7 @@ from src.persistence import (
 )
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
 from src.persistence.spike_times import get_kapucu_spike_times
+from src.plot import get_cluster_colors
 
 ###############################################################################
 #                           Parameters                                        #
@@ -56,7 +56,7 @@ embedding_type = ["tsne", "pca", "spectral"][0]
 #                           Prepare data                                      #
 ###############################################################################
 # define colors
-def get_cluster_colors(n_clusters_):
+"""def get_cluster_colors(n_clusters_):
     palette = sns.color_palette("Set1", n_colors=n_clusters_)
     cluster_colors = [palette[i - 1] for i in range(1, n_clusters_ + 1)]
     # convert colors to string (hex format)
@@ -64,10 +64,10 @@ def get_cluster_colors(n_clusters_):
         f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
         for c in cluster_colors
     ]
-    return cluster_colors
+    return cluster_colors"""
 
 
-cluster_colors = get_cluster_colors(n_clusters_current)
+# cluster_colors = get_cluster_colors(n_clusters_current)
 
 # get df_bursts and labels
 df_cultures = load_df_cultures(burst_extraction_params)
@@ -284,8 +284,6 @@ app.layout = html.Div(
             [
                 html.Div(
                     [
-                        html.Button("Download as PDF", id="download-button"),
-                        dcc.Download(id="download-pdf"),
                         # drop-down menu for selecting what to plot
                         dcc.Dropdown(
                             id="embedding-type",
@@ -318,6 +316,16 @@ app.layout = html.Div(
                             value=n_clusters_current,
                             tooltip={"placement": "bottom", "always_visible": True},
                             vertical=True,
+                        ),
+                        html.Button("Save to figures/", id="download-button"),
+                        # dcc.Download(id="download-pdf"),
+                        dcc.Dropdown(
+                            id="download-format",
+                            options=[
+                                {"label": "PDF", "value": "pdf"},
+                                {"label": "SVG", "value": "svg"},
+                            ],
+                            value="svg",
                         ),
                     ],
                     style={
@@ -355,12 +363,13 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("download-pdf", "data"),
+    # Output("download-pdf", "data"),
     Input("download-button", "n_clicks"),
     Input("tsne-plot", "figure"),
+    Input("download-format", "value"),
     prevent_initial_call=True,
 )
-def download_pdf(n_clicks, figure):
+def download_pdf(n_clicks, figure, format):
     ctx = dash.callback_context
 
     # Check if the download button was clicked
@@ -370,13 +379,31 @@ def download_pdf(n_clicks, figure):
     ):
         raise dash.exceptions.PreventUpdate
 
-    # Create a BytesIO buffer to hold the PDF data
-    pdf_buffer = io.BytesIO()
-    fig = go.Figure(figure)
-    fig.write_image(pdf_buffer, format="pdf")
-    pdf_data = base64.b64encode(pdf_buffer.getvalue()).decode("utf-8")
+    def _cm2px(cm):
+        return cm * 37.8
 
-    return dcc.send_bytes(lambda x: x.write(pdf_buffer.getvalue()), "figure.pdf")
+    # Create a BytesIO buffer to hold the PDF data
+    fig = go.Figure(figure)
+    fig.update_layout(
+        title=None,
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,  # Remove tick labels
+            ticks="",  # Remove ticks
+            title="",  # Remove axis title
+        ),
+        yaxis=dict(
+            showgrid=False, zeroline=False, showticklabels=False, ticks="", title=""
+        ),
+        font=dict(family="Helvetica", size=12),
+        width=_cm2px(8),
+        height=_cm2px(8),
+        showlegend=False,
+        margin=dict(l=0, r=0, t=0, b=0),
+    )
+    fig.write_image(os.path.join(get_fig_folder(), f"embedding.{format}"))
+    return
 
 
 @app.callback(

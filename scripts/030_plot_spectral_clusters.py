@@ -1,20 +1,25 @@
+import os
+
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+from src.folders import get_fig_folder
 from src.persistence import load_clustering_labels, load_df_bursts
+from src.plot import get_cluster_colors, make_cluster_legend
 
 # which clustering to plot
-n_clusters = 4
+n_clusters = 6
 col_cluster = f"cluster_{n_clusters}"
 
 # parameters which clustering to plot
 # parameters which clustering to evaluate
 burst_extraction_params = (
+    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
 )
 clustering_params = (
     # "agglomerating_clustering_linkage_complete"
@@ -130,7 +135,8 @@ ax.set_ylabel("Rate [Hz]")
 fig.show()
 
 # %% plot average burst per cluster
-fig, ax = plt.subplots()
+cm = 1 / 2.54
+fig, ax = plt.subplots(constrained_layout=True)
 fig.suptitle("Average burst per cluster")
 sns.despine()
 for i in range(n_clusters):
@@ -138,12 +144,17 @@ for i in range(n_clusters):
     ax.plot(
         df_bursts_i["burst"].mean(),
         # color from set1 palette
-        color=sns.color_palette("Set1")[i],
+        color=get_cluster_colors(n_clusters)[i],
         label=f"Cluster {i}",
         linewidth=2,
     )
-ax.legend()
+ax.legend(frameon=False)
 fig.show()
+
+fig.suptitle("")
+ax.get_legend().remove()
+fig.set_size_inches((4 * cm, 4 * cm))
+fig.savefig(os.path.join(get_fig_folder(), "average_bursts.svg"), transparent=True)
 
 # %% box plot of statistics (time_orig, time_extend, peak_height, integral)
 for stat in ["time_orig", "time_extend", "peak_height", "integral"]:
@@ -158,3 +169,16 @@ for stat in ["time_orig", "time_extend", "peak_height", "integral"]:
     #     ax.set_yscale("log")
 
     fig.show()
+
+# %% plot average burst per cluster
+cm = 1 / 2.54
+fig, ax = make_cluster_legend(n_clusters, n_cols=2, symbol="dot")
+fig.set_size_inches((4 * cm, 4 * cm))
+fig.show()
+
+fig.savefig(
+    os.path.join(get_fig_folder(), "cluster_legend.svg"),
+    transparent=True,
+    bbox_inches="tight",
+    pad_inches=0,
+)

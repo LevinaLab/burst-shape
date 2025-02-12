@@ -12,6 +12,7 @@ from sklearn.metrics import davies_bouldin_score
 from tqdm import tqdm
 
 from src import folders
+from src.folders import get_fig_folder
 from src.persistence import (
     load_burst_matrix,
     load_clustering_labels,
@@ -176,6 +177,7 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
     ax.set_xlabel("Number of clusters")
     ax.set_ylabel(ylabel)
     fig.show()
+    return fig
 
 
 # %% mutual information score
@@ -194,12 +196,13 @@ for i_n_cluster, n_clusters_ in tqdm(
             df_bursts.loc[idx_train, f"cluster_{n_clusters_}_cv_{i}"],
         )
 # plot n_clusters vs mutual information score
-_plot_score(
+fig = _plot_score(
     mi_score,
     ylabel="Mutual information score",
     score_abbreviation="MI",
     highlight="max",
 )
+fig.savefig(os.path.join(get_fig_folder(), "cv_mutual_info.svg"), transparent=True)
 
 # %% adjusted rand index (ARI)
 # this accounts for permutation of labels
@@ -217,9 +220,10 @@ for i_n_cluster, n_clusters_ in tqdm(
         )
 
 # plot n_clusters vs ARI
-_plot_score(
+fig = _plot_score(
     ari_score, ylabel="Adjusted Rand Index", score_abbreviation="ARI", highlight="max"
 )
+fig.savefig(os.path.join(get_fig_folder(), "cv_ARI.svg"), transparent=True)
 
 # %% Fowlkes-Mallows scores
 # this accounts for permutation of labels
@@ -235,12 +239,13 @@ for i_n_cluster, n_clusters_ in tqdm(
         )
 
 # plot n_clusters vs Fowlkes-Mallows score
-_plot_score(
+fig = _plot_score(
     fm_score,
     ylabel="Fowlkes-Mallows score",
     score_abbreviation="FM",
     highlight="max",
 )
+fig.savefig(os.path.join(get_fig_folder(), "cv_fowlkes_mallows.svg"), transparent=True)
 
 # %% Cross-validate with Davies-Bouldin index
 print("Computing Davies-Bouldin index...")
@@ -252,9 +257,10 @@ for i_n_cluster, n_clusters_ in tqdm(
         burst_matrix, df_bursts[f"cluster_{n_clusters_}"]
     )
 
-_plot_score(
+fig = _plot_score(
     db_scores, ylabel="Davies-Bouldin Score", score_abbreviation="DB", highlight="min"
 )
+fig.savefig(os.path.join(get_fig_folder(), "cv_db_euclidian.svg"), transparent=True)
 
 # %% Cross-validate with self-built Davies-Bouldin index
 if do_my_davies_bouldin:
@@ -299,9 +305,12 @@ if do_my_davies_bouldin:
         my_db_score[i_n_cluster] = _my_davies_bouldin_score(
             burst_matrix, distance_matrix_square, df_bursts[f"cluster_{n_clusters_}"]
         )
-    _plot_score(
+    fig = _plot_score(
         my_db_score,
         ylabel="Davies-Bouldin Score",
         score_abbreviation="DB",
         highlight="min",
+    )
+    fig.savefig(
+        os.path.join(get_fig_folder(), "cv_db_wasserstein.svg"), transparent=True
     )
