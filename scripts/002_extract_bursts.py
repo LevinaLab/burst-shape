@@ -15,9 +15,9 @@ from src.preprocess import burst_extraction
 params_burst_extraction = {
     "maxISIstart": 5,
     "maxISIb": 5,
-    "minBdur": 50,
-    "minIBI": 500,
-    "minSburst": 100,
+    "minBdur": 40,
+    "minIBI": 40,
+    "minSburst": 50,
     "bin_size": None,
     "n_bins": 50,
     "extend_left": 0,
@@ -26,7 +26,7 @@ params_burst_extraction = {
     "pad_right": False,
     "normalization": "integral",
     "min_length": 30,
-    # "min_firing_rate": 3162,  # 10 ** 3.5,
+    "min_firing_rate": 3162,  # 10 ** 3.5,
     "smoothing_kernel": 4,
 }
 
@@ -68,6 +68,9 @@ try:
     )
     df_bursts = df_bursts.drop(df_bursts.iloc[index_to_remove].name)
     burst_matrix = np.delete(burst_matrix, index_to_remove, axis=0)
+
+    index_to_remove_culture = df_bursts.iloc[index_to_remove].name[:3]
+    df_cultures.at[index_to_remove_culture, "n_bursts"] -= 1
 except AssertionError:
     print("Outlier not found. Continuing without removing outlier.")
 
