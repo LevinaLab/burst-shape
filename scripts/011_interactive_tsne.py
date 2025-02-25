@@ -19,7 +19,11 @@ from src.persistence import (
     load_tsne,
 )
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.spike_times import get_kapucu_spike_times
+from src.persistence.spike_times import (
+    get_hommersom_spike_times,
+    get_inhibblock_spike_times,
+    get_kapucu_spike_times,
+)
 from src.plot import get_cluster_colors
 
 ###############################################################################
@@ -30,18 +34,31 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
     # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 
-dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+elif "inhibblock" in burst_extraction_params:
+    dataset = "inhibblock"
+else:
+    dataset = "wagenaar"
+print(f"Detected dataset: {dataset}")
 
 clustering_params = (
     # "agglomerating_clustering_linkage_complete"
-    # "agglomerating_clustering_linkage_ward"
+    "agglomerating_clustering_linkage_ward"
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 clustering_type = clustering_params.split("_")[0]
 labels_params = None  #  needed for spectral clustering if not default "labels"
@@ -134,6 +151,16 @@ match dataset:
         df_bursts["batch_culture"] = (
             df_bursts["batch"].astype(str) + "-" + df_bursts["well_id"].astype(str)
         )
+    case "hommersom":
+        df_bursts["batch_culture"] = (
+            df_bursts["batch"].astype(str) + "-" + df_bursts["clone"].astype(str)
+        )
+    case "inhibblock":
+        df_bursts["batch_culture"] = (
+            df_bursts["drug_label"].astype(str) + "-" + df_bursts["div"].astype(str)
+        )
+    case _:
+        raise NotImplementedError(f"Dataset {dataset} not implemented.")
 
 # confirm burst_matrix and df_bursts["burst"] are the same
 # for i in range(len(burst_matrix)):
@@ -172,6 +199,8 @@ def update_tsne_plot(df_bursts):
             legend_title = "Cluster"
         case "batch":
             color = "batch"
+            if dataset == "inhibblock":
+                color = "drug_label"
             df_bursts[color] = df_bursts[color].astype(str)
             color_discrete_sequence = px.colors.qualitative.Set1
             match dataset:
@@ -179,8 +208,10 @@ def update_tsne_plot(df_bursts):
                     category_orders = {
                         color: sorted(df_bursts["batch"].unique(), key=int)
                     }
-                case "kapucu":
-                    category_orders = {color: sorted(df_bursts["batch"].unique())}
+                case "kapucu" | "hommersom" | "inhibblock":
+                    category_orders = {color: sorted(df_bursts[color].unique())}
+                case _:
+                    raise NotImplementedError(f"Dataset {dataset} not implemented.")
             legend_title = "Batch"
         case "batch_culture":
             color = "batch_culture"
@@ -194,10 +225,12 @@ def update_tsne_plot(df_bursts):
                             key=lambda x: (int(x.split("-")[0]), int(x.split("-")[1])),
                         )
                     }
-                case "kapucu":
+                case "kapucu" | "hommersom" | "inhibblock":
                     category_orders = {
                         color: sorted(df_bursts["batch_culture"].unique())
                     }
+                case _:
+                    raise NotImplementedError(f"Dataset {dataset} not implemented.")
             legend_title = "Batch-Culture"
         case "day":
             color = "day" if dataset == "wagenaar" else "DIV"
@@ -508,6 +541,38 @@ def update_timeseries(tsne_click_data, firing_rate_click_data):
                     ]
                 ]
             )
+        case "hommersom":
+            title = "Time series for " + ", ".join(
+                [
+                    f"{key}: {df_bursts.iloc[point_index][key]}"
+                    for key in [
+                        f"cluster_{n_clusters_current}",
+                        "batch",
+                        "clone",
+                        "well_idx",
+                        # "well_id",
+                        "start_orig",
+                        "time_orig",
+                    ]
+                ]
+            )
+        case "inhibblock":
+            title = "Time series for " + ", ".join(
+                [
+                    f"{key}: {df_bursts.iloc[point_index][key]}"
+                    for key in [
+                        f"cluster_{n_clusters_current}",
+                        "drug_label",
+                        "div",
+                        "well_idx",
+                        # "well_id",
+                        "start_orig",
+                        "time_orig",
+                    ]
+                ]
+            )
+        case _:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
     timeseries_fig = px.line(
         df_bursts.iloc[point_index]["burst"],
         title=title,
@@ -579,6 +644,34 @@ def update_raster(tsne_click_data, firing_rate_click_data):
             title_firing_rate = (
                 f"Firing rate for {culture_type} {mea_number}, {well_id}, DIV {div_day}"
             )
+        case "hommersom":
+            batch, clone, well_idx = list(
+                df_bursts.iloc[point_index][["batch", "clone", "well_idx"]]
+            )
+            st, gid = get_hommersom_spike_times(df_cultures, (batch, clone, well_idx))
+            df_plot = df_bursts[
+                (df_bursts["batch"] == batch)
+                & (df_bursts["clone"] == clone)
+                & (df_bursts["well_idx"] == well_idx)
+            ]
+            title_firing_rate = f"Firing rate for {batch} {clone}, well {well_idx}"
+        case "inhibblock":
+            drug_label, div, well_idx = list(
+                df_bursts.iloc[point_index][["drug_label", "div", "well_idx"]]
+            )
+            st, gid = get_inhibblock_spike_times(
+                df_cultures, (drug_label, div, well_idx)
+            )
+            df_plot = df_bursts[
+                (df_bursts["drug_label"] == drug_label)
+                & (df_bursts["div"] == div)
+                & (df_bursts["well_idx"] == well_idx)
+            ]
+            title_firing_rate = (
+                f"Firing rate for {drug_label}, div {div}, well {well_idx}"
+            )
+        case _:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
 
     # trace of firing rate
     bin_size = 100  # ms

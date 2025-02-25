@@ -19,3 +19,17 @@ def get_kapucu_spike_times(df_cultures, idx):
         df_cultures.at[idx, "times"] * 1000,
         df_cultures.at[idx, "gid"],
     )
+
+
+def get_hommersom_spike_times(df_cultures, idx):
+    return (
+        df_cultures.at[idx, "times"] * 1000,
+        df_cultures.at[idx, "gid"],
+    )
+
+
+def get_inhibblock_spike_times(df_cultures, idx):
+    return (
+        df_cultures.at[idx, "times"] * 1000,
+        df_cultures.at[idx, "gid"],
+    )

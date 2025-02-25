@@ -5,11 +5,24 @@ from matplotlib import pyplot as plt
 from src.persistence import load_df_bursts
 
 burst_extraction_params = (
-    # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
-dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+elif "inhibblock" in burst_extraction_params:
+    dataset = "inhibblock"
+else:
+    dataset = "wagenaar"
+print(f"Detected dataset: {dataset}")
 
 df_bursts = load_df_bursts(burst_extraction_params)
 df_bursts.reset_index(drop=False, inplace=True)
@@ -30,6 +43,16 @@ match dataset:
         )
         threshold = 10**2.5
         ax.axvline(np.log10(threshold), color="black", linestyle="--")
+    case "hommersom":
+        sns.histplot(
+            data=df_bursts, x="log_firing", bins=40, ax=ax, hue="clone"  # batch
+        )
+        # threshold = 10 ** 3.2
+        # ax.axvline(np.log10(threshold), color="black", linestyle="--")
+    case "inhibblock":
+        sns.histplot(data=df_bursts, x="log_firing", bins=100, ax=ax, hue="drug_label")
+    case _:
+        pass
 ax.set_xlabel("log10(firing rate)")
 ax.set_ylabel("count")
 # ax.set_xscale("log")

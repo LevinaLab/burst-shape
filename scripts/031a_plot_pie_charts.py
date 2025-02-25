@@ -12,15 +12,25 @@ from src.persistence import load_clustering_labels, load_df_bursts, load_df_cult
 from src.plot import get_cluster_colors
 
 # which clustering to plot
-n_clusters = 4
+n_clusters = 3
 col_cluster = f"cluster_{n_clusters}"
 
 # parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
-dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+elif "inhibblock" in burst_extraction_params:
+    dataset = "inhibblock"
+else:
+    dataset = "wagenaar"
+print(f"Detected dataset: {dataset}")
 
 clustering_params = (
     # "agglomerating_clustering_linkage_complete"
@@ -28,7 +38,10 @@ clustering_params = (
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -57,6 +70,12 @@ match dataset:
         index_names = ["culture_type", "mea_number", "well_id", "DIV"]
     case "wagenaar":
         index_names = ["batch", "culture", "day"]
+    case "hommersom":
+        index_names = ["batch", "clone", "well_idx"]
+    case "inhibblock":
+        index_names = ["drug_label", "div", "well_idx"]
+    case _:
+        raise NotImplementedError(f"Dataset {dataset} not implemented.")
 df_cultures_test = df_bursts.groupby(index_names).agg(
     n_bursts=pd.NamedAgg(column="i_burst", aggfunc="count")
 )
@@ -111,75 +130,28 @@ for i_cluster in range(n_clusters):
         f"cluster_abs_{i_cluster}"
     ] / df_cultures["n_bursts"].astype(float)
 
-"""# %% plot a pie chart for each entry in df_cultures
-# position of the pie chart in the grid is determined by the day and i_culture
-# colors = sns.color_palette("Set1", n_colors=n_clusters)
-colors = get_cluster_colors(n_clusters)
-nrows = df_cultures["i_culture"].max() + 1
-ncols = df_cultures.index.get_level_values("day").max() + 1
-fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 15))
-sns.despine(fig=fig, top=True, right=True, left=True, bottom=True)
-# set all axes to invisible
-for ax in axs.flatten():
-    ax.axis("off")
-for index in df_cultures.index:
-    i_day = index[2]
-    i_culture = df_cultures.loc[index, "i_culture"]
-    ax = axs[i_culture, i_day]
-    ax.axis("on")
-    # ax.set_title(f"Day {i_day} - Culture {i_culture}")
-    cluster_rel = [
-        df_cultures.loc[index, f"cluster_rel_{i_cluster}"]
-        for i_cluster in range(n_clusters)
-    ]
-    if df_cultures.at[index, "n_bursts"] == 0:
-        ax.pie([1], colors=["grey"], startangle=90)
-    else:
-        ax.pie(cluster_rel, colors=colors, startangle=90)
-
-# Add a shared x-axis for days
-for i_day in np.arange(ncols)[::2]:
-    ax = axs[-1, i_day]
-    ax.axis("on")
-    ax.set_xlabel(f"Day {i_day}", fontsize=12)
-    ax.xaxis.set_label_position("bottom")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.spines["left"].set_visible(False)
-    ax.spines["top"].set_visible(False)
-
-# write batches on the left
-batch_label_pos = np.linspace(0.04, 0.97, nrows, endpoint=True)[::-1]
-for (batch, culture), row in unique_batch_culture.iterrows():
-    i_culture = row["i_culture"]
-    fig.text(
-        0.05, batch_label_pos[i_culture], fontsize=12, va="center", s=f"Batch {batch}"
-    )
-
-fig.legend(
-    [f"Cluster {i_cluster}" for i_cluster in range(n_clusters)],
-    loc="center right",
-    frameon=False,
-)
-fig.tight_layout()
-fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
-fig.show()"""
-
 # %% plot a pie chart for each entry in df_cultures
 # position of the pie chart in the grid is determined by the day and i_culture
 # colors = sns.color_palette("Set1", n_colors=n_clusters)
+match dataset:
+    case "kapucu" | "wagenaar":
+        figsize = (15, 12)
+    case "hommersom":
+        figsize = (8, 6)
+    case "inhibblock":
+        figsize = (3, 5)
+    case _:
+        figsize = (15, 12)
+
 colors = get_cluster_colors(n_clusters)
 ncols = df_cultures["i_culture"].max() + 1
 row_day = (
-    df_cultures.index.get_level_values("day" if dataset == "wagenaar" else "DIV")
-    .unique()
-    .sort_values()
-    .to_list()
+    df_cultures.index.get_level_values(index_names[-1]).unique().sort_values().to_list()
 )
 # consider filling in missing days
 # nrows = df_cultures.index.get_level_values("day").max() + 1
 nrows = len(row_day)
-fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 12))
+fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
 sns.despine(fig=fig, top=True, right=True, left=True, bottom=True)
 
 # set all axes to invisible
@@ -191,7 +163,7 @@ for ax in axs.flatten():
     ax.spines["top"].set_visible(False)
     ax.pie([1], colors=["white"], startangle=90)
 for index in df_cultures.index:
-    i_day = row_day.index(index[2] if dataset == "wagenaar" else index[3])
+    i_day = row_day.index(index[len(index_names) - 1])
     i_culture = df_cultures.loc[index, "i_culture"]
     ax = axs[i_day, i_culture]
     ax.axis("on")
@@ -233,6 +205,12 @@ for (index), row in unique_batch_culture.iterrows():
             ax.set_title(
                 f"{culture_type}-{mea_number}-{well_id}", fontsize=12, rotation=90
             )
+        case "hommersom":
+            (batch, clone) = index
+            ax.set_title(f"{batch}-{clone}", fontsize=12, rotation=90)
+        case "inhibblock":
+            (drug_label, div) = index
+            ax.set_title(f"{drug_label}-{div}", fontsize=12, rotation=90)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.spines["left"].set_visible(False)

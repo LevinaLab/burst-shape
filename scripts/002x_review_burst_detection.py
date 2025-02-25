@@ -1,3 +1,5 @@
+from unittest import case
+
 import dash
 import numpy as np
 import pandas as pd
@@ -6,7 +8,11 @@ from dash import Input, Output, dcc, html
 from plotly.subplots import make_subplots
 
 from src.persistence import load_df_cultures
-from src.persistence.spike_times import get_kapucu_spike_times
+from src.persistence.spike_times import (
+    get_hommersom_spike_times,
+    get_inhibblock_spike_times,
+    get_kapucu_spike_times,
+)
 
 burst_extraction_params = (
     # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
@@ -14,19 +20,45 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
     # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+elif "inhibblock" in burst_extraction_params:
+    dataset = "inhibblock"
+else:
+    dataset = "wagenaar"
+print(f"Detected dataset: {dataset}")
 
-dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
+match dataset:
+    case "wagenaar":
+        pivot_index = ["batch", "culture"]
+        pivot_columns = "day"
+    case "kapucu":
+        pivot_index = ["culture_type", "mea_number", "well_id"]
+        pivot_columns = "DIV"
+    case "hommersom":
+        pivot_index = ["batch", "clone"]
+        pivot_columns = "well_idx"
+    case "inhibblock":
+        pivot_index = ["drug_label", "div"]
+        pivot_columns = "well_idx"
+    case _:
+        raise NotImplementedError(f"{dataset} dataset is not implemented.")
+
 df_cultures = load_df_cultures(burst_extraction_params)
 
 # unique culture_type - mea_number - well_id combinations
 pivot_table = pd.pivot_table(
     data=df_cultures,
-    index=["culture_type", "mea_number", "well_id"]
-    if dataset == "kapucu"
-    else ["batch", "culture"],
-    columns="DIV" if dataset == "kapucu" else "day",
+    index=pivot_index,
+    columns=pivot_columns,
     values="n_bursts",
     aggfunc="mean",
     fill_value=None,
@@ -43,6 +75,10 @@ colorscale = [
     [1e-5, "blue"],  # Zero values
     [1.1e-5, "yellow"],  # Start of gradient
     [1.0, "red"],  # End of gradient
+]
+colorscale_alternative = [
+    [0, "yellow"],
+    [1.0, "red"],
 ]
 
 # Dash App
@@ -77,7 +113,7 @@ def update_plot(click_data):
             z=z,
             x=days,
             y=subjects,
-            colorscale=colorscale,
+            colorscale=colorscale if z.min() == 0 else colorscale_alternative,
             showscale=True,  # Show color legend
             hoverongaps=False,  # Avoid hover info for empty cells
         )
@@ -97,9 +133,8 @@ def update_plot(click_data):
         div_day = int(x[1:])
         y = click_data["points"][0]["y"]  # Subject label
         index_select = y.split("-")
-        if dataset == "wagenaar":
-            index_select = [int(x) for x in index_select]
-        value = z[subjects.index(y)][days.index(x)]
+
+        # value = z[subjects.index(y)][days.index(x)]
         match dataset:
             case "kapucu":
                 selected_text = (
@@ -107,7 +142,15 @@ def update_plot(click_data):
                     f"mea_number {index_select[1]}, well_id {index_select[2]}"
                 )
             case "wagenaar":
+                index_select = [int(x) for x in index_select]
                 selected_text = f"Selected: day {div_day}, batch {index_select[0]}, culture {index_select[1]}"
+            case "hommersom":
+                selected_text = f"Selected: Batch {index_select[0]}, clone {index_select[1]}, well_idx {div_day}"
+            case "inhibblock":
+                index_select = (str(index_select[0]), int(index_select[1]))
+                selected_text = f"Selected: drug_label {index_select[0]}, div {index_select[1]}, well_idx {div_day}"
+            case _:
+                raise NotImplementedError(f"{dataset} dataset is not implemented.")
 
         # Add a black rectangle around the selected cell
         fig.add_shape(
@@ -143,9 +186,26 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
             )
             # st = np.array(st)
             st /= 1000  # convert to seconds
+        case "hommersom":
+            index = (*index_select, div_day)
+            st, gid = get_hommersom_spike_times(
+                df_cultures,
+                index,
+            )
+            # st = np.array(st)
+            st /= 1000  # convert to seconds
         case "wagenaar":
             index = (*index_select, div_day)
             st, gid = np.loadtxt("../data/extracted/%s-%s-%s.spk.txt" % index).T
+        case "inhibblock":
+            index = (*index_select, div_day)
+            st, gid = get_inhibblock_spike_times(
+                df_cultures,
+                index,
+            )
+            st /= 1000  # convert to seconds
+        case _:
+            raise NotImplementedError(f"{dataset} dataset is not implemented.")
 
     # trace of firing rate
     bin_size = 0.1  # s

@@ -5,6 +5,8 @@ _project_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _data_folder = "data"
 _data_kapucu_folder = "data_kapucu"
+_data_hommersom_folder = "data_hommersom"
+_data_inhibblock_folder = "data_inhibblock"
 _fig_folder = "figures"
 _results_folder = "results"
 
@@ -25,6 +27,24 @@ def get_data_kapucu_folder():
         str: path to the kapuca data folder
     """
     return os.path.join(get_data_folder(), _data_kapucu_folder)
+
+
+def get_data_hommersom_folder():
+    """Returns the path to the hommersom data folder.
+
+    Returns:
+        str: path to the hommersom data folder
+    """
+    return os.path.join(get_data_folder(), _data_hommersom_folder)
+
+
+def get_data_inhibblock_folder():
+    """Returns the path to the inhibblock data folder.
+
+    Returns:
+        str: path to the inhibblock data folder
+    """
+    return os.path.join(get_data_folder(), _data_inhibblock_folder)
 
 
 def get_fig_folder():

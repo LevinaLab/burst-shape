@@ -5,16 +5,22 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+import scipy.io as sio
 from tqdm import tqdm
 
-from src.folders import get_data_folder, get_data_kapucu_folder
+from src.folders import (
+    get_data_folder,
+    get_data_hommersom_folder,
+    get_data_inhibblock_folder,
+    get_data_kapucu_folder,
+)
 from src.preprocess import burst_detection
 
 na = np.array
 
 
 def extract_bursts(
-    dataset: Literal["kapucu", "wagenaar"] = "wagenaar",
+    dataset: Literal["kapucu", "wagenaar", "hommersom"] = "wagenaar",
     data_folder=None,
     maxISIstart=5,
     maxISIb=5,
@@ -73,6 +79,10 @@ def extract_bursts(
                 data_folder = os.path.join(get_data_folder(), "extracted")
             case "kapucu":
                 data_folder = get_data_kapucu_folder()
+            case "hommersom":
+                data_folder = get_data_hommersom_folder()
+            case _:
+                raise ValueError(f"Unknown dataset {dataset}.")
     match dataset:
         case "wagenaar":
             df_cultures = _get_data_from_file(data_folder)
@@ -87,7 +97,7 @@ def extract_bursts(
             )
         case "kapucu":
             df_cultures = _get_kapucu_data_from_file(data_folder)
-            df_cultures = _bursts_from_kapucu_culture(
+            df_cultures = _bursts_from_df_culture(
                 df_cultures,
                 data_folder,
                 maxISIstart,
@@ -100,7 +110,32 @@ def extract_bursts(
             df_cultures.set_index(
                 ["culture_type", "mea_number", "well_id", "DIV"], inplace=True
             )
-
+        case "hommersom":
+            df_cultures = _get_hommersom_data_from_file(data_folder)
+            df_cultures = _bursts_from_df_culture(
+                df_cultures,
+                data_folder,
+                maxISIstart,
+                maxISIb,
+                minBdur,
+                minIBI,
+                minSburst,
+            )
+        case "inhibblock":
+            df_cultures = pd.read_pickle(
+                os.path.join(get_data_inhibblock_folder(), "df_inhibblock.pkl")
+            )
+            df_cultures = _bursts_from_df_culture(
+                df_cultures,
+                data_folder,
+                maxISIstart,
+                maxISIb,
+                minBdur,
+                minIBI,
+                minSburst,
+            )
+        case _:
+            raise ValueError(f"Unknown dataset {dataset}.")
     df_bursts = _build_bursts_df(
         df_cultures,
         data_folder,
@@ -240,7 +275,7 @@ def _get_kapucu_data_from_file(data_folder):
     return df
 
 
-def _bursts_from_kapucu_culture(
+def _bursts_from_df_culture(
     df,
     data_folder,
     maxISIstart,
@@ -249,6 +284,11 @@ def _bursts_from_kapucu_culture(
     minIBI,
     minSburst,
 ):
+    """Detect bursts in df_culture.
+
+    df_cultures must have column "times" containing spike times in seconds.
+    Creates new columns "n_bursts", "burst_start_end"
+    """
     df["n_bursts"] = pd.Series(dtype=object)
     df["burst_start_end"] = pd.Series(dtype=object)
     for index in tqdm(df.index, desc="Compute burst times for each culture"):
@@ -264,6 +304,68 @@ def _bursts_from_kapucu_culture(
         df.at[index, "burst_start_end"] = bursts_start_end
     assert df["n_bursts"].sum() > 0, "No bursts found"
     return df
+
+
+def _get_hommersom_data_from_file(
+    data_folder,
+    fs=12500,  # samples per second
+):
+    print(f"Build dataframe from files in {data_folder}")
+    data = []
+    for root, _, files in os.walk(data_folder):
+        for file in files:
+            if file.endswith(".mat"):
+                relative_path = os.path.relpath(os.path.join(root, file), data_folder)
+                parts = relative_path.split(os.sep)
+
+                if len(parts) < 3:
+                    continue  # Skip files that don't fit the hierarchy
+
+                batch, clone, filename = parts[-3], parts[-2], parts[-1]
+                clone = clone.split("_")[-1]
+                if clone.islower():
+                    clone = clone.capitalize()
+                well_id = filename.split("_")[-1][:2]
+                data.append(
+                    {
+                        "batch": batch,
+                        "clone": clone,
+                        "well_id": well_id,
+                        "path": relative_path,
+                    }
+                )
+    df_cultures = pd.DataFrame(data)
+    del data
+    # transform well_id to well_idx
+    df_cultures["well_idx"] = pd.Series(0, dtype=int)
+    for row in df_cultures[["batch", "clone"]].drop_duplicates().itertuples():
+        batch, clone = row.batch, row.clone
+        n_wells = len(
+            df_cultures.loc[
+                (df_cultures["batch"] == batch) & (df_cultures["clone"] == clone)
+            ]
+        )
+        df_cultures.loc[
+            (df_cultures["batch"] == batch) & (df_cultures["clone"] == clone),
+            "well_idx",
+        ] = list(range(n_wells))
+    df_cultures["well_idx"] = df_cultures["well_idx"].astype(int)
+    df_cultures.set_index(["batch", "clone", "well_idx"], inplace=True)
+
+    df_cultures["times"] = pd.Series(dtype=object)
+    df_cultures["gid"] = pd.Series(dtype=object)
+    for index in tqdm(df_cultures.index, desc="Loading files"):
+        data = sio.loadmat(os.path.join(data_folder, df_cultures.at[index, "path"]))
+        data = data["Ts_AP"]
+        times_order = np.argsort(data[:, 1])
+        data = data[times_order]
+        gid = data[:, 0]
+        st = data[:, 1]
+        st = st / fs
+        df_cultures.at[index, "times"] = st
+        df_cultures.at[index, "gid"] = gid
+    print("Done")
+    return df_cultures
 
 
 def _build_bursts_df(
@@ -330,8 +432,10 @@ def _build_bursts_df(
                 file_name = df_cultures.at[index, "file_name"]
                 file_path = os.path.join(data_folder, file_name)
                 data = np.loadtxt(file_path)[:, 0] * 1000
-            case "kapucu":
+            case "kapucu" | "hommersom" | "inhibblock":
                 data = df_cultures.at[index, "times"] * 1000
+            case _:
+                raise NotImplementedError(f"Dataset {dataset} not implemented")
         if bin_size is not None:
             time_max = np.max(data)
             bins = np.arange(0, time_max + bin_size, bin_size)

@@ -15,11 +15,13 @@ from src.persistence import (
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
 
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 agglomerating_clustering_params = (
     None  # not plotting labels
@@ -27,7 +29,9 @@ agglomerating_clustering_params = (
     # "agglomerating_clustering_linkage_ward"
 )
 spectral_clustering_params = (  # required for spectral embedding initialization
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 tsne_params = {
     "initialization": ["pca", "spectral"][0],

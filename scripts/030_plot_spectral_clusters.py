@@ -9,17 +9,19 @@ from src.persistence import load_clustering_labels, load_df_bursts
 from src.plot import get_cluster_colors, make_cluster_legend
 
 # which clustering to plot
-n_clusters = 6
+n_clusters = 4
 col_cluster = f"cluster_{n_clusters}"
 
 # parameters which clustering to plot
 # parameters which clustering to evaluate
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 clustering_params = (
     # "agglomerating_clustering_linkage_complete"
@@ -27,7 +29,10 @@ clustering_params = (
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split

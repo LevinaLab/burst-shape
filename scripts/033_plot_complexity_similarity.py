@@ -19,9 +19,16 @@ col_cluster = f"cluster_{n_clusters}"
 # parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
-dataset = "kapucu" if "kapucu" in burst_extraction_params else "wagenaar"
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+else:
+    dataset = "wagenaar"
+print(f"Detected dataset: {dataset}")
 
 clustering_params = (
     # "agglomerating_clustering_linkage_complete"
@@ -29,7 +36,8 @@ clustering_params = (
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
 )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -52,11 +60,14 @@ df_bursts = load_df_bursts(burst_extraction_params)
 np.random.seed(0)
 
 match dataset:
-    case "wagenaar":
-        index_names = ["batch", "culture", "day"]
     case "kapucu":
         index_names = ["culture_type", "mea_number", "well_id", "DIV"]
-
+    case "wagenaar":
+        index_names = ["batch", "culture", "day"]
+    case "hommersom":
+        index_names = ["batch", "clone", "well_idx"]
+    case _:
+        raise NotImplementedError(f"Dataset {dataset} not implemented.")
 # %% get clusters from linkage
 # print("Getting clusters from linkage...")
 # labels = get_agglomerative_labels(
