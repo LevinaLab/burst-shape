@@ -9,7 +9,7 @@ import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.cluster.hierarchy import  fcluster
+from scipy.cluster.hierarchy import fcluster
 from tqdm import tqdm
 
 from src.persistence import load_df_bursts
@@ -17,10 +17,10 @@ from src.persistence.burst_extraction import _get_burst_folder
 
 
 def get_sequence_df():
-    burst_extraction_params = (
-        "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    agglomerating_clustering_params = (
+        "agglomerating_clustering_linkage_complete_n_bursts_None"
     )
-    agglomerating_clustering_params = "agglomerating_clustering_linkage_complete_n_bursts_None"
     np.random.seed(0)
 
     # plot settings
@@ -66,7 +66,9 @@ def get_sequence_df():
     )
 
     # for all unique combinations of batch and culture
-    unique_batch_culture = df_cultures.reset_index()[["batch", "culture"]].drop_duplicates()
+    unique_batch_culture = df_cultures.reset_index()[
+        ["batch", "culture"]
+    ].drop_duplicates()
     # sort by batch and culture
     unique_batch_culture.sort_values(["batch", "culture"], inplace=True)
     # assign an index to each unique combination
@@ -76,7 +78,9 @@ def get_sequence_df():
     df_cultures["i_culture"] = pd.Series(
         data=(
             df_cultures.reset_index().apply(
-                lambda x: unique_batch_culture.loc[(x["batch"], x["culture"]), "i_culture"],
+                lambda x: unique_batch_culture.loc[
+                    (x["batch"], x["culture"]), "i_culture"
+                ],
                 axis=1,
             )
         ).values,
@@ -92,8 +96,7 @@ def get_sequence_df():
         assert df_select.index.is_monotonic_increasing
         assert df_select["start_orig"].is_monotonic_increasing
         df_cultures.at[index, "sequence"] = df_select["cluster"].to_list()
-        
-        
+
     return df_cultures
 
 
@@ -101,34 +104,33 @@ def get_transition_matrix(states, num_clusters):
     M_trans = np.zeros((num_clusters, num_clusters))
 
     for i in range(1, len(states)):
-        M_trans[states[i-1] - 1][states[i]-1] += 1
+        M_trans[states[i - 1] - 1][states[i] - 1] += 1
 
-    return M_trans / np.maximum(np.sum(M_trans, axis = 0)[:, np.newaxis], 1)
+    return M_trans / np.maximum(np.sum(M_trans, axis=0)[:, np.newaxis], 1)
 
 
-def get_permutation_mean_std(S, num_clusters, its = 150):
-    
+def get_permutation_mean_std(S, num_clusters, its=150):
     its = its
     Perm_tr = np.zeros((num_clusters, num_clusters, its))
-    
+
     for i in range(its):
         S_shuffled = sample(S, len(S))
-        Perm_tr[:, :, i] = get_transition_matrix(states = S_shuffled, num_clusters = num_clusters)
-        
-    
-    return np.mean(Perm_tr, axis = 2), np.std(Perm_tr, axis = 2)
+        Perm_tr[:, :, i] = get_transition_matrix(
+            states=S_shuffled, num_clusters=num_clusters
+        )
 
-    
+    return np.mean(Perm_tr, axis=2), np.std(Perm_tr, axis=2)
+
+
 def z_score_matrix(P_tr, mu, std):
-    return (P_tr - mu)/std
+    return (P_tr - mu) / std
 
 
-def get_sequence_z_score(df, batch, culture, day, num_clusters = 5):
-    
-    S = df['sequence'][batch][culture][day]
-    
-    P_tr = get_transition_matrix(states = S, num_clusters = num_clusters)
-    
+def get_sequence_z_score(df, batch, culture, day, num_clusters=5):
+    S = df["sequence"][batch][culture][day]
+
+    P_tr = get_transition_matrix(states=S, num_clusters=num_clusters)
+
     mu, std = get_permutation_mean_std(S, num_clusters)
-    
+
     return z_score_matrix(P_tr, mu, std)
