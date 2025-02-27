@@ -81,6 +81,8 @@ colorscale_alternative = [
     [1.0, "red"],
 ]
 
+colors_bursts = ["red", "blue", "green"]  # Define three alternating colors
+
 # Dash App
 app = dash.Dash(__name__)
 
@@ -216,7 +218,7 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
     fig_whole = make_subplots(rows=2, cols=1, shared_xaxes=True, x_title="Time [s]")
     # line plot of firing rate in black
     fig_whole.add_trace(
-        go.Scatter(
+        go.Scattergl(
             x=times_all,
             y=firing_rate,
             mode="lines",
@@ -227,29 +229,32 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
         1,
     )
 
-    color = "red"
-    for row, y_max in zip([1, 2], [max(firing_rate), max(gid)]):
-        x_coords, y_coords = [], []
-        for (start, end), _ in zip(
-            df_cultures.at[index, "burst_start_end"],
-            range(df_cultures.at[index, "n_bursts"]),
-        ):
-            x_coords.extend([start / 1000, start / 1000, end / 1000, end / 1000])
-            y_coords.extend([0, y_max, y_max, 0])
-        fig_whole.add_trace(
-            go.Scatter(
-                x=x_coords,
-                y=y_coords,
-                mode="lines",
-                line=dict(color=color, width=2),
-                fill="toself",
-                fillcolor=color,
-                opacity=0.5,
-                name="Burst",
-                hoverinfo="x+name",
-                # customdata=list(range(df_cultures.at[index, "n_bursts"])),
+    for row, y_min, y_max in zip([1, 2], [0, min(gid)], [max(firing_rate), max(gid)]):
+        x_coords_list, y_coords_list, color_list = [], [], []
+        for i, ((start, end), _) in enumerate(
+            zip(
+                df_cultures.at[index, "burst_start_end"],
+                range(df_cultures.at[index, "n_bursts"]),
             )
-        )
+        ):
+            color = colors_bursts[i % len(colors_bursts)]  # Cycle through the three colors
+            x_coords = [start / 1000, start / 1000, end / 1000, end / 1000]
+            y_coords = [y_min, y_max, y_max, y_min]
+            fig_whole.add_trace(
+                go.Scattergl(
+                    x=x_coords,
+                    y=y_coords,
+                    mode="lines",
+                    line=dict(color=color, width=2),
+                    fill="toself",
+                    fillcolor=color,
+                    opacity=0.5,
+                    name=f"Burst {i + 1}",
+                    hoverinfo="x+name",
+                ),
+                row=row,
+                col=1,
+            )
 
     fig_whole.add_trace(
         go.Scattergl(
