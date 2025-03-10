@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from src.persistence import load_df_bursts, load_df_cultures
+from src.utils.classical_features import get_classical_features
 
 ###############################################################################
 #                           Parameters                                        #
@@ -100,3 +101,9 @@ for index in tqdm(df_cultures.index):
     df_cultures.at[index, "avg_firing_rate"] = df_bursts_select["firing_rate"].mean()
 
 _plot(df_cultures, ["avg_burst_duration", "avg_firing_rate"])
+
+
+# %% classical features as in van Hugte et al.
+df_cultures, features = get_classical_features(df_cultures, df_bursts)
+
+_plot(df_cultures, features)

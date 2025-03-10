@@ -1,13 +1,15 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from src.folders import get_fig_folder
 from src.persistence import load_df_bursts, load_df_cultures
+from src.plot import get_group_colors, prepare_plotting
 
-# which clustering to plot
-n_clusters = 3
-col_cluster = f"cluster_{n_clusters}"
+cm = prepare_plotting()
 
 # parameters which clustering to plot
 burst_extraction_params = (
@@ -35,6 +37,8 @@ df_bursts = load_df_bursts(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
 
 # %% get average burst_shapes
+group_column = None
+group_labels = None
 match dataset:
     case "kapucu":
         index_names = ["culture_type", "mea_number", "well_id", "DIV"]
@@ -42,36 +46,64 @@ match dataset:
         index_names = ["batch", "culture", "day"]
     case "hommersom":
         index_names = ["batch", "clone", "well_idx"]
+        group_column = "clone"
     case "inhibblock":
         index_names = ["drug_label", "div", "well_idx"]
+        group_labels = {
+            "bic": "BIC",
+            "control": "Contr.",
+        }
     case _:
         raise NotImplementedError(f"Dataset {dataset} not implemented.")
+if group_column is None:
+    group_column = index_names[0]
 
 df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
     avg_burst=pd.NamedAgg(column="burst", aggfunc="mean")
 )
 # %% plot average burst shape per group
 background = [None, "cultures", "burst"][0]
-cm = 1 / 2.54
-fig, ax = plt.subplots(constrained_layout=True)  # , figsize=(5 * cm, 5 * cm))
+fig, ax = plt.subplots(figsize=(7 * cm, 3.5 * cm), constrained_layout=True)
 sns.despine()
-for i, group in enumerate(df_cultures.index.get_level_values(index_names[0]).unique()):
-    df_group = df_cultures.loc[group, "avg_burst"]
+for i, group in enumerate(df_cultures.index.get_level_values(group_column).unique()):
+    color = (
+        get_group_colors(dataset)[group]
+        if get_group_colors(dataset) is not None
+        else f"C{i}"
+    )
+    df_group = df_cultures[df_cultures.index.get_level_values(group_column) == group][
+        "avg_burst"
+    ]
+    label = group_labels[group] if group_labels is not None else group
     match background:
         case "cultures":
             for value in df_group:
-                ax.plot(value, color=f"C{i}", alpha=0.5, linewidth=0.5, zorder=1)
+                ax.plot(value, color=color, alpha=0.5, linewidth=0.5, zorder=1)
         case "burst":
-            df_bursts_group = df_bursts.loc[group, "burst"]
+            df_bursts_group = df_bursts[
+                df_bursts.index.get_level_values(group_column) == group
+            ]["burst"]
             for value in df_bursts_group:
-                ax.plot(value, color=f"C{i}", alpha=0.01, linewidth=0.5, zorder=1)
+                ax.plot(value, color=color, alpha=0.01, linewidth=0.5, zorder=1)
         case _:
             pass
-    ax.plot(df_group.mean(), color=f"C{i}", linewidth=5, label=group)
+    ax.plot(df_group.mean(), color=color, linewidth=2, label=label)
 ax.set_xlabel("Time [a.u.]")
 ax.set_ylabel("Firing rate [a.u.]")
-fig.legend(frameon=False)
+ax.yaxis.set_label_coords(-0.32, 0.4)
+ax.set_xticks([0, 25, 50])
+ax.legend(
+    frameon=False,
+    loc="upper left",
+    bbox_to_anchor=(0.9, 1.2),
+    handlelength=1,
+)
+# fig.tight_layout()
 fig.show()
+fig.savefig(
+    os.path.join(get_fig_folder(), f"{dataset}_group_average_burst.svg"),
+    transparent=True,
+)
 # %% prepare df_cultures indices for plot
 
 # for all unique combinations of batch and culture
@@ -138,19 +170,18 @@ for index in df_cultures.index:
     if df_cultures.at[index, "n_bursts"] == 0:
         pass
     else:
-        color = "black"
-        if dataset == "inhibblock":
-            if index[0] == "bic":
-                color = "C1"
-            else:
-                color = "C0"
+        color = (
+            get_group_colors(dataset)[index[0]]
+            if get_group_colors(dataset) is not None
+            else "black"
+        )
         ax.plot(df_cultures.at[index, "avg_burst"], color=color)
 
 # Add a shared y-axis for days
 for i_day, day in enumerate(row_day):
     ax = axs[i_day, 0]
     ax.axis("on")
-    ax.set_ylabel(f"{day}", fontsize=12, rotation=0)
+    ax.set_ylabel(f"{day}", rotation=0)
     # ax.xaxis.set_label_position("bottom")
     ax.set_xticks([])
     ax.set_yticks([])
@@ -166,18 +197,16 @@ for (index), row in unique_batch_culture.iterrows():
     match dataset:
         case "wagenaar":
             (batch, culture) = index
-            ax.set_title(f"{batch}-{culture}", fontsize=12)
+            ax.set_title(f"{batch}-{culture}")
         case "kapucu":
             (culture_type, mea_number, well_id) = index
-            ax.set_title(
-                f"{culture_type}-{mea_number}-{well_id}", fontsize=12, rotation=90
-            )
+            ax.set_title(f"{culture_type}-{mea_number}-{well_id}", rotation=90)
         case "hommersom":
             (batch, clone) = index
-            ax.set_title(f"{batch}-{clone}", fontsize=12, rotation=90)
+            ax.set_title(f"{batch}-{clone}", rotation=90)
         case "inhibblock":
             (drug_label, div) = index
-            ax.set_title(f"{drug_label}-{div}", fontsize=12, rotation=90)
+            ax.set_title(f"{drug_label}-{div}", rotation=90)
     ax.set_xticks([])
     ax.set_yticks([])
     # ax.spines["left"].set_visible(False)

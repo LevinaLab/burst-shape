@@ -9,11 +9,11 @@ from tqdm import tqdm
 
 from src.folders import get_fig_folder
 from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
-from src.plot import get_cluster_colors
+from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
 
-# which clustering to plot
-n_clusters = 3
-col_cluster = f"cluster_{n_clusters}"
+cm = prepare_plotting()
+
+plot_subset = True
 
 # parameters which clustering to plot
 burst_extraction_params = (
@@ -24,13 +24,20 @@ burst_extraction_params = (
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
+    n_clusters = 4
 elif "hommersom" in burst_extraction_params:
     dataset = "hommersom"
+    n_clusters = 4
 elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
+    n_clusters = 4
 else:
     dataset = "wagenaar"
+    n_clusters = 6
 print(f"Detected dataset: {dataset}")
+
+# which clustering to plot
+col_cluster = f"cluster_{n_clusters}"
 
 clustering_params = (
     # "agglomerating_clustering_linkage_complete"
@@ -96,7 +103,57 @@ except AssertionError:  # TODO delete legacy code
     df_cultures = df_cultures_test
 del df_cultures_test
 
-# for all unique combinations of batch and culture
+# %% subsample
+if plot_subset is True:
+    match dataset:
+        case "wagenaar":
+            df_cultures = df_cultures[df_cultures.index.get_level_values("day") >= 10]
+            df_cultures = df_cultures[df_cultures.index.get_level_values("day") <= 26]
+            list_batch_culture = [
+                (1, 1),
+                (1, 2),
+                (1, 3),
+                (2, 3),
+                (2, 4),
+                (2, 5),
+                (3, 1),
+                (3, 3),
+                (3, 4),
+            ]
+            df_cultures = df_cultures[
+                [
+                    (batch, culture) in list_batch_culture
+                    for batch, culture in zip(
+                        df_cultures.index.get_level_values("batch"),
+                        df_cultures.index.get_level_values("culture"),
+                    )
+                ]
+            ]
+        case "kapucu":
+            df_cultures = df_cultures[df_cultures.index.get_level_values("DIV") >= 7]
+            df_cultures = df_cultures[df_cultures.index.get_level_values("DIV") <= 45]
+            list_select = [
+                ("Rat", "MEA1", "A1"),
+                ("Rat", "MEA1", "A2"),
+                ("Rat", "MEA1", "A3"),
+                ("Rat", "MEA1", "A4"),
+                ("hPSC", "MEA1", "A3"),
+                ("hPSC", "MEA1", "A4"),
+                ("hPSC", "MEA2", "A3"),
+                ("hPSC", "MEA2", "A4"),
+            ]
+            df_cultures = df_cultures[
+                [
+                    (culture_type, mea_number, well_id) in list_select
+                    for culture_type, mea_number, well_id in zip(
+                        df_cultures.index.get_level_values("culture_type"),
+                        df_cultures.index.get_level_values("mea_number"),
+                        df_cultures.index.get_level_values("well_id"),
+                    )
+                ]
+            ]
+
+# %% for all unique combinations of batch and culture
 unique_batch_culture = df_cultures.reset_index()[index_names[:-1]].drop_duplicates()
 # sort by batch and culture
 unique_batch_culture.sort_values(index_names[:-1], inplace=True)
@@ -134,12 +191,20 @@ for i_cluster in range(n_clusters):
 # position of the pie chart in the grid is determined by the day and i_culture
 # colors = sns.color_palette("Set1", n_colors=n_clusters)
 match dataset:
-    case "kapucu" | "wagenaar":
-        figsize = (15, 12)
+    case "kapucu":
+        if plot_subset is True:
+            figsize = (4.5 * cm, 7 * cm)
+        else:
+            figsize = (12 * cm, 10 * cm)
+    case "wagenaar":
+        if plot_subset is True:
+            figsize = (6 * cm, 8 * cm)
+        else:
+            figsize = (12 * cm, 10 * cm)
     case "hommersom":
         figsize = (8, 6)
     case "inhibblock":
-        figsize = (3, 5)
+        figsize = (3.5 * cm, 9 * cm)
     case _:
         figsize = (15, 12)
 
@@ -183,7 +248,8 @@ for index in df_cultures.index:
 for i_day, day in enumerate(row_day):
     ax = axs[i_day, 0]
     ax.axis("on")
-    ax.set_ylabel(f"{day}", fontsize=12, rotation=0)
+    ax.set_ylabel(f"{day}", rotation=0)
+    ax.yaxis.set_label_coords(-0.5, 0.1)
     # ax.xaxis.set_label_position("bottom")
     ax.set_xticks([])
     ax.set_yticks([])
@@ -199,27 +265,38 @@ for (index), row in unique_batch_culture.iterrows():
     match dataset:
         case "wagenaar":
             (batch, culture) = index
-            ax.set_title(f"{batch}-{culture}", fontsize=12)
+            ax.set_title(
+                f"{batch}-{culture}",
+                rotation=90,
+                fontsize=10,
+                color=get_group_colors(dataset)[batch],
+            )
         case "kapucu":
             (culture_type, mea_number, well_id) = index
+            # ax.set_title(f"{culture_type}-{mea_number}-{well_id}", rotation=90)
             ax.set_title(
-                f"{culture_type}-{mea_number}-{well_id}", fontsize=12, rotation=90
+                f"{culture_type}",
+                rotation=90,
+                fontsize=10,
+                color=get_group_colors(dataset)[(culture_type, mea_number)],
             )
         case "hommersom":
             (batch, clone) = index
-            ax.set_title(f"{batch}-{clone}", fontsize=12, rotation=90)
+            ax.set_title(f"{batch}-{clone}", rotation=90)
         case "inhibblock":
             (drug_label, div) = index
-            ax.set_title(f"{drug_label}-{div}", fontsize=12, rotation=90)
+            drug_str = "BIC" if drug_label == "bic" else "Contr."
+            # ax.set_title(f"{drug_label}-{div}", rotation=90, fontsize=10, color=get_group_colors(dataset)[drug_label])
+            ax.set_title(
+                f"{drug_str} ({div})",
+                rotation=90,
+                fontsize=10,
+                color=get_group_colors(dataset)[drug_label],
+            )
     ax.set_xticks([])
     ax.set_yticks([])
     ax.spines["left"].set_visible(False)
     ax.spines["top"].set_visible(False)
-"""fig.legend(
-    [f"Cluster {i_cluster}" for i_cluster in range(n_clusters)],
-    loc="center right",
-    frameon=False,
-)"""
 fig.tight_layout()
 fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
 fig.show()

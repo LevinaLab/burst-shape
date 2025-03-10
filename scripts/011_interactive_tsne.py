@@ -72,20 +72,6 @@ embedding_type = ["tsne", "pca", "spectral"][0]
 ###############################################################################
 #                           Prepare data                                      #
 ###############################################################################
-# define colors
-"""def get_cluster_colors(n_clusters_):
-    palette = sns.color_palette("Set1", n_colors=n_clusters_)
-    cluster_colors = [palette[i - 1] for i in range(1, n_clusters_ + 1)]
-    # convert colors to string (hex format)
-    cluster_colors = [
-        f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
-        for c in cluster_colors
-    ]
-    return cluster_colors"""
-
-
-# cluster_colors = get_cluster_colors(n_clusters_current)
-
 # get df_bursts and labels
 df_cultures = load_df_cultures(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
@@ -199,8 +185,20 @@ def update_tsne_plot(df_bursts):
             legend_title = "Cluster"
         case "batch":
             color = "batch"
-            if dataset == "inhibblock":
-                color = "drug_label"
+            match dataset:
+                case "inhibblock":
+                    color = "drug_label"
+                    color_discrete_map = get_group_colors(dataset)
+                case "wagenaar":
+                    color_discrete_map_load = get_group_colors(dataset)
+                    color_discrete_map = {}
+                    for key, value in color_discrete_map_load.items():
+                        color_discrete_map[str(key)] = value
+                case "kapucu":
+                    color_discrete_map_load = get_group_colors(dataset)
+                    color_discrete_map = {}
+                    for key, value in color_discrete_map_load.items():
+                        color_discrete_map["-".join(key)] = value
             df_bursts[color] = df_bursts[color].astype(str)
             color_discrete_sequence = px.colors.qualitative.Set1
             match dataset:
@@ -435,6 +433,7 @@ def download_pdf(n_clicks, figure, format):
         showlegend=False,
         margin=dict(l=0, r=0, t=0, b=0),
     )
+    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     fig.write_image(os.path.join(get_fig_folder(), f"embedding.{format}"))
     return
 

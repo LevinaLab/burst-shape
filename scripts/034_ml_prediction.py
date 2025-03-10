@@ -1,0 +1,424 @@
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import auc, roc_curve
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder, StandardScaler
+
+from src import folders
+from src.folders import get_fig_folder
+from src.persistence import (
+    load_burst_matrix,
+    load_clustering_labels,
+    load_df_bursts,
+    load_df_cultures,
+)
+from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
+from src.utils.classical_features import get_classical_features
+
+cm = prepare_plotting()
+
+# Choose whether to predict from clusters or classical features
+select_data_column = ["clusters", "classical"][0]
+
+# parameters which clustering to plot
+burst_extraction_params = (
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+)
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+    n_clusters = 4
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+    n_clusters = 4
+elif "inhibblock" in burst_extraction_params:
+    dataset = "inhibblock"
+    n_clusters = 4
+else:
+    dataset = "wagenaar"
+    n_clusters = 6
+print(f"Detected dataset: {dataset}")
+
+# which clustering to plot
+col_cluster = f"cluster_{n_clusters}"
+
+clustering_params = (
+    # "agglomerating_clustering_linkage_complete"
+    # "agglomerating_clustering_linkage_ward"
+    # "agglomerating_clustering_linkage_average"
+    # "agglomerating_clustering_linkage_single"
+    # "spectral_affinity_precomputed_metric_wasserstein"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+)
+labels_params = "labels"
+cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
+cv_split = (
+    None  # set to None for plotting the whole clustering, set to int for specific split
+)
+
+np.random.seed(0)
+
+# plot settings
+# n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index
+
+# plotting
+cm = 1 / 2.54  # centimeters in inches
+fig_path = folders.get_fig_folder()
+
+# load bursts
+burst_matrix = load_burst_matrix(burst_extraction_params)
+df_bursts = load_df_bursts(burst_extraction_params)
+np.random.seed(0)
+
+match dataset:
+    case "kapucu":
+        index_names = ["culture_type", "mea_number", "well_id", "DIV"]
+    case "wagenaar":
+        index_names = ["batch", "culture", "day"]
+    case "hommersom":
+        index_names = ["batch", "clone", "well_idx"]
+    case "inhibblock":
+        index_names = ["drug_label", "div", "well_idx"]
+    case _:
+        raise NotImplementedError(f"Dataset {dataset} not implemented.")
+# %% get clusters from linkage
+# print("Getting clusters from linkage...")
+# labels = get_agglomerative_labels(
+#     n_clusters, burst_extraction_params, agglomerating_clustering_params
+# )
+clustering = load_clustering_labels(
+    clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
+)
+df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
+
+# Define a color palette for the clusters
+# palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
+# cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
+# convert colors to string (hex format)
+# cluster_colors = [
+#     f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
+#     for c in cluster_colors
+# ]
+palette = get_cluster_colors(n_clusters)
+cluster_colors = get_cluster_colors(n_clusters)
+
+
+# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+print("Building df_cultures...")
+df_bursts_reset = df_bursts.reset_index(
+    drop=False
+)  # reset index to access columns in groupby()
+df_cultures = df_bursts_reset.groupby(index_names).agg(
+    n_bursts=pd.NamedAgg(column="i_burst", aggfunc="count")
+)
+
+# for all unique combinations of batch and culture
+unique_batch_culture = df_cultures.reset_index()[index_names[:-1]].drop_duplicates()
+# sort by batch and culture
+unique_batch_culture.sort_values(index_names[:-1], inplace=True)
+# assign an index to each unique combination
+unique_batch_culture["i_culture"] = np.arange(len(unique_batch_culture))  # [::-1]
+unique_batch_culture.set_index(index_names[:-1], inplace=True)
+
+df_cultures["i_culture"] = pd.Series(
+    data=(
+        df_cultures.reset_index().apply(
+            lambda x: unique_batch_culture.loc[
+                tuple(
+                    [x[index_label] for index_label in index_names[:-1]]
+                ),  # (x["batch"], x["culture"]),
+                "i_culture",
+            ],
+            axis=1,
+        )
+    ).values,
+    index=df_cultures.index,
+    dtype=int,
+)
+
+# dd cluster information
+for i_cluster in range(1, n_clusters + 1):
+    col_cluster = "cluster"
+    df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(index_names)[
+        col_cluster
+    ].agg(lambda x: np.sum(x == i_cluster))
+    df_cultures[f"cluster_rel_{i_cluster}"] = (
+        df_cultures[f"cluster_abs_{i_cluster}"] / df_cultures["n_bursts"]
+    )
+
+# %% classical feature information
+if select_data_column == "classical":
+    df_cultures_all_data = load_df_cultures(burst_extraction_params)
+    df_cultures_all_data = df_cultures_all_data[df_cultures_all_data["n_bursts"] > 0]
+    df_cultures_all_data, classical_features = get_classical_features(
+        df_cultures_all_data, df_bursts
+    )
+
+    df_cultures_all_data = df_cultures_all_data[classical_features]
+    df_cultures.drop(classical_features, axis=1, inplace=True, errors="ignore")
+    df_cultures = df_cultures.join(df_cultures_all_data)
+    # df_cultures[classical_features] = df_cultures_all_data[classical_features]
+    del df_cultures_all_data
+# %%
+s = None
+match dataset:
+    case "inhibblock":
+        hue = "drug_label"
+    case "kapucu":
+        hue = [
+            (culture_type, mea_number)
+            for culture_type, mea_number in zip(
+                df_cultures.index.get_level_values("culture_type").astype(str),
+                df_cultures.index.get_level_values("mea_number").astype(str),
+            )
+        ]
+    case "wagenaar":
+        hue = "batch"
+        s = 20
+    case _:
+        raise NotImplementedError
+
+match select_data_column:
+    case "clusters":
+        feature_columns = [
+            f"cluster_rel_{i_cluster}" for i_cluster in range(1, n_clusters + 1)
+        ]
+    case "classical":
+        feature_columns = classical_features
+    case _:
+        raise NotImplementedError(
+            f"select_data_column {select_data_column} not implemented."
+        )
+if select_data_column == "classical":
+    scaler = StandardScaler()
+    data = scaler.fit_transform(df_cultures[feature_columns])
+else:
+    data = df_cultures[feature_columns].values
+
+# Perform PCA
+pca = PCA(n_components=2)  # Reduce to 2D for visualization
+principal_components = pca.fit_transform(data)
+
+# Create a DataFrame for the PCA results
+df_pca = pd.DataFrame(
+    principal_components, columns=["PC1", "PC2"], index=df_cultures.index
+)
+df_cultures.drop(["PC1", "PC2"], axis=1, inplace=True, errors="ignore")
+df_cultures = df_cultures.join(df_pca)
+
+# Plot the PCA components
+fig, ax = plt.subplots(constrained_layout=True, figsize=(3.5 * cm, 3.5 * cm))
+sns.despine()
+sns.scatterplot(
+    data=df_pca.reset_index(),
+    x="PC1",
+    y="PC2",
+    alpha=0.7,
+    hue=hue,
+    palette=get_group_colors(dataset),
+    legend=False,
+    s=s,
+)
+# Plot feature directions
+match select_data_column:
+    case "classical":
+        feature_vectors = pca.components_.T  # Get eigenvectors
+        scaling_factor = np.max(np.abs(principal_components))  # Scale for visibility
+        for i, feature in enumerate(feature_columns):
+            plt.arrow(
+                0,
+                0,
+                feature_vectors[i, 0] * scaling_factor,
+                feature_vectors[i, 1] * scaling_factor,
+                color="k",
+                alpha=0.5,
+                head_width=0.05,
+                head_length=0.1,
+            )
+            plt.text(
+                feature_vectors[i, 0] * scaling_factor * 1.15,
+                feature_vectors[i, 1] * scaling_factor * 1.15,
+                feature,
+                color="k",
+                fontsize=9,
+                ha="center",
+                va="center",
+            )
+    case "clusters":
+        feature_vectors = pca.components_.T  # Get eigenvectors
+        scaling_factor = np.max(np.abs(principal_components))  # Scale for visibility
+        for i, feature in enumerate(feature_columns):
+            color = get_cluster_colors(n_clusters)[i]
+            plt.arrow(
+                0,
+                0,
+                feature_vectors[i, 0] * scaling_factor,
+                feature_vectors[i, 1] * scaling_factor,
+                color=color,
+                alpha=1,
+                head_width=0.15,
+                head_length=0.1,
+            )
+
+# ax.scatter(df_pca["PC1"], df_pca["PC2"], )
+ax.set_xlabel("PC 1")
+ax.set_ylabel("PC 2")
+ax.set_xticks([])
+ax.set_yticks([])
+fig.show()
+fig.savefig(
+    os.path.join(get_fig_folder(), f"{dataset}_{select_data_column}_PCA_group.svg"),
+    transparent=True,
+)
+
+# %%
+match dataset:
+    case "inhibblock":
+        target_label = "drug_label"
+        figsize = (4.5 * cm, 3.5 * cm)
+    case "kapucu":
+        target_label = "culture_type"
+        figsize = (4 * cm, 3.5 * cm)
+    case "wagenaar":
+        target_label = "batch"
+        figsize = (4 * cm, 3.5 * cm)
+    case _:
+        raise NotImplementedError
+
+match select_data_column:
+    case "clusters":
+        feature_columns = [
+            f"cluster_rel_{i_cluster}" for i_cluster in range(1, n_clusters + 1)
+        ]
+    case "classical":
+        feature_columns = classical_features
+    case _:
+        raise NotImplementedError(
+            f"select_data_column {select_data_column} not implemented."
+        )
+if select_data_column == "classical":
+    scaler = StandardScaler()
+    data = scaler.fit_transform(df_cultures[feature_columns])
+else:
+    data = df_cultures[feature_columns].values
+
+
+def _logistic_regression(train_columns):
+    X = df_cultures[train_columns].values
+    y = df_cultures.index.get_level_values(target_label)
+
+    # Check number of unique classes
+    unique_classes = np.unique(y)
+    n_classes = len(unique_classes)
+
+    if n_classes == 2:
+        # Binary case: use LabelBinarizer to maintain old behavior
+        lb = LabelBinarizer()
+        y = lb.fit_transform(y).ravel()  # Ensures y is 1D
+
+        # Initialize Stratified K-Fold
+        cv = StratifiedShuffleSplit(
+            n_splits=100, train_size=0.8, test_size=0.2, random_state=42
+        )
+        mean_fpr = np.linspace(0, 1, 100)
+        tprs = []
+        aucs = []
+
+        for train_idx, test_idx in cv.split(X, y):
+            X_train, X_test = X[train_idx], X[test_idx]
+            y_train, y_test = y[train_idx], y[test_idx]
+
+            clf = LogisticRegression(solver="liblinear")
+            clf.fit(X_train, y_train)
+            y_probs = clf.predict_proba(X_test)[:, 1]
+
+            fpr, tpr, _ = roc_curve(y_test, y_probs)
+            tprs.append(np.interp(mean_fpr, fpr, tpr))
+            aucs.append(auc(fpr, tpr))
+
+        mean_tpr = np.mean(tprs, axis=0)
+        std_tpr = np.std(tprs, axis=0)
+        mean_auc = np.mean(aucs)
+        std_auc = np.std(aucs)
+        return mean_fpr, mean_tpr, std_tpr
+
+    else:
+        # Multi-class case: use LabelEncoder
+        le = LabelEncoder()
+        y = le.fit_transform(y)  # Ensures y is 1D integer labels
+
+        # Initialize Stratified K-Fold
+        cv = StratifiedShuffleSplit(
+            n_splits=100, train_size=0.8, test_size=0.2, random_state=42
+        )
+        mean_fpr = np.linspace(0, 1, 100)
+        tprs = []
+        aucs = []
+
+        for train_idx, test_idx in cv.split(X, y):
+            X_train, X_test = X[train_idx], X[test_idx]
+            y_train, y_test = y[train_idx], y[test_idx]
+
+            clf = LogisticRegression(solver="lbfgs", multi_class="ovr")
+            clf.fit(X_train, y_train)
+            y_probs = clf.predict_proba(X_test)
+
+            # Compute ROC curves for each class
+            for i in range(n_classes):
+                fpr, tpr, _ = roc_curve((y_test == i).astype(int), y_probs[:, i])
+                tprs.append(np.interp(mean_fpr, fpr, tpr))
+                aucs.append(auc(fpr, tpr))
+
+        mean_tpr = np.mean(tprs, axis=0)
+        std_tpr = np.std(tprs, axis=0)
+        mean_auc = np.mean(aucs)
+        std_auc = np.std(aucs)
+        return mean_fpr, mean_tpr, std_tpr
+
+
+# Plot ROC curve
+fig, ax = plt.subplots(constrained_layout=True, figsize=figsize)
+sns.despine()
+for train_column, label, color in zip(
+    [feature_columns, ["PC1", "PC2"], ["PC1"]],
+    ["all", "2 PCs", "1 PC"],
+    ["C0", "C1", "C2"],
+):
+    mean_fpr, mean_tpr, std_tpr = _logistic_regression(train_column)
+    ax.plot(
+        mean_fpr, mean_tpr, color=color, lw=2, label=label
+    )  # \n(area = {mean_auc:.2f} ± {std_auc:.2f})')
+    ax.fill_between(
+        mean_fpr,
+        mean_tpr - std_tpr,
+        mean_tpr + std_tpr,
+        color=color,
+        alpha=0.2,
+        # label="±1 std. dev.",
+    )
+ax.plot([0, 1], [0, 1], color="gray", linestyle="--")  # Random classifier
+ax.set_xlim([0.0, 1.0])
+ax.set_ylim([0.0, 1.05])
+ax.set_xlabel("FPR", labelpad=-10)  # ("False Positive Rate")
+ax.set_ylabel("TPR", labelpad=-10)  # ("True Positive Rate")
+ax.set_xticks([0, 1])
+ax.set_yticks([0, 1])
+ax.legend(
+    loc="lower right", frameon=False, title="ROC from", bbox_to_anchor=(1.3, -0.1)
+)
+fig.show()
+fig.savefig(
+    os.path.join(get_fig_folder(), f"{dataset}_{select_data_column}_ROC.svg"),
+    transparent=True,
+)

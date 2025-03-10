@@ -6,7 +6,9 @@ from matplotlib import pyplot as plt
 
 from src.folders import get_fig_folder
 from src.persistence import load_clustering_labels, load_df_bursts
-from src.plot import get_cluster_colors, make_cluster_legend
+from src.plot import get_cluster_colors, make_cluster_legend, prepare_plotting
+
+cm = prepare_plotting()
 
 # which clustering to plot
 n_clusters = 4
@@ -140,9 +142,8 @@ ax.set_ylabel("Rate [Hz]")
 fig.show()
 
 # %% plot average burst per cluster
-cm = 1 / 2.54
-fig, ax = plt.subplots(constrained_layout=True)
-fig.suptitle("Average burst per cluster")
+fig, ax = plt.subplots(constrained_layout=True, figsize=(5 * cm, 4 * cm))
+# fig.suptitle("Average burst per cluster")
 sns.despine()
 for i in range(n_clusters):
     df_bursts_i = df_bursts[df_bursts[col_cluster] == i]
@@ -153,12 +154,16 @@ for i in range(n_clusters):
         label=f"Cluster {i}",
         linewidth=2,
     )
-ax.legend(frameon=False)
-fig.show()
+# ax.legend(frameon=False)
+ax.set_xlabel("Time [a.u.]")
+ax.set_ylabel("Firing rate [a.u.]")
+# ax.yaxis.set_label_coords(-0.32, 0.4)
+ax.set_xticks([0, 25, 50])
 
-fig.suptitle("")
-ax.get_legend().remove()
-fig.set_size_inches((4 * cm, 4 * cm))
+# fig.suptitle("")
+# ax.get_legend().remove()
+# fig.set_size_inches((4 * cm, 4 * cm))
+fig.show()
 fig.savefig(os.path.join(get_fig_folder(), "average_bursts.svg"), transparent=True)
 
 # %% box plot of statistics (time_orig, time_extend, peak_height, integral)
@@ -175,8 +180,7 @@ for stat in ["time_orig", "time_extend", "peak_height", "integral"]:
 
     fig.show()
 
-# %% plot average burst per cluster
-cm = 1 / 2.54
+# %% cluster legend
 fig, ax = make_cluster_legend(n_clusters, n_cols=2, symbol="dot")
 fig.set_size_inches((4 * cm, 4 * cm))
 fig.show()
