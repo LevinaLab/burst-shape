@@ -1,0 +1,9 @@
+data
+burst_clustering.egg-info
+data
+data_old
+figures
+# results
+# scripts
+.git
+.idea

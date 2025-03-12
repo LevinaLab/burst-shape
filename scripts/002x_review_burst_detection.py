@@ -1,8 +1,11 @@
+import os
+
 import dash
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Input, Output, dcc, html
+from dash import Input, Output, dcc, html, Dash
+from flask import Flask
 from plotly.subplots import make_subplots
 
 from src.persistence import load_df_cultures
@@ -11,6 +14,14 @@ from src.persistence.spike_times import (
     get_inhibblock_spike_times,
     get_kapucu_spike_times,
 )
+
+if "DEBUG" in os.environ:
+    debug = os.environ["DEBUG"] == "True"
+    print(f"DEBUG environment variable present, DEBUG set to {debug}")
+else:
+    print("No DEBUG environment variable: defaulting to debug mode")
+    debug = True
+
 
 burst_extraction_params = (
     # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
@@ -82,7 +93,8 @@ colorscale_alternative = [
 colors_bursts = ["red", "blue", "green"]  # Define three alternating colors
 
 # Dash App
-app = dash.Dash(__name__)
+server = Flask(__name__)  # Create a Flask app
+app = Dash(__name__, server=server)  # Attach Dash to Flask
 
 app.layout = html.Div(
     [
@@ -235,7 +247,9 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
                 range(df_cultures.at[index, "n_bursts"]),
             )
         ):
-            color = colors_bursts[i % len(colors_bursts)]  # Cycle through the three colors
+            color = colors_bursts[
+                i % len(colors_bursts)
+            ]  # Cycle through the three colors
             x_coords = [start / 1000, start / 1000, end / 1000, end / 1000]
             y_coords = [y_min, y_max, y_max, y_min]
             fig_whole.add_trace(
@@ -286,4 +300,11 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    print("Starting the app.")
+    if debug is True:
+        print("Running locally.")
+        app.run(debug=debug, port=8050)
+    else:
+        print("Running on the internet.")
+        app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    # app.run(debug=False, port=5000, host="0.0.0.0")
