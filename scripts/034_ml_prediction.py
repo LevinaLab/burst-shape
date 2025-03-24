@@ -24,14 +24,15 @@ from src.utils.classical_features import get_classical_features
 cm = prepare_plotting()
 
 # Choose whether to predict from clusters or classical features
-select_data_column = ["clusters", "classical"][0]
+select_data_column = ["clusters", "classical", "combo"][0]
+plot_legend = True
 
 # parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -56,10 +57,10 @@ clustering_params = (
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -158,7 +159,7 @@ for i_cluster in range(1, n_clusters + 1):
     )
 
 # %% classical feature information
-if select_data_column == "classical":
+if select_data_column in ["classical", "combo"]:
     df_cultures_all_data = load_df_cultures(burst_extraction_params)
     df_cultures_all_data = df_cultures_all_data[df_cultures_all_data["n_bursts"] > 0]
     df_cultures_all_data, classical_features = get_classical_features(
@@ -196,11 +197,15 @@ match select_data_column:
         ]
     case "classical":
         feature_columns = classical_features
+    case "combo":
+        feature_columns = [
+            f"cluster_rel_{i_cluster}" for i_cluster in range(1, n_clusters + 1)
+        ] + classical_features
     case _:
         raise NotImplementedError(
             f"select_data_column {select_data_column} not implemented."
         )
-if select_data_column == "classical":
+if select_data_column in ["classical", "combo"]:
     scaler = StandardScaler()
     data = scaler.fit_transform(df_cultures[feature_columns])
 else:
@@ -283,10 +288,15 @@ fig.savefig(
 )
 
 # %%
+test_type = ["cross-validate", "direct"][1]
+
 match dataset:
     case "inhibblock":
         target_label = "drug_label"
-        figsize = (4.5 * cm, 3.5 * cm)
+        if plot_legend:
+            figsize = (4.5 * cm, 3.5 * cm)
+        else:
+            figsize = (4 * cm, 3.5 * cm)
     case "kapucu":
         target_label = "culture_type"
         figsize = (4 * cm, 3.5 * cm)
@@ -303,11 +313,15 @@ match select_data_column:
         ]
     case "classical":
         feature_columns = classical_features
+    case "combo":
+        feature_columns = [
+            f"cluster_rel_{i_cluster}" for i_cluster in range(1, n_clusters + 1)
+        ] + classical_features
     case _:
         raise NotImplementedError(
             f"select_data_column {select_data_column} not implemented."
         )
-if select_data_column == "classical":
+if select_data_column in ["classical", "combo"]:
     scaler = StandardScaler()
     data = scaler.fit_transform(df_cultures[feature_columns])
 else:
@@ -327,31 +341,45 @@ def _logistic_regression(train_columns):
         lb = LabelBinarizer()
         y = lb.fit_transform(y).ravel()  # Ensures y is 1D
 
-        # Initialize Stratified K-Fold
-        cv = StratifiedShuffleSplit(
-            n_splits=100, train_size=0.8, test_size=0.2, random_state=42
-        )
         mean_fpr = np.linspace(0, 1, 100)
         tprs = []
         aucs = []
 
-        for train_idx, test_idx in cv.split(X, y):
-            X_train, X_test = X[train_idx], X[test_idx]
-            y_train, y_test = y[train_idx], y[test_idx]
+        match test_type:
+            case "cross-validate":
+                # Initialize Stratified K-Fold
+                cv = StratifiedShuffleSplit(
+                    n_splits=100, train_size=0.8, test_size=0.2, random_state=42
+                )
 
-            clf = LogisticRegression(solver="liblinear")
-            clf.fit(X_train, y_train)
-            y_probs = clf.predict_proba(X_test)[:, 1]
+                for train_idx, test_idx in cv.split(X, y):
+                    X_train, X_test = X[train_idx], X[test_idx]
+                    y_train, y_test = y[train_idx], y[test_idx]
 
-            fpr, tpr, _ = roc_curve(y_test, y_probs)
-            tprs.append(np.interp(mean_fpr, fpr, tpr))
-            aucs.append(auc(fpr, tpr))
+                    clf = LogisticRegression(solver="liblinear")
+                    clf.fit(X_train, y_train)
+                    y_probs = clf.predict_proba(X_test)[:, 1]
 
-        mean_tpr = np.mean(tprs, axis=0)
-        std_tpr = np.std(tprs, axis=0)
-        mean_auc = np.mean(aucs)
-        std_auc = np.std(aucs)
-        return mean_fpr, mean_tpr, std_tpr
+                    fpr, tpr, _ = roc_curve(y_test, y_probs)
+                    tprs.append(np.interp(mean_fpr, fpr, tpr))
+                    aucs.append(auc(fpr, tpr))
+
+                mean_tpr = np.mean(tprs, axis=0)
+                std_tpr = np.std(tprs, axis=0)
+                mean_auc = np.mean(aucs)
+                std_auc = np.std(aucs)
+                return mean_fpr, mean_tpr, std_tpr
+            case "direct":
+                clf = LogisticRegression(solver="liblinear")
+                clf.fit(X, y)
+                y_probs = clf.predict_proba(X)[:, 1]
+                fpr, tpr, _ = roc_curve(y, y_probs)
+                tprs.append(np.interp(mean_fpr, fpr, tpr))
+                aucs.append(auc(fpr, tpr))
+
+                mean_tpr = np.mean(tprs, axis=0)
+                std_tpr = np.std(tprs, axis=0)
+                # return mean_fpr, mean_tpr, std_tpr
 
     else:
         # Multi-class case: use LabelEncoder
@@ -384,29 +412,51 @@ def _logistic_regression(train_columns):
         std_tpr = np.std(tprs, axis=0)
         mean_auc = np.mean(aucs)
         std_auc = np.std(aucs)
-        return mean_fpr, mean_tpr, std_tpr
+        # return mean_fpr, mean_tpr, std_tpr
+
+    # Compute Balanced Accuracy for each threshold
+    balanced_accuracy = (mean_tpr + (1 - mean_fpr)) / 2
+    best_index = balanced_accuracy.argmax()
+    # best_threshold = thresholds[best_index]
+    best_balanced_accuracy = balanced_accuracy[best_index]
+    return (
+        mean_fpr,
+        mean_tpr,
+        std_tpr,
+        (best_balanced_accuracy, mean_fpr[best_index], mean_tpr[best_index]),
+    )
 
 
 # Plot ROC curve
 fig, ax = plt.subplots(constrained_layout=True, figsize=figsize)
-sns.despine()
-for train_column, label, color in zip(
+sns.despine(fig)
+table_data = {}
+for train_column, label, color, linestyle in zip(
     [feature_columns, ["PC1", "PC2"], ["PC1"]],
     ["all", "2 PCs", "1 PC"],
-    ["C0", "C1", "C2"],
+    ["k", "k", "k"],  # ["C0", "C1", "C2"],
+    ["-", "--", ":"],
 ):
-    mean_fpr, mean_tpr, std_tpr = _logistic_regression(train_column)
-    ax.plot(
-        mean_fpr, mean_tpr, color=color, lw=2, label=label
-    )  # \n(area = {mean_auc:.2f} ± {std_auc:.2f})')
-    ax.fill_between(
+    (
         mean_fpr,
-        mean_tpr - std_tpr,
-        mean_tpr + std_tpr,
-        color=color,
-        alpha=0.2,
-        # label="±1 std. dev.",
-    )
+        mean_tpr,
+        std_tpr,
+        (balanced_accuracy, fpr_best, tpr_best),
+    ) = _logistic_regression(train_column)
+    table_data[label] = f"{balanced_accuracy*100:.2f}"
+    print(f"{label}:\t{balanced_accuracy:.4f}\t{fpr_best:.2f}\t{tpr_best:.2f}")
+    ax.plot(
+        mean_fpr, mean_tpr, color=color, lw=2, label=label, linestyle=linestyle
+    )  # \n(area = {mean_auc:.2f} ± {std_auc:.2f})')
+    if test_type == "cross-validate":
+        ax.fill_between(
+            mean_fpr,
+            mean_tpr - std_tpr,
+            mean_tpr + std_tpr,
+            color=color,
+            alpha=0.2,
+            # label="±1 std. dev.",
+        )
 ax.plot([0, 1], [0, 1], color="gray", linestyle="--")  # Random classifier
 ax.set_xlim([0.0, 1.0])
 ax.set_ylim([0.0, 1.05])
@@ -414,11 +464,34 @@ ax.set_xlabel("FPR", labelpad=-10)  # ("False Positive Rate")
 ax.set_ylabel("TPR", labelpad=-10)  # ("True Positive Rate")
 ax.set_xticks([0, 1])
 ax.set_yticks([0, 1])
-ax.legend(
-    loc="lower right", frameon=False, title="ROC from", bbox_to_anchor=(1.3, -0.1)
-)
+if plot_legend:
+    ax.legend(
+        loc="lower right", frameon=False, title="ROC from", bbox_to_anchor=(1.3, -0.1)
+    )
 fig.show()
 fig.savefig(
-    os.path.join(get_fig_folder(), f"{dataset}_{select_data_column}_ROC.svg"),
+    os.path.join(
+        get_fig_folder(), f"{dataset}_{select_data_column}_ROC_{test_type}.svg"
+    ),
+    transparent=True,
+)
+
+fig_table, ax_table = plt.subplots(figsize=figsize)
+ax_table.set_axis_off()
+table = ax_table.table(
+    cellText=list(table_data.items()),
+    colLabels=["Feature", "Acc. [%]"],
+    cellLoc="center",
+    loc="center",
+)
+
+table.auto_set_font_size(False)
+# table.set_fontsize(12)
+table.scale(1.1, 1)  # Adjust scaling for better visibility
+fig_table.show()
+fig_table.savefig(
+    os.path.join(
+        get_fig_folder(), f"{dataset}_{select_data_column}_table_{test_type}.svg"
+    ),
     transparent=True,
 )

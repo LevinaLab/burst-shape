@@ -1,5 +1,6 @@
 import os
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,12 +10,14 @@ import seaborn as sns
 from src import folders
 from src.folders import get_fig_folder
 from src.persistence import load_burst_matrix, load_clustering_labels, load_df_bursts
-from src.plot import get_cluster_colors, label_sig_diff
+from src.plot import get_cluster_colors, label_sig_diff, prepare_plotting
+
+cm = prepare_plotting()
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
@@ -58,11 +61,9 @@ np.random.seed(0)
 # n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index
 
 # plotting
-cm = 1 / 2.54  # centimeters in inches
 fig_path = folders.get_fig_folder()
 
 # load bursts
-burst_matrix = load_burst_matrix(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
 np.random.seed(0)
 
@@ -303,7 +304,7 @@ match dataset:
         )
 
         cm = 1 / 2.54
-        fig, ax = plt.subplots(constrained_layout=True, figsize=(6 * cm, 3.5 * cm))
+        fig, ax = plt.subplots(constrained_layout=True, figsize=(5 * cm, 3.5 * cm))
         sns.despine()
 
         # Data preparation
@@ -319,16 +320,32 @@ match dataset:
         ]
 
         # Violin plot with white fill
-        sns.violinplot(data=data, ax=ax, inner=None, color="white", edgecolor="black")
+        sns.violinplot(
+            data=data,
+            ax=ax,
+            inner="box",
+            facecolor=(1, 1, 1, 0),
+            edgecolor="black",
+            inner_kws={"color": "grey", "zorder": 0},
+        )
 
         # Overlay dots for individual data points
-        sns.stripplot(data=data, ax=ax, color="black", size=0.3, jitter=True)
+        # sns.stripplot(data=data, ax=ax, color="black", size=0.3, jitter=True)
+        # sns.boxplot(data=data, ax=ax, color="grey", size=0.3)
 
         # Labeling
-        ax.set_xticks([0, 1, 2])
+        ax.set_xticks(list(range(len(data))))
         ax.set_xticklabels(
-            ["random", "betw.-\ngroup", "in-group"],
+            ["random", "betw.-\ngroup", "within-\ngroup"],
             rotation=0,  # ha="right"
+        )
+        ax.get_xticklabels()[0].set_transform(
+            ax.get_xticklabels()[0].get_transform()
+            + matplotlib.transforms.Affine2D().translate(-7, 0)
+        )
+        ax.get_xticklabels()[2].set_transform(
+            ax.get_xticklabels()[2].get_transform()
+            + matplotlib.transforms.Affine2D().translate(4, 0)
         )
         ax.set_ylabel("Similarity")
         ax.set_yticks([0, 1])
@@ -338,12 +355,12 @@ match dataset:
                 if i >= j:
                     continue
                 print(f"{i} vs {j}")
-                test_kurskal = scipy.stats.kruskal(
+                test_mannwhitneyu = scipy.stats.mannwhitneyu(
                     distribution1,
                     distribution2,
                 )
-                print(test_kurskal)
-                if test_kurskal.pvalue < 0.001:
+                print(test_mannwhitneyu)
+                if test_mannwhitneyu.pvalue < 0.001:
                     label_sig_diff(
                         ax,
                         (i, j),
@@ -398,7 +415,15 @@ match dataset:
         xtick_labels = ["random", "betw.-group", "in-group", "day-to-day"]
 
         # Violin plot with white fill
-        sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")
+        sns.violinplot(
+            data=data,
+            ax=ax,
+            inner="box",
+            facecolor=(1, 1, 1, 0),
+            edgecolor="black",
+            inner_kws={"color": "grey", "zorder": 0},
+        )
+        # sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")
 
         # Overlay dots for individual data points
         # sns.stripplot(data=data, ax=ax, color="black", size=0.08, jitter=True)
@@ -414,17 +439,17 @@ match dataset:
                 if i >= j:
                     continue
                 print(f"{i} vs {j}")
-                test_kurskal = scipy.stats.kruskal(
+                test_mannwhitneyu = scipy.stats.mannwhitneyu(
                     distribution1,
                     distribution2,
                 )
-                print(test_kurskal)
-                if test_kurskal.pvalue < 0.05:
+                print(test_mannwhitneyu)
+                if test_mannwhitneyu.pvalue < 0.05:
                     label_sig_diff(
                         ax,
                         (i, j),
                         1,
-                        test_kurskal.pvalue,
+                        test_mannwhitneyu.pvalue,
                         (j - i) * 0.6 - 0.3,
                         0.1,
                         "k",
@@ -475,7 +500,15 @@ match dataset:
         xtick_labels = ["random", "betw.-group", "in-group", "day-to-day"]
 
         # Violin plot with white fill
-        sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")
+        sns.violinplot(
+            data=data,
+            ax=ax,
+            inner="box",
+            facecolor=(1, 1, 1, 0),
+            edgecolor="black",
+            inner_kws={"color": "grey", "zorder": 0},
+        )
+        # sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")
 
         # Overlay dots for individual data points
         # sns.stripplot(data=data, ax=ax, color="black", size=0.08, jitter=True)
@@ -491,12 +524,12 @@ match dataset:
                 if i >= j:
                     continue
                 print(f"{i} vs {j}")
-                test_kurskal = scipy.stats.kruskal(
+                test_mannwhitneyu = scipy.stats.mannwhitneyu(
                     distribution1,
                     distribution2,
                 )
-                print(test_kurskal)
-                if test_kurskal.pvalue < 0.001:
+                print(test_mannwhitneyu)
+                if test_mannwhitneyu.pvalue < 0.001:
                     label_sig_diff(
                         ax,
                         (i, j),

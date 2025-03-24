@@ -1,6 +1,7 @@
 """Visualize the burst cluster similar to the Figure 3 in Wagenaar et al. 2006."""
 import os
 
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -198,7 +199,7 @@ match dataset:
             figsize = (12 * cm, 10 * cm)
     case "wagenaar":
         if plot_subset is True:
-            figsize = (6 * cm, 8 * cm)
+            figsize = (5 * cm, 8 * cm)
         else:
             figsize = (12 * cm, 10 * cm)
     case "hommersom":
@@ -248,8 +249,8 @@ for index in df_cultures.index:
 for i_day, day in enumerate(row_day):
     ax = axs[i_day, 0]
     ax.axis("on")
-    ax.set_ylabel(f"{day}", rotation=0)
-    ax.yaxis.set_label_coords(-0.5, 0.1)
+    ax.set_ylabel(f"{day}", rotation=0, fontsize=9)
+    ax.yaxis.set_label_coords(-0.5, 0.15)
     # ax.xaxis.set_label_position("bottom")
     ax.set_xticks([])
     ax.set_yticks([])
@@ -303,3 +304,102 @@ fig.show()
 fig.savefig(
     os.path.join(get_fig_folder(), f"{dataset}_pie_chart.svg"), transparent=True
 )
+
+# %% special plate layout for inhibblock data
+if dataset == "inhibblock":
+    cols = np.arange(1, 7)
+    rows = ["A", "B", "C", "D"]
+
+    div = 18
+
+    df_cultures_special = df_cultures.reset_index().set_index(["div", "well"])
+
+    figsize = (4 * cm, 3 * cm)
+
+    fig, axs = plt.subplots(nrows=len(rows), ncols=len(cols), figsize=figsize)
+    sns.despine(fig=fig, top=True, right=True, left=True, bottom=True)
+
+    # set all axes to invisible
+    for ax in axs.flatten():
+        ax.axis("off")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.spines["left"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+        ax.pie([1], colors=["white"], startangle=90)
+
+    for i_col, col in enumerate(cols):
+        for i_row, row in enumerate(rows):
+            ax = axs[i_row, i_col]
+            ax.axis("on")
+
+            index = (div, f"{row}{col}")
+            cluster_rel = [
+                df_cultures_special.loc[index, f"cluster_rel_{i_cluster}"]
+                for i_cluster in range(n_clusters)
+            ]
+
+            ax.pie(cluster_rel, colors=colors, startangle=90)
+
+    for i_row, row in enumerate(rows):
+        ax = axs[i_row, 0]
+        ax.set_ylabel(f"{row}", rotation=0, fontsize=10)
+        ax.yaxis.set_label_coords(-0.5, 0.15)
+    for i_col, col in enumerate(cols):
+        ax = axs[0, i_col]
+        ax.set_title(f"{col}", fontsize=10, pad=0)
+
+    fig.tight_layout()
+
+    # draw Bicuculline rectangle
+    margin = 0.045
+    bbox1 = axs[0, 1].get_position(fig)
+    bbox2 = axs[1, -1].get_position(fig)
+    x0 = bbox1.x0  # Left
+    y0 = bbox2.y0 - margin  # Bottom
+    width = bbox2.x1 - x0
+    height = bbox1.y1 - y0
+    # Create a rectangle and add it to the figure
+    rect = patches.Rectangle(
+        (x0, y0),
+        width,
+        height,
+        transform=fig.transFigure,  # Figure-level transformation
+        color=get_group_colors(dataset)["bic"],
+        linewidth=2,
+        fill=False,
+    )
+    fig.add_artist(rect)
+
+    # draw Control rectangle
+    margin_x = 0.07
+    margin_y = 0.045
+    bbox1 = axs[0, 0].get_position(fig)
+    bbox2 = axs[2, 0].get_position(fig)
+    bbox3 = axs[3, -1].get_position(fig)
+    L_shape = [
+        (bbox1.x0, bbox1.y1),  # Top-left
+        (bbox1.x1 + margin_x, bbox1.y1),  # Top-right
+        (bbox1.x1 + margin_x, bbox2.y1 + margin_y),  # Middle-right
+        (bbox3.x1, bbox2.y1 + margin_y),  # Bottom-right
+        (bbox3.x1, bbox3.y0),  # Bottom
+        (bbox2.x0, bbox3.y0),  # Bottom-left
+        (bbox2.x0, bbox1.y1),  # Back to Top-left
+    ]
+    L_patch = patches.Polygon(
+        L_shape,
+        transform=fig.transFigure,
+        edgecolor=get_group_colors(dataset)["control"],
+        fill=False,
+        alpha=1,
+        linewidth=2,
+    )
+
+    fig.patches.append(L_patch)
+
+    fig.subplots_adjust(wspace=0.0, hspace=-0.0)
+    fig.show()
+    fig.savefig(
+        os.path.join(get_fig_folder(), f"{dataset}_special_div_{div}_pie_chart.svg"),
+        transparent=True,
+    )

@@ -10,31 +10,40 @@ from src.plot import get_cluster_colors, make_cluster_legend, prepare_plotting
 
 cm = prepare_plotting()
 
-# which clustering to plot
-n_clusters = 4
-col_cluster = f"cluster_{n_clusters}"
-
 # parameters which clustering to plot
-# parameters which clustering to evaluate
 burst_extraction_params = (
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+    n_clusters = 4
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+    n_clusters = 4
+elif "inhibblock" in burst_extraction_params:
+    dataset = "inhibblock"
+    n_clusters = 4
+else:
+    dataset = "wagenaar"
+    n_clusters = 6
+print(f"Detected dataset: {dataset}")
+
+# which clustering to plot
+col_cluster = f"cluster_{n_clusters}"
+
 clustering_params = (
     # "agglomerating_clustering_linkage_complete"
     # "agglomerating_clustering_linkage_ward"
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -142,7 +151,14 @@ ax.set_ylabel("Rate [Hz]")
 fig.show()
 
 # %% plot average burst per cluster
-fig, ax = plt.subplots(constrained_layout=True, figsize=(5 * cm, 4 * cm))
+match dataset:
+    case "kapucu":
+        figsize = (5 * cm, 2.5 * cm)
+    case "wagenaar":
+        figsize = (5 * cm, 3 * cm)
+    case _:
+        figsize = (5 * cm, 4 * cm)
+fig, ax = plt.subplots(constrained_layout=True, figsize=figsize)
 # fig.suptitle("Average burst per cluster")
 sns.despine()
 for i in range(n_clusters):
@@ -160,11 +176,23 @@ ax.set_ylabel("Firing rate [a.u.]")
 # ax.yaxis.set_label_coords(-0.32, 0.4)
 ax.set_xticks([0, 25, 50])
 
+match dataset:
+    case "kapucu":
+        ax.set_ylabel("Firing rate\n[a.u.]")
+        ax.yaxis.set_label_coords(-0.4, 0.2)
+    case "wagenaar":
+        # ax.set_ylabel("Firing rate\n[a.u.]")
+        ax.yaxis.set_label_coords(-0.4, 0.3)
+        ax.set_xticks([0, 50])
+        ax.xaxis.set_label_coords(0.5, -0.25)
+
 # fig.suptitle("")
 # ax.get_legend().remove()
 # fig.set_size_inches((4 * cm, 4 * cm))
 fig.show()
-fig.savefig(os.path.join(get_fig_folder(), "average_bursts.svg"), transparent=True)
+fig.savefig(
+    os.path.join(get_fig_folder(), f"{dataset}_average_bursts.svg"), transparent=True
+)
 
 # %% box plot of statistics (time_orig, time_extend, peak_height, integral)
 for stat in ["time_orig", "time_extend", "peak_height", "integral"]:
