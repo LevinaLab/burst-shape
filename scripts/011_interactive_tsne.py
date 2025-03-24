@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.colors
 import plotly.express as px
 import plotly.graph_objs as go
-from dash import dcc, html, Dash
+from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 from flask import Flask
 
@@ -49,7 +49,9 @@ if "DATASET" in os.environ:
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case _:
-            raise NotImplementedError(f"Unknown environment variable DATASET: {os.environ['DATASET']}")
+            raise NotImplementedError(
+                f"Unknown environment variable DATASET: {os.environ['DATASET']}"
+            )
 else:
     burst_extraction_params = (
         # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
@@ -67,7 +69,9 @@ citation = "the relevant literature"
 doi_link = None
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
-    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    )
     citation = "Kapucu et al. (2022)"
     doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
 elif "hommersom" in burst_extraction_params:
@@ -79,24 +83,28 @@ elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
     citation = "Vinogradov et al. (2024)"
     doi_link = "https://doi.org/10.1101/2024.08.21.608974"
-    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    )
 else:
     dataset = "wagenaar"
     citation = "Wagenaar et al. (2006)"
     doi_link = "https://doi.org/10.1186/1471-2202-7-11"
-    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    )
 print(f"Detected dataset: {dataset}")
 
 # clustering_params = (
-    # "agglomerating_clustering_linkage_complete"
-    # "agglomerating_clustering_linkage_ward"
-    # "agglomerating_clustering_linkage_average"
-    # "agglomerating_clustering_linkage_single"
-    # "spectral_affinity_precomputed_metric_wasserstein"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+# "agglomerating_clustering_linkage_complete"
+# "agglomerating_clustering_linkage_ward"
+# "agglomerating_clustering_linkage_average"
+# "agglomerating_clustering_linkage_single"
+# "spectral_affinity_precomputed_metric_wasserstein"
+# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
+# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
+# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 # )
 clustering_type = clustering_params.split("_")[0]
 labels_params = None  #  needed for spectral clustering if not default "labels"
@@ -351,12 +359,20 @@ tsne_plot = dcc.Graph(id="tsne-plot", figure=tsne_fig, style={"flex": "1"})
 # Define layout of the Dash app
 app.layout = html.Div(
     [
-        html.P([
-            "If you use the data presented here, please cite ",
-            citation if doi_link is None else html.A(citation, href=doi_link, target="_blank",
-                                                     style={"textDecoration": "none", "color": "blue"}),
-            "."
-        ]),
+        html.P(
+            [
+                "If you use the data presented here, please cite ",
+                citation
+                if doi_link is None
+                else html.A(
+                    citation,
+                    href=doi_link,
+                    target="_blank",
+                    style={"textDecoration": "none", "color": "blue"},
+                ),
+                ".",
+            ]
+        ),
         html.Div(
             [
                 html.Div(

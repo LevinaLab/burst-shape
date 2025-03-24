@@ -4,7 +4,7 @@ import dash
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Input, Output, dcc, html, Dash
+from dash import Dash, Input, Output, dcc, html
 from flask import Flask
 from plotly.subplots import make_subplots
 
@@ -33,7 +33,9 @@ if "DATASET" in os.environ:
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case _:
-            raise NotImplementedError(f"Unknown environment variable DATASET: {os.environ['DATASET']}")
+            raise NotImplementedError(
+                f"Unknown environment variable DATASET: {os.environ['DATASET']}"
+            )
 else:
     burst_extraction_params = (
         # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
@@ -120,11 +122,20 @@ app = Dash(__name__, server=server)  # Attach Dash to Flask
 
 app.layout = html.Div(
     [
-        html.P([
-            "If you use the data presented here, please cite ",
-            citation if doi_link is None else html.A(citation, href=doi_link, target="_blank", style={"textDecoration": "none", "color": "blue"}),
-            "."
-        ]),
+        html.P(
+            [
+                "If you use the data presented here, please cite ",
+                citation
+                if doi_link is None
+                else html.A(
+                    citation,
+                    href=doi_link,
+                    target="_blank",
+                    style={"textDecoration": "none", "color": "blue"},
+                ),
+                ".",
+            ]
+        ),
         dcc.Graph(
             id="matrix-plot", config={"displayModeBar": False}, style={"flex": "1"}
         ),  # Takes 2 parts
