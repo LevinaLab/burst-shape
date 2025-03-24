@@ -6,8 +6,9 @@ import pandas as pd
 import plotly.colors
 import plotly.express as px
 import plotly.graph_objs as go
-from dash import dcc, html
+from dash import dcc, html, Dash
 from dash.dependencies import Input, Output
+from flask import Flask
 
 from src.folders import get_fig_folder
 from src.persistence import (
@@ -24,34 +25,71 @@ from src.persistence.spike_times import (
     get_inhibblock_spike_times,
     get_kapucu_spike_times,
 )
-from src.plot import get_cluster_colors
+from src.plot import get_cluster_colors, get_group_colors
+
+if "DEBUG" in os.environ:
+    debug = os.environ["DEBUG"] == "True"
+    print(f"DEBUG environment variable present, DEBUG set to {debug}")
+else:
+    print("No DEBUG environment variable: defaulting to debug mode")
+    debug = True
+
 
 ###############################################################################
 #                           Parameters                                        #
 ###############################################################################
-burst_extraction_params = (
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
-    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-)
-
+if "DATASET" in os.environ:
+    match os.environ["DATASET"]:
+        case "wagenaar":
+            burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        case "kapucu":
+            burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+        case "hommersom":
+            burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case "inhibblock":
+            burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case _:
+            raise NotImplementedError(f"Unknown environment variable DATASET: {os.environ['DATASET']}")
+else:
+    burst_extraction_params = (
+        # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+        # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+        # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
+        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    )
+citation = "the relevant literature"
+doi_link = None
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
+    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    citation = "Kapucu et al. (2022)"
+    doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
 elif "hommersom" in burst_extraction_params:
     dataset = "hommersom"
+    citation = "Hommersom et al. (2024)"
+    doi_link = "https://doi.org/10.1101/2024.03.18.585506"
+    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
 elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
+    citation = "Vinogradov et al. (2024)"
+    doi_link = "https://doi.org/10.1101/2024.08.21.608974"
+    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 else:
     dataset = "wagenaar"
+    citation = "Wagenaar et al. (2006)"
+    doi_link = "https://doi.org/10.1186/1471-2202-7-11"
+    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
 print(f"Detected dataset: {dataset}")
 
-clustering_params = (
+# clustering_params = (
     # "agglomerating_clustering_linkage_complete"
-    "agglomerating_clustering_linkage_ward"
+    # "agglomerating_clustering_linkage_ward"
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
@@ -59,7 +97,7 @@ clustering_params = (
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-)
+# )
 clustering_type = clustering_params.split("_")[0]
 labels_params = None  #  needed for spectral clustering if not default "labels"
 n_clusters = np.arange(2, 21, 1)
@@ -157,7 +195,9 @@ print("Starting Dash app...")
 ###############################################################################
 #                       Interactive t-SNE Plot with Dash                      #
 ###############################################################################
-app = dash.Dash(__name__)
+# Dash App
+server = Flask(__name__)  # Create a Flask app
+app = Dash(__name__, server=server)  # Attach Dash to Flask
 
 # Create a color map based on cluster labels
 # color_map = cluster_colors  # px.colors.qualitative.Plotly[:n_clusters]
@@ -311,6 +351,12 @@ tsne_plot = dcc.Graph(id="tsne-plot", figure=tsne_fig, style={"flex": "1"})
 # Define layout of the Dash app
 app.layout = html.Div(
     [
+        html.P([
+            "If you use the data presented here, please cite ",
+            citation if doi_link is None else html.A(citation, href=doi_link, target="_blank",
+                                                     style={"textDecoration": "none", "color": "blue"}),
+            "."
+        ]),
         html.Div(
             [
                 html.Div(
@@ -556,6 +602,7 @@ def update_timeseries(tsne_click_data, firing_rate_click_data):
                 ]
             )
         case "inhibblock":
+            # print(df_bursts.iloc[point_index])
             title = "Time series for " + ", ".join(
                 [
                     f"{key}: {df_bursts.iloc[point_index][key]}"
@@ -564,6 +611,7 @@ def update_timeseries(tsne_click_data, firing_rate_click_data):
                         "drug_label",
                         "div",
                         "well_idx",
+                        "i_burst",
                         # "well_id",
                         "start_orig",
                         "time_orig",
@@ -820,6 +868,11 @@ def update_raster(tsne_click_data, firing_rate_click_data):
     return fig_raster, fig_firing_rate
 
 
-# Run the app
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    print("Starting the app.")
+    if debug is True:
+        print("Running locally.")
+        app.run(debug=debug, port=8050)
+    else:
+        print("Running on the internet.")
+        app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

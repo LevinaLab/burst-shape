@@ -22,27 +22,49 @@ else:
     print("No DEBUG environment variable: defaulting to debug mode")
     debug = True
 
-
-burst_extraction_params = (
-    # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
-    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
-    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-)
+if "DATASET" in os.environ:
+    match os.environ["DATASET"]:
+        case "wagenaar":
+            burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        case "kapucu":
+            burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+        case "hommersom":
+            burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case "inhibblock":
+            burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case _:
+            raise NotImplementedError(f"Unknown environment variable DATASET: {os.environ['DATASET']}")
+else:
+    burst_extraction_params = (
+        # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+        # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+        # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
+        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    )
+citation = "the relevant literature"
+doi_link = None
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
+    citation = "Kapucu et al. (2022)"
+    doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
 elif "hommersom" in burst_extraction_params:
     dataset = "hommersom"
+    citation = "Hommersom et al. (2024)"
+    doi_link = "https://doi.org/10.1101/2024.03.18.585506"
 elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
+    citation = "Vinogradov et al. (2024)"
+    doi_link = "https://doi.org/10.1101/2024.08.21.608974"
 else:
     dataset = "wagenaar"
+    citation = "Wagenaar et al. (2006)"
+    doi_link = "https://doi.org/10.1186/1471-2202-7-11"
 print(f"Detected dataset: {dataset}")
 
 match dataset:
@@ -98,6 +120,11 @@ app = Dash(__name__, server=server)  # Attach Dash to Flask
 
 app.layout = html.Div(
     [
+        html.P([
+            "If you use the data presented here, please cite ",
+            citation if doi_link is None else html.A(citation, href=doi_link, target="_blank", style={"textDecoration": "none", "color": "blue"}),
+            "."
+        ]),
         dcc.Graph(
             id="matrix-plot", config={"displayModeBar": False}, style={"flex": "1"}
         ),  # Takes 2 parts
@@ -307,4 +334,3 @@ if __name__ == "__main__":
     else:
         print("Running on the internet.")
         app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-    # app.run(debug=False, port=5000, host="0.0.0.0")
