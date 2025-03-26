@@ -4,7 +4,7 @@ import dash
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, dcc, html
+from dash import Dash, Input, Output, State, dcc, html, no_update
 from flask import Flask
 from plotly.subplots import make_subplots
 
@@ -14,6 +14,13 @@ from src.persistence.spike_times import (
     get_inhibblock_spike_times,
     get_kapucu_spike_times,
 )
+
+RESAMPLE = False
+
+if RESAMPLE:
+    from dash_extensions.enrich import DashProxy, Serverside, ServersideOutputTransform
+    from plotly_resampler import ASSETS_FOLDER, FigureResampler
+    from plotly_resampler.aggregation import MinMaxLTTB
 
 if "DEBUG" in os.environ:
     debug = os.environ["DEBUG"] == "True"
@@ -117,8 +124,26 @@ colorscale_alternative = [
 colors_bursts = ["red", "blue", "green"]  # Define three alternating colors
 
 # Dash App
-server = Flask(__name__)  # Create a Flask app
-app = Dash(__name__, server=server)  # Attach Dash to Flask
+server = Flask(__name__)
+
+if RESAMPLE:
+    # NOTE: Remark how the assets folder is passed to the Dash(proxy) application and how
+    #       the lodash script is included as an external script.
+    app = DashProxy(
+        __name__,
+        server=server,
+        transforms=[
+            ServersideOutputTransform()
+        ],  # (backends=[RedisBackend(default_timeout=600)])],
+        assets_folder=ASSETS_FOLDER,
+        external_scripts=["https://cdn.jsdelivr.net/npm/lodash/lodash.min.js"],
+    )
+    # app = DashProxy(__name__, server=server, transforms=[ServersideOutputTransform()])
+else:
+    app = Dash(__name__, server=server)
+
+GRAPH_ID = "whole-recording"
+OVERVIEW_GRAPH_ID = "whole-recording-overview"
 
 app.layout = html.Div(
     [
@@ -138,11 +163,13 @@ app.layout = html.Div(
         ),
         dcc.Graph(
             id="matrix-plot", config={"displayModeBar": False}, style={"flex": "1"}
-        ),  # Takes 2 parts
+        ),
         # html.Div(id='selected-cell', style={'marginTop': '20px', 'flex': '1'}),  # Takes 1 part
+        dcc.Graph(id=GRAPH_ID, config={"displayModeBar": True}, style={"flex": "2"}),
         dcc.Graph(
-            id="whole-recording", config={"displayModeBar": False}, style={"flex": "2"}
-        ),  # Takes 3 parts
+            id=OVERVIEW_GRAPH_ID, config={"displayModeBar": False}, style={"flex": ".2"}
+        ),
+        dcc.Loading(dcc.Store(id="store")),
     ],
     style={"display": "flex", "flexDirection": "column", "height": "100vh"},
 )
@@ -152,7 +179,9 @@ app.layout = html.Div(
     [
         Output("matrix-plot", "figure"),
         # Output('selected-cell', 'children'),
-        Output("whole-recording", "figure"),
+        Output(GRAPH_ID, "figure"),
+        Output(OVERVIEW_GRAPH_ID, "figure"),
+        Output("store", "data"),
     ],
     [Input("matrix-plot", "clickData")],
 )
@@ -213,17 +242,22 @@ def update_plot(click_data):
             fillcolor="rgba(0, 0, 0, 0)",  # Transparent fill
         )
 
-        fig_whole = _create_fig_whole_timeseries(
+        fig_whole, fig_whole_overview = _create_fig_whole_timeseries(
             df_cultures, index_select, div_day, selected_text
         )
     else:
         selected_text = "Click on a cell to see details."
         fig_whole = go.Figure()
+        fig_whole_overview = go.Figure()
     fig.update_layout(
         title=selected_text,
     )
 
-    return fig, fig_whole
+    if RESAMPLE:
+        serverside = Serverside(fig_whole)
+    else:
+        serverside = None
+    return fig, fig_whole, fig_whole_overview, serverside
 
 
 def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_text):
@@ -263,18 +297,49 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
     firing_rate = np.histogram(st, bins=times_all)[0] / (bin_size)  #  / 1000)
     times_all = 0.5 * (times_all[1:] + times_all[:-1])
 
-    fig_whole = make_subplots(rows=2, cols=1, shared_xaxes=True, x_title="Time [s]")
+    # fig_whole = make_subplots(rows=2, cols=1, shared_xaxes=True, x_title="Time [s]")
+    _fig_inside = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes="columns",
+        horizontal_spacing=0.03,
+        x_title="Time [s]",
+    )
+    if RESAMPLE:
+        fig_whole: FigureResampler = FigureResampler(
+            _fig_inside,
+            create_overview=True,
+            overview_row_idxs=[0],
+            default_downsampler=MinMaxLTTB(parallel=True),
+        )
+    else:
+        fig_whole = _fig_inside
+
     # line plot of firing rate in black
     fig_whole.add_trace(
         go.Scattergl(
-            x=times_all,
-            y=firing_rate,
             mode="lines",
             name="Firing rate",
             line=dict(color="black"),
+            **(
+                {}
+                if RESAMPLE
+                else {
+                    "x": times_all,
+                    "y": firing_rate,
+                }
+            ),
         ),
-        1,
-        1,
+        **(
+            {}
+            if not RESAMPLE
+            else {
+                "hf_x": times_all,
+                "hf_y": firing_rate,
+            }
+        ),
+        row=1,
+        col=1,
     )
 
     for row, y_min, y_max in zip([1, 2], [0, min(gid)], [max(firing_rate), max(gid)]):
@@ -292,8 +357,6 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
             y_coords = [y_min, y_max, y_max, y_min]
             fig_whole.add_trace(
                 go.Scattergl(
-                    x=x_coords,
-                    y=y_coords,
                     mode="lines",
                     line=dict(color=color, width=2),
                     fill="toself",
@@ -301,6 +364,22 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
                     opacity=0.5,
                     name=f"Burst {i + 1}",
                     hoverinfo="x+name",
+                    **(
+                        {}
+                        if RESAMPLE
+                        else {
+                            "x": x_coords,
+                            "y": y_coords,
+                        }
+                    ),
+                ),
+                **(
+                    {}
+                    if not RESAMPLE
+                    else {
+                        "hf_x": x_coords,
+                        "hf_y": y_coords,
+                    }
                 ),
                 row=row,
                 col=1,
@@ -308,8 +387,6 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
 
     fig_whole.add_trace(
         go.Scattergl(
-            x=st,
-            y=gid,
             mode="markers",
             marker=dict(
                 symbol="line-ns",
@@ -318,6 +395,23 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
                 line_width=1,
             ),
             name="Spikes",
+            **(
+                {}
+                if RESAMPLE
+                else {
+                    "x": st,
+                    "y": gid,
+                }
+            ),
+        ),
+        **(
+            {}
+            if not RESAMPLE
+            else {
+                "hf_x": st,
+                "hf_y": gid,
+                "max_n_samples": 5000,
+            }
         ),
         row=2,
         col=1,
@@ -334,7 +428,48 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
         showlegend=False,
     )
     fig_whole.update_traces(hoverinfo="skip")
-    return fig_whole
+    if RESAMPLE:
+        fig_whole_overview = fig_whole._create_overview_figure()
+    else:
+        fig_whole_overview = go.Figure()
+    return fig_whole, fig_whole_overview
+
+
+if RESAMPLE:
+    # --- Clientside callbacks used to bidirectionally link the overview and main graph ---
+    app.clientside_callback(
+        dash.ClientsideFunction(namespace="clientside", function_name="main_to_coarse"),
+        dash.Output(
+            OVERVIEW_GRAPH_ID, "id", allow_duplicate=True
+        ),  # TODO -> look for clean output
+        dash.Input(GRAPH_ID, "relayoutData"),
+        [dash.State(OVERVIEW_GRAPH_ID, "id"), dash.State(GRAPH_ID, "id")],
+        prevent_initial_call=True,
+    )
+    app.clientside_callback(
+        dash.ClientsideFunction(namespace="clientside", function_name="coarse_to_main"),
+        dash.Output(GRAPH_ID, "id", allow_duplicate=True),
+        dash.Input(OVERVIEW_GRAPH_ID, "selectedData"),
+        [dash.State(GRAPH_ID, "id"), dash.State(OVERVIEW_GRAPH_ID, "id")],
+        prevent_initial_call=True,
+    )
+
+    # --- FigureResampler update callback ---
+
+    # The plotly-resampler callback to update the graph after a relayout event (= zoom/pan)
+    # As we use the figure again as output, we need to set: allow_duplicate=True
+    @app.callback(
+        Output(GRAPH_ID, "figure", allow_duplicate=True),
+        Input(GRAPH_ID, "relayoutData"),
+        State("store", "data"),  # The server side cached FigureResampler per session
+        prevent_initial_call=True,
+        # memoize=True,
+    )
+    def update_fig(relayoutdata: dict, fig: FigureResampler):
+        if isinstance(fig, FigureResampler):
+            return fig.construct_update_data_patch(relayoutdata)
+        else:
+            return no_update
 
 
 if __name__ == "__main__":

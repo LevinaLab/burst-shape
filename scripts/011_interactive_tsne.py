@@ -109,10 +109,12 @@ print(f"Detected dataset: {dataset}")
 clustering_type = clustering_params.split("_")[0]
 labels_params = None  #  needed for spectral clustering if not default "labels"
 n_clusters = np.arange(2, 21, 1)
-n_clusters_current = 5  # initial number of clusters
-color_by = "cluster"  # initial color by
-marker_size = 3  # initial marker size
-embedding_type = ["tsne", "pca", "spectral"][0]
+
+# initial settings
+n_clusters_init = 5  # initial number of clusters
+color_by_init = "cluster"  # initial color by
+marker_size_init = 3  # initial marker size
+embedding_type_init = ["tsne", "pca", "spectral"][0]
 
 
 ###############################################################################
@@ -148,7 +150,7 @@ match clustering_type:
             ]
 
 
-def _update_embedding(embedding_type_):
+def _load_embedding(embedding_type_):
     match embedding_type_:
         case "tsne":
             embedding = load_tsne(burst_extraction_params)
@@ -158,12 +160,17 @@ def _update_embedding(embedding_type_):
             embedding = load_spectral_embedding(
                 burst_extraction_params, clustering_params
             )
-    df_bursts["embedding_x"] = embedding[:, 0]
-    df_bursts["embedding_y"] = embedding[:, 1]
-    return
+    # df_bursts["embedding_x"] = embedding[:, 0]
+    # df_bursts["embedding_y"] = embedding[:, 1]
+    return embedding
 
 
-_update_embedding(embedding_type)
+for embedding_type in ["tsne", "pca", "spectral"]:
+    embedding = _load_embedding(embedding_type)
+    for i in range(1, 3):
+        df_bursts[f"{embedding_type}_{i}"] = embedding[:, i - 1]
+del embedding, embedding_type
+
 
 # prepare for plotly
 df_bursts.reset_index(inplace=True)
@@ -211,8 +218,131 @@ app = Dash(__name__, server=server)  # Attach Dash to Flask
 # color_map = cluster_colors  # px.colors.qualitative.Plotly[:n_clusters]
 
 
+ID_EMBEDDING = "tsne-plot"
+ID_EMBEDDING_TYPE = "embedding-type"
+ID_COLOR_BY = "color-by"
+ID_N_CLUSTERS = "n-clusters-slider"
+ID_DOWNLOAD_FORMAT = "download-format"
+ID_MARKER_SIZE = "marker-size-slider"
+ID_BURST_SHAPE = "timeseries-plot"
+ID_BURST_RASTER = "raster-plot"
+ID_FIRING_RATE = "firing-rate"
+
+# Create the initial t-SNE plot
+# tsne_fig = update_tsne_plot(df_bursts, n_clusters_init)
+# tsne_plot = dcc.Graph(id=ID_EMBEDDING, figure=tsne_fig, style={"flex": "1"})
+tsne_plot = dcc.Graph(id=ID_EMBEDDING, style={"flex": "1"})
+
+# Define layout of the Dash app
+app.layout = html.Div(
+    [
+        html.P(
+            [
+                "If you use the data presented here, please cite ",
+                citation
+                if doi_link is None
+                else html.A(
+                    citation,
+                    href=doi_link,
+                    target="_blank",
+                    style={"textDecoration": "none", "color": "blue"},
+                ),
+                ".",
+            ]
+        ),
+        html.Div(
+            [
+                html.Div(
+                    [
+                        # drop-down menu for selecting what to plot
+                        dcc.Dropdown(
+                            id=ID_EMBEDDING_TYPE,
+                            options=[
+                                {"label": "t-SNE", "value": "tsne"},
+                                {"label": "PCA", "value": "pca"},
+                                {"label": "Spectral", "value": "spectral"},
+                            ],
+                            value=embedding_type_init,
+                        ),
+                        # drop-down menu for selecting which column to color by
+                        dcc.Dropdown(
+                            id=ID_COLOR_BY,
+                            options=[
+                                {"label": "Day", "value": "day"},
+                                {"label": "Culture", "value": "batch_culture"},
+                                {"label": "Batch", "value": "batch"},
+                                {"label": "Cluster", "value": "cluster"},
+                                {"label": "Duration", "value": "time_orig"},
+                                {"label": "Firing rate", "value": "firing_rate"},
+                            ],
+                            value=color_by_init,
+                        ),
+                        # slider for selecting the number of clusters with label "slide to select number of clusters"
+                        dcc.Slider(
+                            id=ID_N_CLUSTERS,
+                            min=n_clusters[0],
+                            max=n_clusters[-1],
+                            step=1,
+                            value=n_clusters_init,
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            vertical=True,
+                        ),
+                        html.Button("Save to figures/", id="download-button"),
+                        # dcc.Download(id="download-pdf"),
+                        dcc.Dropdown(
+                            id=ID_DOWNLOAD_FORMAT,
+                            options=[
+                                {"label": "PDF", "value": "pdf"},
+                                {"label": "SVG", "value": "svg"},
+                            ],
+                            value="svg",
+                        ),
+                    ],
+                    style={
+                        "flex": "0 0 100px",
+                        "display": "flex",
+                        "flex-direction": "column",
+                    },
+                ),
+                html.Div(
+                    [
+                        # t-SNE plot
+                        tsne_plot,
+                        dcc.Slider(
+                            id=ID_MARKER_SIZE,
+                            min=1,
+                            max=10,
+                            step=1,
+                            value=marker_size_init,
+                            tooltip={"placement": "bottom", "always_visible": True},
+                        ),
+                    ],
+                    style={"display": "flex", "flex-direction": "column", "flex": "1"},
+                ),
+                # Time series plot of selected point
+                dcc.Graph(id=ID_BURST_SHAPE, style={"flex": "1"}),
+                # Raster plot of selected point
+                dcc.Graph(id=ID_BURST_RASTER, style={"flex": "1"}),
+            ],
+            style={"display": "flex", "flex-direction": "row", "height": "50vh"},
+        ),
+        dcc.Graph(id=ID_FIRING_RATE, style={"flex": "1"}),
+    ],
+    style={"display": "flex", "flex-direction": "column"},
+)
+
+
 # Create the t-SNE scatter plot
-def update_tsne_plot(df_bursts):
+@app.callback(
+    Output(ID_EMBEDDING, "figure"),
+    [
+        Input(ID_N_CLUSTERS, "value"),
+        Input(ID_COLOR_BY, "value"),
+        Input(ID_EMBEDDING_TYPE, "value"),
+        Input(ID_MARKER_SIZE, "value"),
+    ],
+)
+def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
     global tsne_fig
     color_discrete_sequence = None
     color_discrete_map = None
@@ -309,16 +439,16 @@ def update_tsne_plot(df_bursts):
     n_clusters_ = n_clusters_current
     tsne_fig = px.scatter(
         df_bursts,
-        x="embedding_x",
-        y="embedding_y",
+        x=f"{embedding_type}_1",
+        y=f"{embedding_type}_2",
         color=color,
         color_discrete_sequence=color_discrete_sequence,
         color_discrete_map=color_discrete_map,
         color_continuous_scale=color_continuous_scale,
         category_orders=category_orders,
         hover_data={
-            "embedding_x": False,
-            "embedding_y": False,
+            f"{embedding_type}_1": False,
+            f"{embedding_type}_2": False,
             f"cluster_{n_clusters_}": True,
             # "batch": dataset == "wagenaar",
             # "culture": dataset == "wagenaar",
@@ -352,114 +482,11 @@ def update_tsne_plot(df_bursts):
     return tsne_fig
 
 
-# Create the initial t-SNE plot
-tsne_fig = update_tsne_plot(df_bursts)
-tsne_plot = dcc.Graph(id="tsne-plot", figure=tsne_fig, style={"flex": "1"})
-
-# Define layout of the Dash app
-app.layout = html.Div(
-    [
-        html.P(
-            [
-                "If you use the data presented here, please cite ",
-                citation
-                if doi_link is None
-                else html.A(
-                    citation,
-                    href=doi_link,
-                    target="_blank",
-                    style={"textDecoration": "none", "color": "blue"},
-                ),
-                ".",
-            ]
-        ),
-        html.Div(
-            [
-                html.Div(
-                    [
-                        # drop-down menu for selecting what to plot
-                        dcc.Dropdown(
-                            id="embedding-type",
-                            options=[
-                                {"label": "t-SNE", "value": "tsne"},
-                                {"label": "PCA", "value": "pca"},
-                                {"label": "Spectral", "value": "spectral"},
-                            ],
-                            value="tsne",
-                        ),
-                        # drop-down menu for selecting which column to color by
-                        dcc.Dropdown(
-                            id="color-by",
-                            options=[
-                                {"label": "Day", "value": "day"},
-                                {"label": "Culture", "value": "batch_culture"},
-                                {"label": "Batch", "value": "batch"},
-                                {"label": "Cluster", "value": "cluster"},
-                                {"label": "Duration", "value": "time_orig"},
-                                {"label": "Firing rate", "value": "firing_rate"},
-                            ],
-                            value="cluster",
-                        ),
-                        # slider for selecting the number of clusters with label "slide to select number of clusters"
-                        dcc.Slider(
-                            id="n-clusters-slider",
-                            min=n_clusters[0],
-                            max=n_clusters[-1],
-                            step=1,
-                            value=n_clusters_current,
-                            tooltip={"placement": "bottom", "always_visible": True},
-                            vertical=True,
-                        ),
-                        html.Button("Save to figures/", id="download-button"),
-                        # dcc.Download(id="download-pdf"),
-                        dcc.Dropdown(
-                            id="download-format",
-                            options=[
-                                {"label": "PDF", "value": "pdf"},
-                                {"label": "SVG", "value": "svg"},
-                            ],
-                            value="svg",
-                        ),
-                    ],
-                    style={
-                        "flex": "0 0 100px",
-                        "display": "flex",
-                        "flex-direction": "column",
-                    },
-                ),
-                html.Div(
-                    [
-                        # t-SNE plot
-                        tsne_plot,
-                        dcc.Slider(
-                            id="marker-size-slider",
-                            min=1,
-                            max=10,
-                            step=1,
-                            value=marker_size,
-                            tooltip={"placement": "bottom", "always_visible": True},
-                        ),
-                    ],
-                    style={"display": "flex", "flex-direction": "column", "flex": "1"},
-                ),
-                # Time series plot of selected point
-                dcc.Graph(id="timeseries-plot", style={"flex": "1"}),
-                # Raster plot of selected point
-                dcc.Graph(id="raster-plot", style={"flex": "1"}),
-            ],
-            style={"display": "flex", "flex-direction": "row", "height": "50vh"},
-        ),
-        dcc.Graph(id="firing-rate", style={"flex": "1"}),
-    ],
-    style={"display": "flex", "flex-direction": "column"},
-)
-
-
 @app.callback(
     # Output("download-pdf", "data"),
     Input("download-button", "n_clicks"),
-    Input("tsne-plot", "figure"),
-    Input("download-format", "value"),
+    Input(ID_EMBEDDING, "figure"),
+    Input(ID_DOWNLOAD_FORMAT, "value"),
     prevent_initial_call=True,
 )
 def download_pdf(n_clicks, figure, format):
@@ -500,64 +527,20 @@ def download_pdf(n_clicks, figure, format):
     return
 
 
-@app.callback(
-    Output("tsne-plot", "figure", allow_duplicate=True),
-    [Input("embedding-type", "value")],
-    prevent_initial_call=True,
-)
-def update_embedding_type(embedding_type_):
-    _update_embedding(embedding_type_)
-    return update_tsne_plot(df_bursts)
-
-
-# Update t-SNE plot based on the selected column to color by
-@app.callback(
-    Output("tsne-plot", "figure", allow_duplicate=True),
-    [Input("color-by", "value")],
-    prevent_initial_call=True,
-)
-def update_color_by(color_by_):
-    print(f"Updating t-SNE plot with color by {color_by_}")
-    global color_by
-    color_by = color_by_
-    return update_tsne_plot(df_bursts)
-
-
-# Update t-SNE plot based on the selected number of clusters
-@app.callback(
-    Output("tsne-plot", "figure", allow_duplicate=True),
-    [Input("n-clusters-slider", "value")],
-    prevent_initial_call=True,
-)
-def update_n_clusters(n_clusters_):
-    print(f"Updating t-SNE plot with {n_clusters_} clusters")
-    global n_clusters_current
-    n_clusters_current = n_clusters_
-    return update_tsne_plot(df_bursts)
-
-
-@app.callback(
-    Output("tsne-plot", "figure", allow_duplicate=True),
-    [Input("marker-size-slider", "value")],
-    prevent_initial_call=True,
-)
-def update_marker_size(marker_size_):
-    print(f"Updating t-SNE plot with marker size {marker_size_}")
-    global marker_size
-    marker_size = marker_size_
-    return update_tsne_plot(df_bursts)
-
-
 # Update time series plot based on the selected point in the t-SNE plot
 @app.callback(
-    Output("timeseries-plot", "figure"),
-    [Input("tsne-plot", "clickData"), Input("firing-rate", "clickData")],
+    Output(ID_BURST_SHAPE, "figure"),
+    [
+        Input(ID_EMBEDDING, "clickData"),
+        Input(ID_FIRING_RATE, "clickData"),
+        Input(ID_N_CLUSTERS, "value"),
+    ],
     prevent_initial_call=True,
 )
-def update_timeseries(tsne_click_data, firing_rate_click_data):
+def update_timeseries(tsne_click_data, firing_rate_click_data, n_clusters_current):
     # Determine which plot was clicked
     ctx = dash.callback_context
-    if ctx.triggered[0]["prop_id"].split(".")[0] == "firing-rate":
+    if ctx.triggered[0]["prop_id"].split(".")[0] == ID_FIRING_RATE:
         selected_data = firing_rate_click_data
     else:
         selected_data = tsne_click_data
@@ -653,15 +636,19 @@ def update_timeseries(tsne_click_data, firing_rate_click_data):
 
 @app.callback(
     [
-        Output("raster-plot", "figure"),
-        Output("firing-rate", "figure"),
+        Output(ID_BURST_RASTER, "figure"),
+        Output(ID_FIRING_RATE, "figure"),
     ],
-    [Input("tsne-plot", "clickData"), Input("firing-rate", "clickData")],
+    [
+        Input(ID_EMBEDDING, "clickData"),
+        Input(ID_FIRING_RATE, "clickData"),
+        Input(ID_N_CLUSTERS, "value"),
+    ],
     prevent_initial_call=True,
 )
-def update_raster(tsne_click_data, firing_rate_click_data):
+def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
     ctx = dash.callback_context
-    if ctx.triggered[0]["prop_id"].split(".")[0] == "firing-rate":
+    if ctx.triggered[0]["prop_id"].split(".")[0] == ID_FIRING_RATE:
         selected_data = firing_rate_click_data
     else:
         selected_data = tsne_click_data
