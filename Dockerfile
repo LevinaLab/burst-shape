@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Set environment variable for consistent paths (optional)
 ENV RESULTS_FOLDER=/app/results
 ENV DEBUG=False
+ENV RESAMPLE=True
 ENV DATASET=${DATASET}
 
 FROM base as inhibblock

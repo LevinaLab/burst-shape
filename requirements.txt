@@ -2,6 +2,8 @@ Flask==3.0.3
 gunicorn==23.0.0
 Werkzeug==3.0.3
 dash~=2.18.2
+plotly-resampler~=0.10.0
+dash-extensions~=1.0.20
 numpy~=1.26.3
 tqdm~=4.66.1
 scipy~=1.11.4

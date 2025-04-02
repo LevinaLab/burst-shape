@@ -15,7 +15,12 @@ from src.persistence.spike_times import (
     get_kapucu_spike_times,
 )
 
-RESAMPLE = False
+if "RESAMPLE" in os.environ:
+    RESAMPLE = os.environ["RESAMPLE"] == "True"
+    print(f"RESAMPLE environment variable present, RESAMPLE set to {RESAMPLE}")
+else:
+    print("No RESAMPLE environment variable present, RESAMPLE defaulting to False")
+    RESAMPLE = False
 
 if RESAMPLE:
     from dash_extensions.enrich import DashProxy, Serverside, ServersideOutputTransform
