@@ -29,10 +29,10 @@ plot_legend = True
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -57,10 +57,10 @@ clustering_params = (
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -171,11 +171,12 @@ if select_data_column in ["classical", "combo"]:
     df_cultures = df_cultures.join(df_cultures_all_data)
     # df_cultures[classical_features] = df_cultures_all_data[classical_features]
     del df_cultures_all_data
-# %%
+# %% PCA
 s = None
 match dataset:
     case "inhibblock":
         hue = "drug_label"
+        s = 15
     case "kapucu":
         hue = [
             (culture_type, mea_number)
@@ -184,9 +185,10 @@ match dataset:
                 df_cultures.index.get_level_values("mea_number").astype(str),
             )
         ]
+        s = 8
     case "wagenaar":
         hue = "batch"
-        s = 20
+        s = 8
     case _:
         raise NotImplementedError
 
@@ -281,13 +283,17 @@ ax.set_xlabel("PC 1")
 ax.set_ylabel("PC 2")
 ax.set_xticks([])
 ax.set_yticks([])
+if dataset == "inhibblock" and select_data_column in ["classical"]:
+    ax.set_xlim(ax.get_xlim()[0] - 1.3, ax.get_xlim()[1])
+    ax.set_ylim(ax.get_ylim()[0] - 0.6, ax.get_ylim()[1])
+
 fig.show()
 fig.savefig(
     os.path.join(get_fig_folder(), f"{dataset}_{select_data_column}_PCA_group.svg"),
     transparent=True,
 )
 
-# %%
+# %% Classification
 test_type = ["cross-validate", "direct"][1]
 
 match dataset:
