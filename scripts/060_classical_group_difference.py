@@ -104,6 +104,6 @@ _plot(df_cultures, ["avg_burst_duration", "avg_firing_rate"])
 
 
 # %% classical features as in van Hugte et al.
-df_cultures, features = get_classical_features(df_cultures, df_bursts)
+df_cultures, features = get_classical_features(df_cultures, df_bursts, dataset)
 
 _plot(df_cultures, features)
