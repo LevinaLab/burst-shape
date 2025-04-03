@@ -22,27 +22,38 @@ from src.persistence import (
 )
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
 from src.persistence.burst_extraction import _get_burst_folder
+from src.plot import prepare_plotting
 
-# parameters which clustering to evaluate
+# parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
-clustering_params = (
-    # "agglomerating_clustering_linkage_complete"
-    "agglomerating_clustering_linkage_ward"
-    # "agglomerating_clustering_linkage_average"
-    # "agglomerating_clustering_linkage_single"
-    # "spectral_affinity_precomputed_metric_wasserstein"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-)
+if "kapucu" in burst_extraction_params:
+    dataset = "kapucu"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    )
+    select_n_clusters = 4
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+    select_n_clusters = 4
+elif "inhibblock" in burst_extraction_params:
+    dataset = "inhibblock"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    )
+    select_n_clusters = 4
+else:
+    dataset = "wagenaar"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    )
+    select_n_clusters = 6
+print(f"Detected dataset: {dataset}")
+
 
 clustering_type = clustering_params.split("_")[0]
 labels_params = "labels"  #  needed for spectral clustering if not default "labels"
@@ -55,7 +66,7 @@ cv_params = load_cv_params(burst_extraction_params, cv_params)
 n_splits = cv_params["n_splits"]
 
 # plotting
-cm = 1 / 2.54  # centimeters in inches
+cm = prepare_plotting()
 fig_path = folders.get_fig_folder()
 
 # load data
@@ -139,7 +150,7 @@ match clustering_type:
 ###############################################################################
 # %%
 def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "min"]):
-    fig, ax = plt.subplots(constrained_layout=True)
+    fig, ax = plt.subplots(constrained_layout=True, figsize=(6 * cm, 4 * cm))
     sns.despine()
     if score.ndim == 2:
         ax.plot(
@@ -148,9 +159,10 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
             linewidth=1,
             alpha=0.5,
             color="black",
-            label=[
-                f"{score_abbreviation} with split {i}" for i in range(score.shape[1])
-            ],
+            # label=[
+            #     f"{score_abbreviation} cv-split {i}" for i in range(score.shape[1])
+            # ],
+            label=["CV splits" if i == 0 else None for i in range(score.shape[1])],
         )
         score_mean = score.mean(axis=1)
         score_std = score.std(axis=1)
@@ -162,8 +174,10 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
         score_mean,
         yerr=score_std,
         fmt="-o",
-        color="blue",
-        label=f"{score_abbreviation}-mean +- std over splits",
+        color="k",
+        markersize=4,
+        # label=f"{score_abbreviation}-mean +- std over splits",
+        label="Mean+-std",
     )
     # highlight maximum
     match highlight:
@@ -175,15 +189,91 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
         n_clusters[i_highlight],
         score_mean[i_highlight],
         color="r",
-        label=f"{highlight}: {n_clusters[i_highlight]} clusters",
+        # label=f"{highlight}: {n_clusters[i_highlight]} clusters",
+        label=f"{highlight.capitalize()}: {n_clusters[i_highlight]}",
         zorder=10,
+        s=15,
     )
-    ax.legend(frameon=False)
+    scale = score_mean.max() - score_mean.min()
+    ax.arrow(
+        select_n_clusters,
+        score_mean.max() + 0.4 * scale,
+        0,
+        -0.3 * scale,
+        length_includes_head=True,
+        color="red",
+        alpha=1,
+        head_width=0.5,
+        head_length=0.1 * scale,
+    )
+    # ax.legend(frameon=False, bbox_to_anchor=(1.05, 1), loc="upper left")
     ax.set_xlabel("Number of clusters")
     ax.set_ylabel(ylabel)
+    ax.yaxis.set_label_coords(-0.25, 0.4)
     fig.show()
     return fig
 
+
+# %% plot legend
+fig, ax = plt.subplots(figsize=(11 * cm, 3 * cm))
+handles = []
+labels = []
+handle = ax.errorbar(
+    [],
+    [],
+    yerr=[],
+    fmt="-o",
+    color="k",
+    markersize=4,
+)
+handles.append(handle)
+labels.append("Mean±std")
+
+(handle,) = ax.plot(
+    [],
+    [],
+    linewidth=1,
+    alpha=0.5,
+    color="black",
+)
+print(handle)
+handles.append(handle)
+labels.append("CV splits")
+
+handle = ax.scatter(
+    [],
+    [],
+    color="r",
+    s=15,
+)
+handles.append(handle)
+labels.append("Max/Min")
+
+handle = ax.scatter(
+    [],
+    [],
+    color="red",
+    marker=r"$\downarrow$",
+    s=30,
+)
+handles.append(handle)
+labels.append("Selected")
+
+ax.legend(
+    handles=handles,
+    labels=labels,
+    ncol=4,
+    loc="center",
+    frameon=False,
+    handletextpad=0.1,
+    columnspacing=0.3,
+)
+
+ax.axis("off")  # Hide axes since it's just a legend
+fig.show()
+fig.savefig(
+    os.path.join(get_fig_folder(), f"{dataset}_cv_legend.svg"), transparent=True
+)
 
 # %% mutual information score
 # this accounts for permutation of labels
@@ -203,11 +293,13 @@ for i_n_cluster, n_clusters_ in tqdm(
 # plot n_clusters vs mutual information score
 fig = _plot_score(
     mi_score,
-    ylabel="Mutual information score",
+    ylabel="Mutual Information\nScore",
     score_abbreviation="MI",
     highlight="max",
 )
-fig.savefig(os.path.join(get_fig_folder(), "cv_mutual_info.svg"), transparent=True)
+fig.savefig(
+    os.path.join(get_fig_folder(), f"{dataset}_cv_mutual_info.svg"), transparent=True
+)
 
 # %% adjusted rand index (ARI)
 # this accounts for permutation of labels
@@ -226,9 +318,9 @@ for i_n_cluster, n_clusters_ in tqdm(
 
 # plot n_clusters vs ARI
 fig = _plot_score(
-    ari_score, ylabel="Adjusted Rand Index", score_abbreviation="ARI", highlight="max"
+    ari_score, ylabel="Adjusted Rand\nIndex", score_abbreviation="ARI", highlight="max"
 )
-fig.savefig(os.path.join(get_fig_folder(), "cv_ARI.svg"), transparent=True)
+fig.savefig(os.path.join(get_fig_folder(), f"{dataset}_cv_ARI.svg"), transparent=True)
 
 # %% Fowlkes-Mallows scores
 # this accounts for permutation of labels
@@ -246,7 +338,7 @@ for i_n_cluster, n_clusters_ in tqdm(
 # plot n_clusters vs Fowlkes-Mallows score
 fig = _plot_score(
     fm_score,
-    ylabel="Fowlkes-Mallows score",
+    ylabel="Fowlkes-Mallows\nScore",
     score_abbreviation="FM",
     highlight="max",
 )
@@ -263,9 +355,11 @@ for i_n_cluster, n_clusters_ in tqdm(
     )
 
 fig = _plot_score(
-    db_scores, ylabel="Davies-Bouldin Score", score_abbreviation="DB", highlight="min"
+    db_scores, ylabel="Davies-Bouldin\nScore", score_abbreviation="DB", highlight="min"
 )
-fig.savefig(os.path.join(get_fig_folder(), "cv_db_euclidian.svg"), transparent=True)
+fig.savefig(
+    os.path.join(get_fig_folder(), f"{dataset}_cv_db_euclidian.svg"), transparent=True
+)
 
 # %% Cross-validate with self-built Davies-Bouldin index
 if do_my_davies_bouldin:
@@ -312,10 +406,11 @@ if do_my_davies_bouldin:
         )
     fig = _plot_score(
         my_db_score,
-        ylabel="Davies-Bouldin Score",
+        ylabel="Davies-Bouldin\nScore",
         score_abbreviation="DB",
         highlight="min",
     )
     fig.savefig(
-        os.path.join(get_fig_folder(), "cv_db_wasserstein.svg"), transparent=True
+        os.path.join(get_fig_folder(), f"{dataset}_cv_db_wasserstein.svg"),
+        transparent=True,
     )

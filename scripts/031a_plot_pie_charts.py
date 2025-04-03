@@ -14,7 +14,8 @@ from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
 
 cm = prepare_plotting()
 
-plot_subset = True
+# SET TO TRUE TO PLOT ONLY A SUBSET
+plot_subset = False
 
 # parameters which clustering to plot
 burst_extraction_params = (
@@ -302,7 +303,10 @@ fig.tight_layout()
 fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
 fig.show()
 fig.savefig(
-    os.path.join(get_fig_folder(), f"{dataset}_pie_chart.svg"), transparent=True
+    os.path.join(
+        get_fig_folder(), f"{dataset}_pie_chart{'_subset' if plot_subset else ''}.svg"
+    ),
+    transparent=True,
 )
 
 # %% special plate layout for inhibblock data
