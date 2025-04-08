@@ -7,6 +7,7 @@ _data_folder = "data"
 _data_kapucu_folder = "data_kapucu"
 _data_hommersom_folder = "data_hommersom"
 _data_inhibblock_folder = "data_inhibblock"
+_data_mossink_folder = "data_mossink"
 _fig_folder = "figures"
 _results_folder = "results"
 
@@ -45,6 +46,15 @@ def get_data_inhibblock_folder():
         str: path to the inhibblock data folder
     """
     return os.path.join(get_data_folder(), _data_inhibblock_folder)
+
+
+def get_data_mossink_folder():
+    """Returns the path to the mossink data folder.
+
+    Returns:
+        str: path to the mossink data folder
+    """
+    return os.path.join(get_data_folder(), _data_mossink_folder)
 
 
 def get_fig_folder():

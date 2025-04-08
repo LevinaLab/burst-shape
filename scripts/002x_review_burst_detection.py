@@ -13,6 +13,7 @@ from src.persistence.spike_times import (
     get_hommersom_spike_times,
     get_inhibblock_spike_times,
     get_kapucu_spike_times,
+    get_mossink_spike_times,
 )
 
 if "RESAMPLE" in os.environ:
@@ -44,6 +45,8 @@ if "DATASET" in os.environ:
             burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case "mossink":
+            burst_extraction_params = "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case _:
             raise NotImplementedError(
                 f"Unknown environment variable DATASET: {os.environ['DATASET']}"
@@ -59,7 +62,9 @@ else:
         # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
         # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_mossink_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     )
 citation = "the relevant literature"
 doi_link = None
@@ -75,11 +80,17 @@ elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
     citation = "Vinogradov et al. (2024)"
     doi_link = "https://doi.org/10.1101/2024.08.21.608974"
+elif "mossink" in burst_extraction_params:
+    dataset = "mossink"
+    citation = "Mossink et al. (2021)"
+    doi_link = "https://doi.org/10.17632/bvt5swtc5h.1"
 else:
     dataset = "wagenaar"
     citation = "Wagenaar et al. (2006)"
     doi_link = "https://doi.org/10.1186/1471-2202-7-11"
 print(f"Detected dataset: {dataset}")
+
+df_cultures = load_df_cultures(burst_extraction_params)
 
 match dataset:
     case "wagenaar":
@@ -94,10 +105,11 @@ match dataset:
     case "inhibblock":
         pivot_index = ["drug_label", "div"]
         pivot_columns = "well_idx"
+    case "mossink":
+        pivot_index = ["group", "subject_id"]
+        pivot_columns = "well_idx"
     case _:
         raise NotImplementedError(f"{dataset} dataset is not implemented.")
-
-df_cultures = load_df_cultures(burst_extraction_params)
 
 # unique culture_type - mea_number - well_id combinations
 pivot_table = pd.pivot_table(
@@ -110,7 +122,8 @@ pivot_table = pd.pivot_table(
 )
 
 subjects = pivot_table.index.tolist()
-subjects = ["-".join([str(s) for s in subject]) for subject in subjects]
+if isinstance(subjects[0], tuple):
+    subjects = ["-".join([str(s) for s in subject]) for subject in subjects]
 days = [f"D{day}" for day in pivot_table.columns.tolist()]
 z = pivot_table.to_numpy()
 
@@ -233,6 +246,9 @@ def update_plot(click_data):
             case "inhibblock":
                 index_select = (str(index_select[0]), int(index_select[1]))
                 selected_text = f"Selected: drug_label {index_select[0]}, div {index_select[1]}, well_idx {div_day}"
+            case "mossink":
+                index_select = (str(index_select[0]), int(index_select[1]))
+                selected_text = f"Selected: group {index_select[0]}, subject_id {index_select[1]}, well_idx {div_day}"
             case _:
                 raise NotImplementedError(f"{dataset} dataset is not implemented.")
 
@@ -293,6 +309,13 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
                 index,
             )
             st /= 1000  # convert to seconds
+        case "mossink":
+            index = (*index_select, div_day)
+            st, gid = get_mossink_spike_times(
+                df_cultures,
+                index,
+            )
+            st /= 1000
         case _:
             raise NotImplementedError(f"{dataset} dataset is not implemented.")
 

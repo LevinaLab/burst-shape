@@ -9,17 +9,23 @@ import seaborn as sns
 
 from src import folders
 from src.folders import get_fig_folder
-from src.persistence import load_burst_matrix, load_clustering_labels, load_df_bursts
+from src.persistence import (
+    load_burst_matrix,
+    load_clustering_labels,
+    load_df_bursts,
+    load_df_cultures,
+)
 from src.plot import get_cluster_colors, label_sig_diff, prepare_plotting
 
 cm = prepare_plotting()
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -29,6 +35,9 @@ elif "hommersom" in burst_extraction_params:
     n_clusters = 4
 elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
+    n_clusters = 4
+elif "mossink" in burst_extraction_params:
+    dataset = "mossink"
     n_clusters = 4
 else:
     dataset = "wagenaar"
@@ -44,10 +53,10 @@ clustering_params = (
     # "agglomerating_clustering_linkage_average"
     # "agglomerating_clustering_linkage_single"
     # "spectral_affinity_precomputed_metric_wasserstein"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
 )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -76,6 +85,8 @@ match dataset:
         index_names = ["batch", "clone", "well_idx"]
     case "inhibblock":
         index_names = ["drug_label", "div", "well_idx"]
+    case "mossink":
+        index_names = ["group", "subject_id", "well_idx"]
     case _:
         raise NotImplementedError(f"Dataset {dataset} not implemented.")
 # %% get clusters from linkage
@@ -289,6 +300,20 @@ def _cosine_similarity_df(
 
     return pd.DataFrame(similarities_list)
 
+
+# %% mossink: load meta data
+if dataset == "mossink":
+    # df_cultures.drop(["gender", "age", "coating", "batch"], axis=1, inplace=True)
+    df_cultures_metadata = load_df_cultures(burst_extraction_params)
+    df_cultures_metadata = df_cultures_metadata[df_cultures_metadata["n_bursts"] > 0]
+    df_cultures = df_cultures.join(
+        df_cultures_metadata[["gender", "age", "coating", "batch"]], rsuffix="_delete"
+    )
+    del df_cultures_metadata
+    df_cultures.reset_index(inplace=True)
+    df_cultures.set_index(
+        index_names + ["gender", "age", "coating", "batch"], inplace=True
+    )
 
 # %%
 match dataset:
@@ -536,6 +561,110 @@ match dataset:
                         1,
                         r"***",
                         (j - i) * 0.6 - 0.3,
+                        0.1,
+                        "k",
+                        ft_sig=10,
+                        lw_sig=1,
+                    )
+
+        fig.show()
+        fig.savefig(
+            os.path.join(get_fig_folder(), f"{dataset}_similarity.svg"),
+            transparent=True,
+        )
+    case "mossink":
+        similarity_random = _cosine_similarity_df(df_cultures)
+        similarity_in_group = _cosine_similarity_df(
+            df_cultures,
+            column_separate_combo=["group"],
+        )
+        similarity_between_group = _cosine_similarity_df(
+            df_cultures,
+            column_comparison_combo=["group"],
+        )
+        similarity_in_subject = _cosine_similarity_df(
+            df_cultures,
+            column_separate_combo=["group", "subject_id"],
+        )
+        similarity_in_gender = _cosine_similarity_df(
+            df_cultures,
+            column_separate_combo=["gender"],
+        )
+        similarity_in_coating = _cosine_similarity_df(
+            df_cultures,
+            column_separate_combo=["coating"],
+        )
+
+        cm = 1 / 2.54
+        fig, ax = plt.subplots(constrained_layout=True, figsize=(8 * cm, 3.5 * cm))
+        sns.despine()
+
+        # Data preparation
+        data = [
+            np.concatenate(similarity_random["similarities"].values),
+            # np.concatenate(similarity_between_group["similarities"].values),
+            np.concatenate(similarity_in_group["similarities"].values),
+            np.concatenate(similarity_in_subject["similarities"].values),
+            np.concatenate(similarity_in_gender["similarities"].values),
+            np.concatenate(similarity_in_coating["similarities"].values),
+        ]
+        data_avg = [
+            np.concatenate(similarity_random["similarities_avg"].values),
+            # np.concatenate(similarity_between_group["similarities_avg"].values),
+            np.concatenate(similarity_in_group["similarities_avg"].values),
+            np.concatenate(similarity_in_subject["similarities_avg"].values),
+            np.concatenate(similarity_in_gender["similarities_avg"].values),
+            np.concatenate(similarity_in_coating["similarities_avg"].values),
+        ]
+        labels = [
+            "random",
+            # "betw.-\ngroup",
+            "within-\ngroup",
+            "subject",
+            "gender",
+            "coating",
+        ]
+
+        # Violin plot with white fill
+        sns.violinplot(
+            data=data,
+            ax=ax,
+            inner="box",
+            facecolor=(1, 1, 1, 0),
+            edgecolor="black",
+            inner_kws={"color": "grey", "zorder": 0},
+        )
+
+        # Overlay dots for individual data points
+        # sns.stripplot(data=data, ax=ax, color="black", size=0.3, jitter=True)
+        # sns.boxplot(data=data, ax=ax, color="grey", size=0.3)
+
+        # Labeling
+        ax.set_xticks(list(range(len(data))))
+        ax.set_xticklabels(
+            labels,
+            rotation=0,  # ha="right"
+        )
+        ax.set_ylabel("Similarity")
+        ax.set_yticks([0, 1])
+
+        for i, distribution1 in enumerate(data_avg):
+            for j, distribution2 in enumerate(data_avg):
+                if i >= j:
+                    continue
+                print(f"{i} vs {j}")
+                test_mannwhitneyu = scipy.stats.mannwhitneyu(
+                    distribution1,
+                    distribution2,
+                )
+                print(test_mannwhitneyu)
+                if test_mannwhitneyu.pvalue < 0.001:
+                    label_sig_diff(
+                        ax,
+                        (i, j),
+                        1,
+                        r"***",
+                        0.3 if j - i == 1 else 0.9,
                         0.1,
                         "k",
                         ft_sig=10,

@@ -36,7 +36,8 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -49,6 +50,12 @@ elif "hommersom" in burst_extraction_params:
     n_clusters = 4
 elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    )
+    n_clusters = 4
+elif "mossink" in burst_extraction_params:
+    dataset = "mossink"
     clustering_params = (
         "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
     )
@@ -104,6 +111,8 @@ match dataset:
         index_names = ["batch", "clone", "well_idx"]
     case "inhibblock":
         index_names = ["drug_label", "div", "well_idx"]
+    case "mossink":
+        index_names = ["group", "subject_id", "well_idx"]
     case _:
         raise NotImplementedError(f"Dataset {dataset} not implemented.")
 # %% get clusters from linkage
@@ -247,6 +256,9 @@ def _plot_PCA(pca, pc_column_names, select_data_column, feature_columns=None):
         case "wagenaar":
             hue = "batch"
             s = 8
+        case "mossink":
+            hue = "group"
+            s = 10
         case _:
             raise NotImplementedError
     # Plot the PCA components
@@ -357,6 +369,16 @@ match dataset:
         figsize = (4 * cm, 3.5 * cm)
     case "wagenaar":
         target_label = "batch"
+        figsize = (4 * cm, 3.5 * cm)
+    case "mossink":
+        df_cultures.reset_index(inplace=True)
+        df_cultures["group-subject"] = (
+            df_cultures["group"] + "-" + df_cultures["subject_id"].astype(str)
+        )
+        df_cultures.set_index(["group-subject", "well_idx"], inplace=True)
+        target_label = "group-subject"
+
+        # target_label = "group"
         figsize = (4 * cm, 3.5 * cm)
     case _:
         raise NotImplementedError
@@ -565,6 +587,10 @@ match dataset:
     case "wagenaar":
         target_label = "batch"
         figsize = (10 * cm, 5 * cm)
+    case "mossink":
+        target_label = "group-subject"
+        # target_label = "group"
+        figsize = (10 * cm, 5 * cm)
     case _:
         raise NotImplementedError
 
@@ -596,7 +622,7 @@ def _map_label(feature, newline=True):
         if parts[1] == "clusters":
             label += "Shape"
         elif parts[1] == "classical":
-            label += "Class."
+            label += "Stand."
         elif parts[1] == "combo":
             label += "Combo"
         else:
@@ -662,7 +688,7 @@ fig.savefig(
 )
 
 # %%
-fig, ax = plt.subplots(figsize=(4.5 * cm, 5 * cm), constrained_layout=True)
+fig, ax = plt.subplots(figsize=(8 * cm, 5 * cm), constrained_layout=True)
 sns.despine()
 sns.barplot(
     x=accuracies.keys(),
@@ -671,9 +697,10 @@ sns.barplot(
     color="k",
     width=0.6,
 )
+ax.bar_label(ax.containers[0], fontsize=10, fmt="%.2f")
 ax.set_xticks(range(len(accuracies)))
 ax.set_xticklabels(
-    [_map_label(feature, newline=False) for feature in accuracies.keys()], rotation=90
+    [_map_label(feature, newline=True) for feature in accuracies.keys()], rotation=90
 )
 ax.set_xlabel("Feature")
 ax.set_ylim([0.5, None])

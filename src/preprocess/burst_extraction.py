@@ -13,6 +13,7 @@ from src.folders import (
     get_data_hommersom_folder,
     get_data_inhibblock_folder,
     get_data_kapucu_folder,
+    get_data_mossink_folder,
 )
 from src.preprocess import burst_detection
 
@@ -20,7 +21,9 @@ na = np.array
 
 
 def extract_bursts(
-    dataset: Literal["kapucu", "wagenaar", "hommersom"] = "wagenaar",
+    dataset: Literal[
+        "kapucu", "wagenaar", "hommersom", "inhibblock", "mossink"
+    ] = "wagenaar",
     data_folder=None,
     maxISIstart=5,
     maxISIb=5,
@@ -43,7 +46,7 @@ def extract_bursts(
     All times in milliseconds.
 
     Args:
-        dataset (Literal["kapucu", "wagenaar"], optional): Dataset to extract bursts from.
+        dataset (Literal["kapucu", "wagenaar", "hommersom", "inhibblock", "mossink"], optional): Dataset to extract bursts from.
         data_folder (str, optional): Path to folder containing data files. Defaults to None.
         maxISIstart (int, optional): Maximum inter-spike interval (ISI) for start of burst.
             Defaults to 5.
@@ -81,6 +84,10 @@ def extract_bursts(
                 data_folder = get_data_kapucu_folder()
             case "hommersom":
                 data_folder = get_data_hommersom_folder()
+            case "inhibblock":
+                data_folder = get_data_inhibblock_folder()
+            case "mossink":
+                data_folder = get_data_mossink_folder()
             case _:
                 raise ValueError(f"Unknown dataset {dataset}.")
     match dataset:
@@ -124,6 +131,19 @@ def extract_bursts(
         case "inhibblock":
             df_cultures = pd.read_pickle(
                 os.path.join(get_data_inhibblock_folder(), "df_inhibblock.pkl")
+            )
+            df_cultures = _bursts_from_df_culture(
+                df_cultures,
+                data_folder,
+                maxISIstart,
+                maxISIb,
+                minBdur,
+                minIBI,
+                minSburst,
+            )
+        case "mossink":
+            df_cultures = pd.read_pickle(
+                os.path.join(get_data_mossink_folder(), "df_mossink.pkl")
             )
             df_cultures = _bursts_from_df_culture(
                 df_cultures,
@@ -432,7 +452,7 @@ def _build_bursts_df(
                 file_name = df_cultures.at[index, "file_name"]
                 file_path = os.path.join(data_folder, file_name)
                 data = np.loadtxt(file_path)[:, 0] * 1000
-            case "kapucu" | "hommersom" | "inhibblock":
+            case "kapucu" | "hommersom" | "inhibblock" | "mossink":
                 data = df_cultures.at[index, "times"] * 1000
             case _:
                 raise NotImplementedError(f"Dataset {dataset} not implemented")

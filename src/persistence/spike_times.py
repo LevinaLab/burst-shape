@@ -33,3 +33,10 @@ def get_inhibblock_spike_times(df_cultures, idx):
         df_cultures.at[idx, "times"] * 1000,
         df_cultures.at[idx, "gid"],
     )
+
+
+def get_mossink_spike_times(df_cultures, idx):
+    return (
+        df_cultures.at[idx, "times"] * 1000,
+        df_cultures.at[idx, "gid"],
+    )

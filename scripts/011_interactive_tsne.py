@@ -48,6 +48,8 @@ if "DATASET" in os.environ:
             burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case "mossink":
+            burst_extraction_params = "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case _:
             raise NotImplementedError(
                 f"Unknown environment variable DATASET: {os.environ['DATASET']}"
@@ -63,7 +65,8 @@ else:
         # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
         # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     )
 citation = "the relevant literature"
 doi_link = None
@@ -83,6 +86,13 @@ elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
     citation = "Vinogradov et al. (2024)"
     doi_link = "https://doi.org/10.1101/2024.08.21.608974"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    )
+elif "mossink" in burst_extraction_params:
+    dataset = "mossink"
+    citation = "Mossink et al. (2021)"
+    doi_link = "https://doi.org/10.17632/bvt5swtc5h.1"
     clustering_params = (
         "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
     )
@@ -197,6 +207,10 @@ match dataset:
     case "inhibblock":
         df_bursts["batch_culture"] = (
             df_bursts["drug_label"].astype(str) + "-" + df_bursts["div"].astype(str)
+        )
+    case "mossink":
+        df_bursts["batch_culture"] = (
+            df_bursts["group"].astype(str) + "-" + df_bursts["subject_id"].astype(str)
         )
     case _:
         raise NotImplementedError(f"Dataset {dataset} not implemented.")
@@ -377,6 +391,8 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
                     color_discrete_map = {}
                     for key, value in color_discrete_map_load.items():
                         color_discrete_map["-".join(key)] = value
+                case "mossink":
+                    color = "group"
             df_bursts[color] = df_bursts[color].astype(str)
             color_discrete_sequence = px.colors.qualitative.Set1
             match dataset:
@@ -387,7 +403,8 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
                 case "kapucu" | "hommersom" | "inhibblock":
                     category_orders = {color: sorted(df_bursts[color].unique())}
                 case _:
-                    raise NotImplementedError(f"Dataset {dataset} not implemented.")
+                    pass
+                    # raise NotImplementedError(f"Dataset {dataset} not implemented.")
             legend_title = "Batch"
         case "batch_culture":
             color = "batch_culture"
@@ -401,7 +418,7 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
                             key=lambda x: (int(x.split("-")[0]), int(x.split("-")[1])),
                         )
                     }
-                case "kapucu" | "hommersom" | "inhibblock":
+                case "kapucu" | "hommersom" | "inhibblock" | "mossink":
                     category_orders = {
                         color: sorted(df_bursts["batch_culture"].unique())
                     }
@@ -617,6 +634,22 @@ def update_timeseries(tsne_click_data, firing_rate_click_data, n_clusters_curren
                     ]
                 ]
             )
+        case "mossink":
+            title = "Time series for " + ", ".join(
+                [
+                    f"{key}: {df_bursts.iloc[point_index][key]}"
+                    for key in [
+                        f"cluster_{n_clusters_current}",
+                        "group",
+                        "subject_id",
+                        "well_idx",
+                        "i_burst",
+                        # "well_id",
+                        "start_orig",
+                        "time_orig",
+                    ]
+                ]
+            )
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
     timeseries_fig = px.line(
@@ -719,6 +752,21 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             ]
             title_firing_rate = (
                 f"Firing rate for {drug_label}, div {div}, well {well_idx}"
+            )
+        case "mossink":
+            group, subject_id, well_idx = list(
+                df_bursts.iloc[point_index][["group", "subject_id", "well_idx"]]
+            )
+            st, gid = get_inhibblock_spike_times(
+                df_cultures, (group, subject_id, well_idx)
+            )
+            df_plot = df_bursts[
+                (df_bursts["group"] == group)
+                & (df_bursts["subject_id"] == subject_id)
+                & (df_bursts["well_idx"] == well_idx)
+            ]
+            title_firing_rate = (
+                f"Firing rate for {group}, subject {subject_id}, well {well_idx}"
             )
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented")

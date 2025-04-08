@@ -36,6 +36,11 @@ ARG PATH_TO_DATA=results/burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBd
 ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6
 ENV DATASET=hommersom
 
+FROM base as mossink
+ARG PATH_TO_DATA=results/burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30/
+ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85
+ENV DATASET=mossink
+
 FROM ${DATASET} AS intermediate
 COPY ${PATH_TO_DATA}/df_cultures.pkl /app/${PATH_TO_DATA}/df_cultures.pkl
 
