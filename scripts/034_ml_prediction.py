@@ -30,6 +30,7 @@ data_columns_to_load = [
     "combo",  # combine the information
 ]
 plot_legend = True
+special_target = False  # for mossink this chooses subjects as target instead of group
 
 # parameters which clustering to plot
 burst_extraction_params = (
@@ -37,7 +38,8 @@ burst_extraction_params = (
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -371,12 +373,15 @@ match dataset:
         target_label = "batch"
         figsize = (4 * cm, 3.5 * cm)
     case "mossink":
-        df_cultures.reset_index(inplace=True)
-        df_cultures["group-subject"] = (
-            df_cultures["group"] + "-" + df_cultures["subject_id"].astype(str)
-        )
-        df_cultures.set_index(["group-subject", "well_idx"], inplace=True)
-        target_label = "group-subject"
+        if special_target is True:
+            df_cultures.reset_index(inplace=True)
+            df_cultures["group-subject"] = (
+                df_cultures["group"] + " " + df_cultures["subject_id"].astype(str)
+            )
+            df_cultures.set_index(["group-subject", "well_idx"], inplace=True)
+            target_label = "group-subject"
+        else:
+            target_label = "group"
 
         # target_label = "group"
         figsize = (4 * cm, 3.5 * cm)
@@ -588,7 +593,10 @@ match dataset:
         target_label = "batch"
         figsize = (10 * cm, 5 * cm)
     case "mossink":
-        target_label = "group-subject"
+        if special_target is True:
+            target_label = "group-subject"
+        else:
+            target_label = "group"
         # target_label = "group"
         figsize = (10 * cm, 5 * cm)
     case _:

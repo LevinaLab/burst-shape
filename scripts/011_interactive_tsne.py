@@ -49,7 +49,7 @@ if "DATASET" in os.environ:
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "mossink":
-            burst_extraction_params = "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
         case _:
             raise NotImplementedError(
                 f"Unknown environment variable DATASET: {os.environ['DATASET']}"
@@ -66,7 +66,8 @@ else:
         # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
         # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     )
 citation = "the relevant literature"
 doi_link = None
@@ -121,11 +122,10 @@ labels_params = None  #  needed for spectral clustering if not default "labels"
 n_clusters = np.arange(2, 21, 1)
 
 # initial settings
-n_clusters_init = 5  # initial number of clusters
+n_clusters_init = 4  # initial number of clusters
 color_by_init = "cluster"  # initial color by
 marker_size_init = 3  # initial marker size
-embedding_type_init = ["tsne", "pca", "spectral"][0]
-
+embedding_type_init = ["tsne", "pca", "spectral"][2]
 
 ###############################################################################
 #                           Prepare data                                      #
@@ -272,9 +272,9 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id=ID_EMBEDDING_TYPE,
                             options=[
+                                {"label": "Spectral", "value": "spectral"},
                                 {"label": "t-SNE", "value": "tsne"},
                                 {"label": "PCA", "value": "pca"},
-                                {"label": "Spectral", "value": "spectral"},
                             ],
                             value=embedding_type_init,
                         ),
@@ -282,12 +282,12 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id=ID_COLOR_BY,
                             options=[
-                                {"label": "Day", "value": "day"},
-                                {"label": "Culture", "value": "batch_culture"},
-                                {"label": "Batch", "value": "batch"},
                                 {"label": "Cluster", "value": "cluster"},
+                                {"label": "Batch", "value": "batch"},
+                                {"label": "Culture", "value": "batch_culture"},
                                 {"label": "Duration", "value": "time_orig"},
                                 {"label": "Firing rate", "value": "firing_rate"},
+                                {"label": "Day", "value": "day"},
                             ],
                             value=color_by_init,
                         ),

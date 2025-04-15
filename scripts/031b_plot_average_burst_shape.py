@@ -17,7 +17,8 @@ burst_extraction_params = (
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -40,6 +41,7 @@ df_bursts = load_df_bursts(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
 
 # %% get average burst_shapes
+figsize=(7 * cm, 3.5 * cm)
 group_column = None
 group_labels = None
 match dataset:
@@ -57,7 +59,25 @@ match dataset:
             "control": "Contr.",
         }
     case "mossink":
-        index_names = ["group", "subject_id", "well_idx"]
+        figsize = (5 * cm, 3.5 * cm)
+        if True:
+            df_cultures.reset_index(inplace=True)
+            df_bursts.reset_index(inplace=True)
+            df_cultures["group-subject"] = (
+                df_cultures.reset_index()["group"].astype(str)
+                + " "
+                + df_cultures.reset_index()["subject_id"].astype(str)
+            )
+            df_bursts["group-subject"] = (
+                df_bursts.reset_index()["group"].astype(str)
+                + " "
+                + df_bursts.reset_index()["subject_id"].astype(str)
+            )
+            index_names = ["group-subject", "well_idx"]
+            df_cultures.set_index(index_names, inplace=True)
+            df_bursts.set_index(index_names+["i_burst"], inplace=True)
+        else:
+            index_names = ["group", "subject_id", "well_idx"]
     case _:
         raise NotImplementedError(f"Dataset {dataset} not implemented.")
 if group_column is None:
@@ -68,7 +88,7 @@ df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
 )
 # %% plot average burst shape per group
 background = [None, "cultures", "burst"][0]
-fig, ax = plt.subplots(figsize=(7 * cm, 3.5 * cm), constrained_layout=True)
+fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
 sns.despine()
 for i, group in enumerate(df_cultures.index.get_level_values(group_column).unique()):
     color = (
@@ -97,12 +117,13 @@ ax.set_xlabel("Time [a.u.]")
 ax.set_ylabel("Firing rate [a.u.]")
 ax.yaxis.set_label_coords(-0.32, 0.4)
 ax.set_xticks([0, 25, 50])
-ax.legend(
-    frameon=False,
-    loc="upper left",
-    bbox_to_anchor=(0.9, 1.2),
-    handlelength=1,
-)
+if dataset != "mossink":
+    ax.legend(
+        frameon=False,
+        loc="upper left",
+        bbox_to_anchor=(0.9, 1.2),
+        handlelength=1,
+    )
 # fig.tight_layout()
 fig.show()
 fig.savefig(

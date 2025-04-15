@@ -27,3 +27,5 @@ docker-push:
 	docker push $(REPO)/$(PROJECT_ID)/$(APPLICATION)-$(DATASET):$(TAG)
 
 docker-deploy: docker-build docker-tag gcloud-auth docker-push
+
+docker-deploy-no-auth: docker-build docker-tag docker-push
