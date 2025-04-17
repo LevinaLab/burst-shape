@@ -24,6 +24,7 @@ from src.persistence.spike_times import (
     get_hommersom_spike_times,
     get_inhibblock_spike_times,
     get_kapucu_spike_times,
+    get_mossink_spike_times,
 )
 from src.plot import get_cluster_colors, get_group_colors
 
@@ -757,7 +758,7 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             group, subject_id, well_idx = list(
                 df_bursts.iloc[point_index][["group", "subject_id", "well_idx"]]
             )
-            st, gid = get_inhibblock_spike_times(
+            st, gid = get_mossink_spike_times(
                 df_cultures, (group, subject_id, well_idx)
             )
             df_plot = df_bursts[
