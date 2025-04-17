@@ -24,9 +24,9 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -330,7 +330,7 @@ match dataset:
         )
 
         cm = 1 / 2.54
-        fig, ax = plt.subplots(constrained_layout=True, figsize=(5 * cm, 3.5 * cm))
+        fig, ax = plt.subplots(constrained_layout=True, figsize=(5 * cm, 4 * cm))
         sns.despine()
 
         # Data preparation
@@ -346,13 +346,34 @@ match dataset:
         ]
 
         # Violin plot with white fill
-        sns.violinplot(
+        """sns.violinplot(
             data=data,
             ax=ax,
             inner="box",
             facecolor=(1, 1, 1, 0),
             edgecolor="black",
             inner_kws={"color": "grey", "zorder": 0},
+        )"""
+        sns.violinplot(
+            data=data,
+            ax=ax,
+            inner=None,  # Remove internal boxplot
+            facecolor=(1, 1, 1, 0),  # Transparent fill
+            edgecolor="grey",
+            linewidth=1.5,
+        )
+        # Overlay boxplot in red
+        sns.boxplot(
+            data=data,
+            ax=ax,
+            showcaps=False,
+            width=0.2,
+            color="grey",
+            boxprops={"facecolor": "grey", "edgecolor": "black"},
+            whiskerprops={"color": "black"},
+            medianprops={"color": "red"},
+            flierprops={"markerfacecolor": "grey", "markeredgecolor": "grey"},
+            fliersize=0,
         )
 
         # Overlay dots for individual data points
@@ -441,13 +462,34 @@ match dataset:
         xtick_labels = ["random", "betw.-group", "in-group", "day-to-day"]
 
         # Violin plot with white fill
-        sns.violinplot(
+        """sns.violinplot(
             data=data,
             ax=ax,
             inner="box",
             facecolor=(1, 1, 1, 0),
             edgecolor="black",
             inner_kws={"color": "grey", "zorder": 0},
+        )"""
+        sns.violinplot(
+            data=data,
+            ax=ax,
+            inner=None,  # Remove internal boxplot
+            facecolor=(1, 1, 1, 0),  # Transparent fill
+            edgecolor="grey",
+            linewidth=1.5,
+        )
+        # Overlay boxplot in red
+        sns.boxplot(
+            data=data,
+            ax=ax,
+            showcaps=False,
+            width=0.2,
+            color="grey",
+            boxprops={"facecolor": "grey", "edgecolor": "black"},
+            whiskerprops={"color": "black"},
+            medianprops={"color": "red"},
+            flierprops={"markerfacecolor": "grey", "markeredgecolor": "grey"},
+            fliersize=0,
         )
         # sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")
 
@@ -620,7 +662,7 @@ match dataset:
         labels = [
             "random",
             # "betw.-\ngroup",
-            "group", # "within-\ngroup",
+            "group",  # "within-\ngroup",
             "subject",
             "gender",
             "coating",
@@ -651,10 +693,10 @@ match dataset:
             showcaps=False,
             width=0.2,
             color="grey",
-            boxprops={'facecolor': 'grey', 'edgecolor': 'black'},
-            whiskerprops={'color': 'black'},
-            medianprops={'color': 'red'},
-            flierprops={'markerfacecolor': 'grey', 'markeredgecolor': 'grey'},
+            boxprops={"facecolor": "grey", "edgecolor": "black"},
+            whiskerprops={"color": "black"},
+            medianprops={"color": "red"},
+            flierprops={"markerfacecolor": "grey", "markeredgecolor": "grey"},
         )
 
         # Overlay dots for individual data points

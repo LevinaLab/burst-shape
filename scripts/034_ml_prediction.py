@@ -30,16 +30,16 @@ data_columns_to_load = [
     "combo",  # combine the information
 ]
 plot_legend = True
-special_target = False  # for mossink this chooses subjects as target instead of group
+special_target = False  # for mossink: if True chooses subjects as target instead, if False chooses group
 
 # parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -418,7 +418,10 @@ def _logistic_regression(train_columns):
                     X_train, X_test = X[train_idx], X[test_idx]
                     y_train, y_test = y[train_idx], y[test_idx]
 
-                    clf = LogisticRegression(solver="liblinear")
+                    clf = LogisticRegression(
+                        solver="liblinear", class_weight="balanced"
+                    )
+                    # TODO: multiclass='ovr'
                     clf.fit(X_train, y_train)
                     y_probs = clf.predict_proba(X_test)[:, 1]
 
@@ -573,7 +576,7 @@ if "combo" in data_columns_to_load:
     _plot_ROC("combo", pc_column_names_combo)
 
 # %% Accuracy by feature
-test_type = ["cross-validate", "direct"][1]
+test_type = ["cross-validate", "direct"][0]
 plot_type = [
     "stripplot",
     "pointplot",
@@ -603,7 +606,10 @@ match dataset:
         raise NotImplementedError
 
 features_list = (
-    pc_column_names_clusters[:1] + pc_column_names_classical[:1] + classical_features
+    pc_column_names_combo[:1]
+    + pc_column_names_clusters[:1]
+    + pc_column_names_classical[:1]
+    + classical_features
 )
 accuracies = {}
 for feature in features_list:

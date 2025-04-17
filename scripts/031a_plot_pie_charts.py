@@ -162,7 +162,9 @@ if plot_subset is True:
                 ]
             ]
         case "mossink":
-            df_cultures = df_cultures[df_cultures.index.get_level_values("well_idx") <= 12]
+            df_cultures = df_cultures[
+                df_cultures.index.get_level_values("well_idx") <= 12
+            ]
 
 # %% for all unique combinations of batch and culture
 unique_batch_culture = df_cultures.reset_index()[index_names[:-1]].drop_duplicates()

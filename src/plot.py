@@ -68,6 +68,8 @@ def get_group_colors(dataset):
             return get_wagenaar_colors()
         case "kapucu":
             return get_kapucu_colors()
+        case "mossink":
+            return get_mossink_colors()
         case _:
             return None
 
@@ -91,6 +93,37 @@ def get_kapucu_colors():
         ("hPSC", "MEA1"): "#fc0303",
         ("hPSC", "MEA2"): "#fc9d03",
     }
+
+
+def get_mossink_colors():
+    control_colors = plt.cm.Blues(np.linspace(0.4, 0.9, 10))
+    melas_colors = plt.cm.Greens(np.linspace(0.4, 0.9, 3))
+    ks_colors = plt.cm.Reds(np.linspace(0.4, 0.9, 4))
+    label_color_dict = {}
+
+    def _rgba_to_hex(color):
+        return "#{:02x}{:02x}{:02x}".format(
+            int(color[0] * 255), int(color[1] * 255), int(color[2] * 255)
+        )
+
+    for i, color in enumerate(control_colors, start=1):
+        label = f"Control {i}"
+        label_color_dict[label] = _rgba_to_hex(color)
+    for i, color in enumerate(melas_colors, start=1):
+        label = f"MELAS {i}"
+        label_color_dict[label] = _rgba_to_hex(color)
+    for i, color in enumerate(ks_colors, start=1):
+        label = f"KS {i}"
+        label_color_dict[label] = _rgba_to_hex(color)
+
+    def _average_color(colors):
+        avg = np.mean(colors[:, :3], axis=0)  # exclude alpha channel if present
+        return _rgba_to_hex((*avg, 1.0))
+
+    label_color_dict["Control"] = _average_color(control_colors)
+    label_color_dict["MELAS"] = _average_color(melas_colors)
+    label_color_dict["KS"] = _average_color(ks_colors)
+    return label_color_dict
 
 
 def label_sig_diff(

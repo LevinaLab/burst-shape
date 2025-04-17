@@ -41,7 +41,7 @@ df_bursts = load_df_bursts(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
 
 # %% get average burst_shapes
-figsize=(7 * cm, 3.5 * cm)
+figsize = (7 * cm, 3.5 * cm)
 group_column = None
 group_labels = None
 match dataset:
@@ -75,7 +75,7 @@ match dataset:
             )
             index_names = ["group-subject", "well_idx"]
             df_cultures.set_index(index_names, inplace=True)
-            df_bursts.set_index(index_names+["i_burst"], inplace=True)
+            df_bursts.set_index(index_names + ["i_burst"], inplace=True)
         else:
             index_names = ["group", "subject_id", "well_idx"]
     case _:
