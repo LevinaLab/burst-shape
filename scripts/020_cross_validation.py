@@ -188,11 +188,28 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
         label="Mean+-std",
     )
     # highlight maximum
+    i_candidate = []
     match highlight:
         case "min":
             i_highlight = np.argmin(score_mean)
         case "max":
             i_highlight = np.argmax(score_mean)
+            if score_std is not None:
+                score_sem = score_std / score.shape[1]
+                i_candidate = [
+                    i
+                    for i, (score, sem) in enumerate(zip(score_mean, score_sem))
+                    if score + sem > score_mean[i_highlight]
+                ]
+    ax.scatter(
+        n_clusters[i_candidate],
+        score_mean[i_candidate],
+        color="pink",
+        # label=f"{highlight}: {n_clusters[i_highlight]} clusters",
+        label=f"candidates",
+        zorder=10,
+        s=15,
+    )
     ax.scatter(
         n_clusters[i_highlight],
         score_mean[i_highlight],
@@ -223,7 +240,7 @@ def _plot_score(score, ylabel, score_abbreviation, highlight: Literal["max", "mi
 
 
 # %% plot legend
-fig, ax = plt.subplots(figsize=(11 * cm, 3 * cm))
+fig, ax = plt.subplots(figsize=(13 * cm, 3 * cm))
 handles = []
 labels = []
 handle = ax.errorbar(
@@ -251,6 +268,15 @@ labels.append("CV splits")
 handle = ax.scatter(
     [],
     [],
+    color="pink",
+    s=15,
+)
+handles.append(handle)
+labels.append("Candidates")
+
+handle = ax.scatter(
+    [],
+    [],
     color="r",
     s=15,
 )
@@ -270,7 +296,7 @@ labels.append("Selected")
 ax.legend(
     handles=handles,
     labels=labels,
-    ncol=4,
+    ncol=5,
     loc="center",
     frameon=False,
     handletextpad=0.1,
