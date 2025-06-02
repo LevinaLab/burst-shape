@@ -11,7 +11,7 @@ from src.preprocess import burst_extraction
 params_burst_extraction = {
     "dataset": "mossink",
     "maxISIstart": 100,  # 50,  # 20,  # 5,
-    "maxISIb": 100,  # 20,  # 5,l
+    "maxISIb": 50,  # 20,  # 5,l
     "minBdur": 100,  # 40,
     "minIBI": 500,  # 100,
     "minSburst": 50,  # 50,
