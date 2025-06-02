@@ -92,6 +92,8 @@ def get_kapucu_colors():
         ("Rat", "MEA1"): "#03fcdf",
         ("hPSC", "MEA1"): "#fc0303",
         ("hPSC", "MEA2"): "#fc9d03",
+        "Rat": "#03fcdf",
+        "hPSC": "#fc9d03",
     }
 
 
