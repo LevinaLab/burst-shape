@@ -24,12 +24,46 @@ pip install -r requirements.txt
 # Computation pipeline
 
 ## Download data
-script: `001_download_wagenaar_data.py`
+First, download the data and ensure that it is functioning.
 
-This will download the data into the `data/raw` folder and extract it into `data/extracted`.
+Existing scripts: `001_download_wagenaar_data.py`
+`001b_download_kapucu_data.py`
+`001c_test_load_Hommersom.py`
+`001d_preload_inhibblock.py`
+`001e_test_load_mossink.py`
+
+If you want to use your own data, create a similar script.
 
 ## Extract bursts
-script: `002_extract_bursts.py`
+Identifying the bursts relies on two steps:
+1. Extract the bursts
+   (scripts: 
+  `002_extract_bursts.py`
+  `002b_extract_bursts_kapucu.py`
+  `002_extract_bursts_hommersom.py`
+  `002_extract_bursts_inhibblock.py`
+  `002_extract_bursts_.py`
+   )
+2. Burst visualization (script: `002x_review_burst_detection`)
+Iterate these steps until you have a satisfying burst detection.
+
+### Example parameters
+```python
+params_burst_extraction = {
+    "maxISIstart": 5,
+    "maxISIb": 5,
+    "minBdur": 40,
+    "minIBI": 40,
+    "minSburst": 50,
+    "bin_size": None,
+    "n_bins": 50,
+    "extend_left": 0,
+    "extend_right": 0,
+    "burst_length_threshold": None,
+    "pad_right": False,
+}
+```
+
 ### Identification
 TODO @Oleg
 
@@ -51,24 +85,20 @@ Discard long bursts with `burst_length_threshold` (default `None`)
 ### Normalization
 TODO @Tim
 
-### Example parameters
-```python
-params_burst_extraction = {
-    "maxISIstart": 5,
-    "maxISIb": 5,
-    "minBdur": 40,
-    "minIBI": 40,
-    "minSburst": 50,
-    "bin_size": None,
-    "n_bins": 50,
-    "extend_left": 0,
-    "extend_right": 0,
-    "burst_length_threshold": None,
-    "pad_right": False,
-}
-```
+## Embedding and Clustering
+The core steps for computation are
+1. Split dataset for cross-validation: `003_split_cross_validation.py`
+2. Compute spectral clustering: `005a_spectral_clustering.py` 
+   (implicitly computes sparse affinity matrix (KNN-graph) and spectral embedding)
+3. Compute agglomerative_clustering: `005b_agglomerative_clustering.py` (implicitly computes full distance matrix)
+4. (optional) Compute t-SNE embedding `010_compute_tsne.py`
+5. (TODO: remove because redundant with spectral clustering) Compute spectral embedding: `010a_spectral_embedding.py`
 
-## Spectral clustering
+The core steps for evaluation:
+1. Cross-validation of clustering: `020_cross-validation.py`
+2. Visualize results interactively: `011_interactive_tsne.py`
+
+### Spectral clustering
 script: `005_spectral_clustering.py`
 
 This is the most time-consuming step in the pipeline.
@@ -120,21 +150,3 @@ cv_params = {
     "random_state": 0,
 }
 ```
-
-# Evaluation
-TODO @Tim describe the scripts for plotting and evaluation
-
-## Plot bursts
-script: `004_plot_example_bursts.py`
-
-## Plot clusters
-script: `006_plot_clusters.py`
-
-### PCA
-script: `007_pca.py`
-
-### t-SNE
-script: `008_tsne.py`
-
-## Cross-validation
-script: `009_cross_validation.py`
