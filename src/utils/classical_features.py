@@ -23,6 +23,9 @@ def get_classical_features(df_cultures, df_bursts, dataset):
         df_cultures: pandas DataFrame containing classical features.
         features: pandas DataFrame containing classical features.
     """
+    assert all(
+        df_cultures["n_bursts"] > 0
+    ), "df_cultures must have at least one burst per culture! Before calling this function, remove unnecessary rows with df_cultures = df_cultures[df_cultures['n_bursts'] > 0]"
 
     features = [
         "MFR",
