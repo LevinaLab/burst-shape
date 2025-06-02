@@ -115,13 +115,11 @@ match dataset:
         raise NotImplementedError(f"{dataset} dataset is not implemented.")
 
 # unique culture_type - mea_number - well_id combinations
-pivot_table = pd.pivot_table(
-    data=df_cultures,
+pivot_table = pd.pivot(
+    data=df_cultures.reset_index(),
     index=pivot_index,
     columns=pivot_columns,
     values="n_bursts",
-    aggfunc="mean",
-    fill_value=None,
 )
 
 subjects = pivot_table.index.tolist()
