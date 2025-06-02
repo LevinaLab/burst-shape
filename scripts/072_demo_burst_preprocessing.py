@@ -5,7 +5,8 @@ import numpy as np
 import seaborn as sns
 
 from src.folders import get_fig_folder
-from src.persistence import load_df_bursts
+from src.persistence import load_df_bursts, load_df_cultures
+from src.persistence.spike_times import get_inhibblock_spike_times
 from src.plot import prepare_plotting
 
 cm = prepare_plotting()
@@ -52,9 +53,9 @@ cv_split = (
 )
 # load bursts
 df_bursts = load_df_bursts(burst_extraction_params)
+df_cultures = load_df_cultures(burst_extraction_params)
 
 # %% inhibblock examples
-plot_only_cumulative = True
 if dataset == "inhibblock":
     examples_indices = [
         ("control", 17, 12, 124),
@@ -64,42 +65,77 @@ if dataset == "inhibblock":
     ]
 
     fig, axs = plt.subplots(
-        ncols=1 if plot_only_cumulative else 2,
+        nrows=3,
         constrained_layout=True,
-        figsize=(6 * cm, 3 * cm),
-        sharex="col",
+        figsize=(6 * cm, 5 * cm),
     )
-    if plot_only_cumulative:
-        ax = axs
     sns.despine()
     # sns.despine()
     for i, index in enumerate(examples_indices):
-        if not plot_only_cumulative:
-            ax = axs[0]
-            ax.plot(df_bursts.at[index, "burst"])
+        start, end = df_bursts.at[index, "start_orig"], df_bursts.at[index, "end_orig"]
+        st, gid = get_inhibblock_spike_times(df_cultures, index[:-1])
+        selection = (st >= start) & (st <= end)
+        st, gid = st[selection], gid[selection]
+        # bins = np.linspace(start, end, num=301, endpoint=True)
+        bins = np.arange(start, end, 5)
+        bins_mid = (bins[1:] + bins[:-1]) / 2
+        firing_rate = np.histogram(st, bins=bins)[0] / (bins[1] - bins[0]) * 1000
 
-            ax = axs[1]
-        ax.plot(np.cumsum(df_bursts.at[index, "burst"]))
+        bins_norm = np.linspace(start, end, num=51, endpoint=True)
+        bins_norm_mid = np.arange(50)  # (bins[1:] + bins[:-1]) / 2
+        firing_rate_norm = (
+            np.histogram(st, bins=bins_norm)[0] / (bins_norm[1] - bins_norm[0]) * 1000
+        )
 
-    if not plot_only_cumulative:
+        color = f"C{i}"
+        linestyle = "-"  #  if i == 0 else "--"
+
         ax = axs[0]
-        ax.set_xlabel("Time [a.u.]")
-        ax.set_ylabel("Density")
+        # ax.scatter(st - start, gid, marker="|", s=2, color="k", alpha=0.3)
+        ax.plot(
+            bins_mid - start,
+            firing_rate,
+            linewidth=0.5,
+            color=color,
+            linestyle=linestyle,
+        )
 
         ax = axs[1]
+        ax.plot(
+            bins_norm_mid,
+            firing_rate_norm,
+            linewidth=1,
+            color=color,
+            linestyle=linestyle,
+        )
+
+        ax = axs[2]
+        ax.plot(
+            df_bursts.at[index, "burst"], linewidth=1, color=color, linestyle=linestyle
+        )
+
+    ax = axs[0]
+    ax.set_xticks([0, 3000])
+    ax.set_xlabel("Time [ms]")
+    ax.xaxis.set_label_coords(0.5, -0.35)
+    ax.set_ylabel("\n[Hz]")
+
+    ax = axs[1]
+    ax.set_xticks([0, 50])
     ax.set_xlabel("Time [a.u.]")
-    ax.set_ylabel("Cumulative")
-    ax.fill_between(
-        np.arange(50),
-        np.cumsum(df_bursts.at[examples_indices[0], "burst"]),
-        np.cumsum(df_bursts.at[examples_indices[1], "burst"]),
-        color="C2",
-        alpha=0.5,
-        edgecolor=None,
-    )
+    ax.xaxis.set_label_coords(0.5, -0.35)
+    ax.set_ylabel("[Hz]")
+
+    ax = axs[2]
+    ax.set_xticks([0, 50])
+    ax.set_xlabel("Time [a.u.]")
+    ax.xaxis.set_label_coords(0.5, -0.35)
+    ax.set_ylabel("[a.u.]")
+
+    fig.text(0.01, 0.5, "Firing rate", rotation=90, verticalalignment="center")
 
     fig.show()
     fig.savefig(
-        os.path.join(get_fig_folder(), f"demo_Wasserstein.svg"),
+        os.path.join(get_fig_folder(), f"demo_burst_preprocessing.svg"),
         transparent=True,
     )

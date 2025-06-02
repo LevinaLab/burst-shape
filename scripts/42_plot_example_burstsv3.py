@@ -92,31 +92,35 @@ cluster_colors = get_cluster_colors(n_clusters)
 # %% inhibblock examples
 if dataset == "inhibblock":
     examples_indices = [
-        ("control", 17, 12, 124),
+        # ("control", 17, 12, 124),  # cluster 3 (green) - double peak
+        ("control", 17, 6, 167),  # cluster 3 (green) - single peak
         ("bic", 17, 2, 115),
         ("control", 17, 4, 77),
         ("bic", 17, 7, 98),
     ]
 
-    fig, axs = plt.subplots(
-        nrows=len(examples_indices), constrained_layout=True, figsize=(3 * cm, 5 * cm)
-    )
+    # fig, axs = plt.subplots(
+    #     nrows=len(examples_indices), constrained_layout=True, figsize=(3 * cm, 5 * cm)
+    # )
     # sns.despine()
+    offset_start = 1000
+    offset_end = 1000
     for i, index in enumerate(examples_indices):
-        ax = axs[i]
+        fig, ax = plt.subplots(constrained_layout=True, figsize=(4 * cm, 3 * cm))
+        # ax = axs[i]
         ax_raster = ax.twinx()
         color = get_cluster_colors(n_clusters)[df_bursts.at[index, "cluster"] - 1]
         start, end = df_bursts.at[index, "start_orig"], df_bursts.at[index, "end_orig"]
         st, gid = get_inhibblock_spike_times(df_cultures, index[:-1])
-        selection = (st >= start) & (st <= end)
+        selection = (st >= start - offset_start) & (st <= end + offset_end)
         st, gid = st[selection], gid[selection]
         bins = np.linspace(start, end, num=51, endpoint=True)
         bins_mid = (bins[1:] + bins[:-1]) / 2
 
-        ax_raster.scatter(st - start, gid, marker="|", s=2, color="k", alpha=0.3)
+        ax_raster.scatter(st - start, gid, marker="|", s=15, color="k", alpha=0.1)
         y_time_bar = gid.min() - 2
         x_end = bins[-1] - start
-        x_time_bar = [x_end - 500, x_end]
+        x_time_bar = [x_end - 500 + offset_end, x_end + offset_end]
         ax_raster.plot(x_time_bar, [y_time_bar, y_time_bar], color="k", linewidth=3)
         ax_raster.set_yticks([])
 
@@ -127,10 +131,11 @@ if dataset == "inhibblock":
         # ax.set_xticks([0, 500])
         ax.set_xticks([])
         ax.set_xticklabels([])
+        ax.set_xlim(-offset_start, x_end + offset_end)
 
-    sns.despine(left=True, bottom=True)
-    fig.show()
-    fig.savefig(
-        os.path.join(get_fig_folder(), f"{dataset}_burst_examples.svg"),
-        transparent=True,
-    )
+        # sns.despine(left=True, bottom=True)
+        fig.show()
+        fig.savefig(
+            os.path.join(get_fig_folder(), f"{dataset}_burst_example_{index}.svg"),
+            transparent=True,
+        )
