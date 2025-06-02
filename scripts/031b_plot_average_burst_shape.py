@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 import seaborn as sns
 
 from src.folders import get_fig_folder
@@ -16,9 +17,9 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -41,7 +42,6 @@ df_bursts = load_df_bursts(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
 
 # %% get average burst_shapes
-figsize = (7 * cm, 3.5 * cm)
 group_column = None
 group_labels = None
 match dataset:
@@ -55,7 +55,7 @@ match dataset:
     case "inhibblock":
         index_names = ["drug_label", "div", "well_idx"]
         group_labels = {
-            "bic": "BIC",
+            "bic": "block.-\ninhib.",
             "control": "Contr.",
         }
     case "mossink":
@@ -87,7 +87,9 @@ df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
     avg_burst=pd.NamedAgg(column="burst", aggfunc="mean")
 )
 # %% plot average burst shape per group
-background = [None, "cultures", "burst"][0]
+figsize = (7 * cm, 3.5 * cm)
+background = [None, "recordings", "bursts"][1]
+element = ["lines", "std", "3sem"][0]
 fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
 sns.despine()
 for i, group in enumerate(df_cultures.index.get_level_values(group_column).unique()):
@@ -101,10 +103,36 @@ for i, group in enumerate(df_cultures.index.get_level_values(group_column).uniqu
     ]
     label = group_labels[group] if group_labels is not None else group
     match background:
-        case "cultures":
-            for value in df_group:
-                ax.plot(value, color=color, alpha=0.5, linewidth=0.5, zorder=1)
-        case "burst":
+        case "recordings":
+            match element:
+                case "lines":
+                    ax.plot(
+                        np.vstack(df_group).T,
+                        color=color,
+                        alpha=0.5,
+                        linewidth=0.5,
+                        zorder=1,
+                    )
+                case "std":
+                    ax.fill_between(
+                        np.arange(50),
+                        df_group.mean() - np.vstack(df_group).std(axis=0),
+                        df_group.mean() + np.vstack(df_group).std(axis=0),
+                        color=color,
+                        alpha=0.2,
+                    )
+                case "3sem":
+                    ax.fill_between(
+                        np.arange(50),
+                        df_group.mean()
+                        - 3 * scipy.stats.sem(np.vstack(df_group), axis=0),
+                        df_group.mean()
+                        + 3 * scipy.stats.sem(np.vstack(df_group), axis=0),
+                        color=color,
+                        alpha=0.5,
+                        edgecolor=None,
+                    )
+        case "bursts":
             df_bursts_group = df_bursts[
                 df_bursts.index.get_level_values(group_column) == group
             ]["burst"]
@@ -112,7 +140,7 @@ for i, group in enumerate(df_cultures.index.get_level_values(group_column).uniqu
                 ax.plot(value, color=color, alpha=0.01, linewidth=0.5, zorder=1)
         case _:
             pass
-    ax.plot(df_group.mean(), color=color, linewidth=2, label=label)
+    ax.plot(df_group.mean(), color=color, linewidth=1, label=label)
 ax.set_xlabel("Time [a.u.]")
 ax.set_ylabel("Firing rate [a.u.]")
 ax.yaxis.set_label_coords(-0.32, 0.4)
@@ -127,9 +155,17 @@ if dataset != "mossink":
 # fig.tight_layout()
 fig.show()
 fig.savefig(
-    os.path.join(get_fig_folder(), f"{dataset}_group_average_burst.svg"),
+    os.path.join(
+        get_fig_folder(),
+        f"{dataset}_group_average_burst_background_{background}_{element}.svg",
+    ),
     transparent=True,
 )
+# fig.savefig(
+#     os.path.join(get_fig_folder(), f"{dataset}_group_average_burst_background_{background}_{element}.png"),
+#     dpi=300,
+#     transparent=True,
+# )
 # %% prepare df_cultures indices for plot
 
 # for all unique combinations of batch and culture
