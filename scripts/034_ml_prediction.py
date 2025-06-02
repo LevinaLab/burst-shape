@@ -30,16 +30,16 @@ data_columns_to_load = [
     "combo",  # combine the information
 ]
 plot_legend = True
-special_target = False  # for mossink: if True chooses subjects as target instead, if False chooses group
+special_target = True  # for mossink: if True chooses subjects as target instead, if False chooses group
 
 # parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
     dataset = "kapucu"
@@ -357,7 +357,7 @@ if "combo" in data_columns_to_load:
 
 
 # %% Classification
-test_type = ["cross-validate", "direct"][1]
+test_type = ["cross-validate", "direct"][0]
 
 match dataset:
     case "inhibblock":
@@ -390,6 +390,7 @@ match dataset:
 
 
 def _logistic_regression(train_columns):
+    global test_type
     print(test_type)
     X = df_cultures[train_columns].values
     y = df_cultures.index.get_level_values(target_label)
@@ -435,7 +436,7 @@ def _logistic_regression(train_columns):
                 std_auc = np.std(aucs)
                 # return mean_fpr, mean_tpr, std_tpr
             case "direct":
-                clf = LogisticRegression(solver="liblinear")
+                clf = LogisticRegression(solver="liblinear", class_weight="balanced")
                 clf.fit(X, y)
                 y_probs = clf.predict_proba(X)[:, 1]
                 fpr, tpr, _ = roc_curve(y, y_probs)
