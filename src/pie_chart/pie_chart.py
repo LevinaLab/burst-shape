@@ -9,6 +9,16 @@ from src.plot import get_cluster_colors, get_group_colors
 
 
 def prepare_df_cultures_layout(df_cultures):
+    """Prepares df_culture to be plotted in a special layout.
+
+    Determines the unique_batch_culture combinations -> columns.
+    Assigns an index 'i_culture' identifying the order of the unique combinations.
+    This value determines the column position.
+    Adds a column 'i_culture' to the df_cultures dataframe.
+
+    :param df_cultures:
+    :return: df_cultures, unique_batch_culture
+    """
     index_names = df_cultures.index.names
     unique_batch_culture = df_cultures.reset_index()[index_names[:-1]].drop_duplicates()
     # sort by batch and culture
@@ -38,8 +48,8 @@ def prepare_df_cultures_layout(df_cultures):
 def plot_df_culture_layout(
     df_cultures, figsize, dataset, column_names, colors, unique_batch_culture
 ):
+    # prepare setup
     index_names = df_cultures.index.names
-    # colors = get_cluster_colors(n_clusters)
     ncols = df_cultures["i_culture"].max() + 1
     row_day = (
         df_cultures.index.get_level_values(index_names[-1])
@@ -47,13 +57,12 @@ def plot_df_culture_layout(
         .sort_values()
         .to_list()
     )
-    # consider filling in missing days
-    # nrows = df_cultures.index.get_level_values("day").max() + 1
     nrows = len(row_day)
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
     sns.despine(fig=fig, top=True, right=True, left=True, bottom=True)
 
     # set all axes to invisible
+    # plot white circle to ensure alignment of subplots
     for ax in axs.flatten():
         ax.axis("off")
         ax.set_xticks([])
@@ -61,24 +70,30 @@ def plot_df_culture_layout(
         ax.spines["left"].set_visible(False)
         ax.spines["top"].set_visible(False)
         ax.pie([1], colors=["white"], startangle=90)
+
+    # plot data
     for index in df_cultures.index:
         i_day = row_day.index(index[len(index_names) - 1])
         i_culture = df_cultures.loc[index, "i_culture"]
         ax = axs[i_day, i_culture]
         ax.axis("on")
-        # ax.set_title(f"Day {i_day} - Culture {i_culture}")
-        # cluster_rel = [
-        #     df_cultures.loc[index, f"cluster_rel_{i_cluster}"]
-        #     for i_cluster in range(n_clusters)
-        # ]
-        cluster_rel = np.array(df_cultures.loc[index, column_names])
         if df_cultures.at[index, "n_bursts"] == 0:
-            # ax.pie([1], colors=["grey"], startangle=90)
+            # empty circle if no bursts are detected
             ax.pie([1], colors=["white"], wedgeprops=dict(width=0, edgecolor="grey"))
         else:
-            ax.pie(cluster_rel, colors=colors, startangle=90)
+            relative_shares = np.array(df_cultures.loc[index, column_names])
+            ax.pie(relative_shares, colors=colors, startangle=90)
 
     # Add a shared y-axis for days
+    _write_row_count_label(axs, dataset, row_day)
+
+    # write batches on the top
+    _write_column_group_label(axs, dataset, unique_batch_culture)
+
+    return fig, axs
+
+
+def _write_row_count_label(axs, dataset, row_day):
     for i_day, day in enumerate(row_day):
         ax = axs[i_day, 0]
         ax.axis("on")
@@ -88,15 +103,14 @@ def plot_df_culture_layout(
             case _:
                 ax.set_ylabel(f"{day}", rotation=0, fontsize=9)
         ax.yaxis.set_label_coords(-0.5, 0.15)
-        # ax.xaxis.set_label_position("bottom")
         ax.set_xticks([])
         ax.set_yticks([])
         ax.spines["left"].set_visible(False)
         ax.spines["top"].set_visible(False)
-        # ax.pie([1], colors=["white"], startangle=90)
+    return
 
-    # write batches on the top
-    # batch_label_pos = np.linspace(0.04, 0.97, nrows, endpoint=True)[::-1]
+
+def _write_column_group_label(axs, dataset, unique_batch_culture):
     for (index), row in unique_batch_culture.iterrows():
         i_culture = row["i_culture"]
         ax = axs[0, i_culture]
@@ -111,7 +125,6 @@ def plot_df_culture_layout(
                 )
             case "kapucu":
                 (culture_type, mea_number, well_id) = index
-                # ax.set_title(f"{culture_type}-{mea_number}-{well_id}", rotation=90)
                 ax.set_title(
                     f"{culture_type}",
                     rotation=90,
@@ -122,15 +135,21 @@ def plot_df_culture_layout(
                 (batch, clone) = index
                 ax.set_title(f"{batch}-{clone}", rotation=90)
             case "inhibblock":
-                (drug_label, div) = index
-                drug_str = "BIC" if drug_label == "bic" else "Contr."
-                # ax.set_title(f"{drug_label}-{div}", rotation=90, fontsize=10, color=get_group_colors(dataset)[drug_label])
-                ax.set_title(
-                    f"{drug_str} ({div})",
-                    rotation=90,
-                    fontsize=10,
-                    color=get_group_colors(dataset)[drug_label],
-                )
+                if len(index) == 1:
+                    ax.set_title(
+                        index,
+                        fontsize=10,
+                        pad=0,
+                    )
+                else:
+                    (drug_label, div) = index
+                    drug_str = "BIC" if drug_label == "bic" else "Contr."
+                    ax.set_title(
+                        f"{drug_str} ({div})",
+                        rotation=90,
+                        fontsize=10,
+                        color=get_group_colors(dataset)[drug_label],
+                    )
             case "mossink":
                 (group, subject_id) = index
                 ax.set_title(
@@ -143,7 +162,7 @@ def plot_df_culture_layout(
         ax.set_yticks([])
         ax.spines["left"].set_visible(False)
         ax.spines["top"].set_visible(False)
-    return fig, axs
+    return
 
 
 def get_df_cultures_subset(df_cultures, dataset):

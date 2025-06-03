@@ -48,7 +48,7 @@ match dataset:
         n_clusters = 4
     case "mossink":
         clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
         )
         n_clusters = 4
     case "wagenaar":
@@ -147,100 +147,84 @@ fig.savefig(
 )
 
 # %% special plate layout for inhibblock data
+draw_rectangles = True
 if dataset == "inhibblock":
-    cols = np.arange(1, 7)
-    rows = ["A", "B", "C", "D"]
+    for div in [17, 18]:
+        df_cultures_special = df_cultures.reset_index()
+        df_cultures_special = df_cultures_special[df_cultures_special["div"] == div]
+        df_cultures_special["layout_column"] = df_cultures_special["well"].str[0]
+        df_cultures_special["layout_row"] = df_cultures_special["well"].str[1]
+        df_cultures_special.set_index(["layout_row", "layout_column"], inplace=True)
 
-    div = 18
+        df_cultures_special, unique_batch_culture_special = prepare_df_cultures_layout(
+            df_cultures_special
+        )
+        fig, axs = plot_df_culture_layout(
+            df_cultures_special,
+            (4 * cm, 3 * cm),
+            dataset,
+            column_names,
+            get_cluster_colors(n_clusters),
+            unique_batch_culture_special,
+        )
 
-    df_cultures_special = df_cultures.reset_index().set_index(["div", "well"])
+        fig.tight_layout()
+        # fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
 
-    figsize = (4 * cm, 3 * cm)
+        if draw_rectangles:
+            # draw Bicuculline rectangle
+            margin = 0.045
+            bbox1 = axs[0, 1].get_position(fig)
+            bbox2 = axs[1, -1].get_position(fig)
+            x0 = bbox1.x0  # Left
+            y0 = bbox2.y0 - margin  # Bottom
+            width = bbox2.x1 - x0
+            height = bbox1.y1 - y0
+            # Create a rectangle and add it to the figure
+            rect = patches.Rectangle(
+                (x0, y0),
+                width,
+                height,
+                transform=fig.transFigure,  # Figure-level transformation
+                color=get_group_colors(dataset)["bic"],
+                linewidth=2,
+                fill=False,
+            )
+            fig.add_artist(rect)
 
-    fig, axs = plt.subplots(nrows=len(rows), ncols=len(cols), figsize=figsize)
-    sns.despine(fig=fig, top=True, right=True, left=True, bottom=True)
-
-    # set all axes to invisible
-    for ax in axs.flatten():
-        ax.axis("off")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.spines["left"].set_visible(False)
-        ax.spines["top"].set_visible(False)
-        ax.pie([1], colors=["white"], startangle=90)
-
-    for i_col, col in enumerate(cols):
-        for i_row, row in enumerate(rows):
-            ax = axs[i_row, i_col]
-            ax.axis("on")
-
-            index = (div, f"{row}{col}")
-            cluster_rel = [
-                df_cultures_special.loc[index, f"cluster_rel_{i_cluster}"]
-                for i_cluster in range(n_clusters)
+            # draw Control rectangle
+            margin_x = 0.07
+            margin_y = 0.045
+            bbox1 = axs[0, 0].get_position(fig)
+            bbox2 = axs[2, 0].get_position(fig)
+            bbox3 = axs[3, -1].get_position(fig)
+            L_shape = [
+                (bbox1.x0, bbox1.y1),  # Top-left
+                (bbox1.x1 + margin_x, bbox1.y1),  # Top-right
+                (bbox1.x1 + margin_x, bbox2.y1 + margin_y),  # Middle-right
+                (bbox3.x1, bbox2.y1 + margin_y),  # Bottom-right
+                (bbox3.x1, bbox3.y0),  # Bottom
+                (bbox2.x0, bbox3.y0),  # Bottom-left
+                (bbox2.x0, bbox1.y1),  # Back to Top-left
             ]
+            L_patch = patches.Polygon(
+                L_shape,
+                transform=fig.transFigure,
+                edgecolor=get_group_colors(dataset)["control"],
+                fill=False,
+                alpha=1,
+                linewidth=2,
+            )
 
-            ax.pie(cluster_rel, colors=colors, startangle=90)
+            fig.patches.append(L_patch)
 
-    for i_row, row in enumerate(rows):
-        ax = axs[i_row, 0]
-        ax.set_ylabel(f"{row}", rotation=0, fontsize=10)
-        ax.yaxis.set_label_coords(-0.5, 0.15)
-    for i_col, col in enumerate(cols):
-        ax = axs[0, i_col]
-        ax.set_title(f"{col}", fontsize=10, pad=0)
+            # fig.subplots_adjust(wspace=0.0, hspace=-0.0)
+        fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
 
-    fig.tight_layout()
-
-    # draw Bicuculline rectangle
-    margin = 0.045
-    bbox1 = axs[0, 1].get_position(fig)
-    bbox2 = axs[1, -1].get_position(fig)
-    x0 = bbox1.x0  # Left
-    y0 = bbox2.y0 - margin  # Bottom
-    width = bbox2.x1 - x0
-    height = bbox1.y1 - y0
-    # Create a rectangle and add it to the figure
-    rect = patches.Rectangle(
-        (x0, y0),
-        width,
-        height,
-        transform=fig.transFigure,  # Figure-level transformation
-        color=get_group_colors(dataset)["bic"],
-        linewidth=2,
-        fill=False,
-    )
-    fig.add_artist(rect)
-
-    # draw Control rectangle
-    margin_x = 0.07
-    margin_y = 0.045
-    bbox1 = axs[0, 0].get_position(fig)
-    bbox2 = axs[2, 0].get_position(fig)
-    bbox3 = axs[3, -1].get_position(fig)
-    L_shape = [
-        (bbox1.x0, bbox1.y1),  # Top-left
-        (bbox1.x1 + margin_x, bbox1.y1),  # Top-right
-        (bbox1.x1 + margin_x, bbox2.y1 + margin_y),  # Middle-right
-        (bbox3.x1, bbox2.y1 + margin_y),  # Bottom-right
-        (bbox3.x1, bbox3.y0),  # Bottom
-        (bbox2.x0, bbox3.y0),  # Bottom-left
-        (bbox2.x0, bbox1.y1),  # Back to Top-left
-    ]
-    L_patch = patches.Polygon(
-        L_shape,
-        transform=fig.transFigure,
-        edgecolor=get_group_colors(dataset)["control"],
-        fill=False,
-        alpha=1,
-        linewidth=2,
-    )
-
-    fig.patches.append(L_patch)
-
-    fig.subplots_adjust(wspace=0.0, hspace=-0.0)
-    fig.show()
-    fig.savefig(
-        os.path.join(get_fig_folder(), f"{dataset}_special_div_{div}_pie_chart.svg"),
-        transparent=True,
-    )
+        fig.show()
+        fig.savefig(
+            os.path.join(
+                get_fig_folder(), f"{dataset}_special_div_{div}_pie_chart.svg"
+            ),
+            transparent=True,
+        )

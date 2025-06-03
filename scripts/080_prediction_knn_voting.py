@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib import patches
 from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
@@ -27,9 +28,9 @@ special_target = True  # for mossink: if True chooses subjects as target instead
 # parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
@@ -191,6 +192,86 @@ fig, axs = plot_df_culture_layout(
 fig.tight_layout()
 fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
 fig.show()
+
+# %% special plate layout for inhibblock data
+draw_rectangles = True
+if dataset == "inhibblock":
+    for div in [17, 18]:
+        df_cultures_special = df_cultures.reset_index()
+        df_cultures_special = df_cultures_special[df_cultures_special["div"] == div]
+        df_cultures_special["layout_column"] = df_cultures_special["well"].str[0]
+        df_cultures_special["layout_row"] = df_cultures_special["well"].str[1]
+        df_cultures_special.set_index(["layout_row", "layout_column"], inplace=True)
+
+        df_cultures_special, unique_batch_culture_special = prepare_df_cultures_layout(
+            df_cultures_special
+        )
+        fig, axs = plot_df_culture_layout(
+            df_cultures=df_cultures_special,
+            figsize=(4 * cm, 3 * cm),
+            dataset=dataset,
+            column_names="relative_votes",
+            colors=[
+                get_group_colors(dataset)[class_label] for class_label in class_labels
+            ],
+            unique_batch_culture=unique_batch_culture_special,
+        )
+
+        fig.tight_layout()
+        # fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
+
+        if draw_rectangles:
+            # draw Bicuculline rectangle
+            margin = 0.045
+            bbox1 = axs[0, 1].get_position(fig)
+            bbox2 = axs[1, -1].get_position(fig)
+            x0 = bbox1.x0  # Left
+            y0 = bbox2.y0 - margin  # Bottom
+            width = bbox2.x1 - x0
+            height = bbox1.y1 - y0
+            # Create a rectangle and add it to the figure
+            rect = patches.Rectangle(
+                (x0, y0),
+                width,
+                height,
+                transform=fig.transFigure,  # Figure-level transformation
+                color=get_group_colors(dataset)["bic"],
+                linewidth=2,
+                fill=False,
+            )
+            fig.add_artist(rect)
+
+            # draw Control rectangle
+            margin_x = 0.07
+            margin_y = 0.045
+            bbox1 = axs[0, 0].get_position(fig)
+            bbox2 = axs[2, 0].get_position(fig)
+            bbox3 = axs[3, -1].get_position(fig)
+            L_shape = [
+                (bbox1.x0, bbox1.y1),  # Top-left
+                (bbox1.x1 + margin_x, bbox1.y1),  # Top-right
+                (bbox1.x1 + margin_x, bbox2.y1 + margin_y),  # Middle-right
+                (bbox3.x1, bbox2.y1 + margin_y),  # Bottom-right
+                (bbox3.x1, bbox3.y0),  # Bottom
+                (bbox2.x0, bbox3.y0),  # Bottom-left
+                (bbox2.x0, bbox1.y1),  # Back to Top-left
+            ]
+            L_patch = patches.Polygon(
+                L_shape,
+                transform=fig.transFigure,
+                edgecolor=get_group_colors(dataset)["control"],
+                fill=False,
+                alpha=1,
+                linewidth=2,
+            )
+
+            fig.patches.append(L_patch)
+
+            # fig.subplots_adjust(wspace=0.0, hspace=-0.0)
+        fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
+
+        fig.show()
+
 # %% one-vs-rest comparison
 if len(class_labels) > 2:
     print("One-vs-rest comparison because we have multiple classes")
