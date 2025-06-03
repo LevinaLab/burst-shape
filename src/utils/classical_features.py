@@ -40,6 +40,10 @@ def get_classical_features(df_cultures, df_bursts, dataset):
     for feature in features + ["n_spikes"]:
         df_cultures[feature] = pd.Series(dtype=float)
 
+    # sort index for performance
+    df_bursts = df_bursts.sort_index()
+    df_cultures = df_cultures.sort_index()
+
     if dataset == "wagenaar":
         for index in tqdm(df_cultures.index, desc="Compute classical features"):
             st, gid = get_wagenaar_spike_times(df_cultures, index)
