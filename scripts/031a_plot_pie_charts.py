@@ -14,7 +14,10 @@ from src.pie_chart.pie_chart import (
     prepare_df_cultures_layout,
 )
 from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
-from src.settings import get_dataset_from_burst_extraction_params
+from src.settings import (
+    get_chosen_spectral_clustering_params,
+    get_dataset_from_burst_extraction_params,
+)
 
 cm = prepare_plotting()
 
@@ -30,34 +33,7 @@ burst_extraction_params = (
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
-match dataset:
-    case "kapucu":
-        n_clusters = 4
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-        )
-    case "hommersom":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-        )
-        n_clusters = 4
-    case "inhibblock":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-        )
-        n_clusters = 4
-    case "mossink":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-        )
-        n_clusters = 4
-    case "wagenaar":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-        )
-        n_clusters = 6
-    case _:
-        raise NotImplementedError(f"Dataset {dataset} not implemented.")
+clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
 print(f"Detected dataset: {dataset}")
 
 # which clustering to plot
