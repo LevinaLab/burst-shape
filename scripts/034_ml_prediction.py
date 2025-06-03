@@ -19,6 +19,7 @@ from src.persistence import (
     load_df_cultures,
 )
 from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
+from src.settings import get_dataset_from_burst_extraction_params
 from src.utils.classical_features import get_classical_features
 
 cm = prepare_plotting()
@@ -37,53 +38,43 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
-if "kapucu" in burst_extraction_params:
-    dataset = "kapucu"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    )
-    n_clusters = 4
-elif "hommersom" in burst_extraction_params:
-    dataset = "hommersom"
-    n_clusters = 4
-elif "inhibblock" in burst_extraction_params:
-    dataset = "inhibblock"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-    )
-    n_clusters = 4
-elif "mossink" in burst_extraction_params:
-    dataset = "mossink"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-    )
-    n_clusters = 4
-else:
-    dataset = "wagenaar"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    )
-    n_clusters = 6
+dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
+match dataset:
+    case "kapucu":
+        n_clusters = 4
+        clustering_params = (
+            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+        )
+    case "hommersom":
+        clustering_params = (
+            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
+        )
+        n_clusters = 4
+    case "inhibblock":
+        clustering_params = (
+            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+        )
+        n_clusters = 4
+    case "mossink":
+        clustering_params = (
+            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+        )
+        n_clusters = 4
+    case "wagenaar":
+        clustering_params = (
+            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+        )
+        n_clusters = 6
+    case _:
+        raise NotImplementedError(f"Dataset {dataset} not implemented.")
 print(f"Detected dataset: {dataset}")
 
 # which clustering to plot
 col_cluster = f"cluster_{n_clusters}"
 
-# clustering_params = (
-# "agglomerating_clustering_linkage_complete"
-# "agglomerating_clustering_linkage_ward"
-# "agglomerating_clustering_linkage_average"
-# "agglomerating_clustering_linkage_single"
-# "spectral_affinity_precomputed_metric_wasserstein"
-# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
-# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-# "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-# )
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
 cv_split = (
@@ -96,7 +87,6 @@ np.random.seed(0)
 # n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index
 
 # plotting
-cm = 1 / 2.54  # centimeters in inches
 fig_path = folders.get_fig_folder()
 
 # load bursts

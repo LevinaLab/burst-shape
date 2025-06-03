@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -206,8 +208,8 @@ def get_df_cultures_subset(df_cultures, dataset):
                 df_cultures_subset.index.get_level_values("well_idx") <= 12
             ]
         case _:
-            raise UserWarning(
-                f"Taking subset is not implemented for dataset {dataset}"
-                "Returning full dataset instead."
+            warnings.warn(
+                f"Taking subset is not implemented for dataset {dataset}. "
+                "Returning full dataset instead and continuing."
             )
     return df_cultures_subset
