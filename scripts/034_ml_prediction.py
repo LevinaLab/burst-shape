@@ -60,7 +60,7 @@ match dataset:
         n_clusters = 4
     case "mossink":
         clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
         )
         n_clusters = 4
     case "wagenaar":
