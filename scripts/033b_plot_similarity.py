@@ -7,11 +7,13 @@ import pandas as pd
 import scipy.stats
 import seaborn as sns
 
-from src import folders
 from src.folders import get_fig_folder
 from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
 from src.plot import get_cluster_colors, label_sig_diff, prepare_plotting
-from src.settings import get_dataset_from_burst_extraction_params
+from src.settings import (
+    get_chosen_spectral_clustering_params,
+    get_dataset_from_burst_extraction_params,
+)
 
 cm = prepare_plotting()
 
@@ -24,34 +26,7 @@ burst_extraction_params = (
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
-match dataset:
-    case "kapucu":
-        n_clusters = 4
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-        )
-    case "hommersom":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-        )
-        n_clusters = 4
-    case "inhibblock":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-        )
-        n_clusters = 4
-    case "mossink":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-        )
-        n_clusters = 4
-    case "wagenaar":
-        clustering_params = (
-            "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-        )
-        n_clusters = 6
-    case _:
-        raise NotImplementedError(f"Dataset {dataset} not implemented.")
+clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
 print(f"Detected dataset: {dataset}")
 
 # which clustering to plot
@@ -62,48 +37,14 @@ cv_split = (
     None  # set to None for plotting the whole clustering, set to int for specific split
 )
 
-np.random.seed(0)
-
-# plotting
-fig_path = folders.get_fig_folder()
-
 # load bursts
 df_bursts = load_df_bursts(burst_extraction_params)
-np.random.seed(0)
-
-match dataset:
-    case "kapucu":
-        index_names = ["culture_type", "mea_number", "well_id", "DIV"]
-    case "wagenaar":
-        index_names = ["batch", "culture", "day"]
-    case "hommersom":
-        index_names = ["batch", "clone", "well_idx"]
-    case "inhibblock":
-        index_names = ["drug_label", "div", "well_idx"]
-    case "mossink":
-        index_names = ["group", "subject_id", "well_idx"]
-    case _:
-        raise NotImplementedError(f"Dataset {dataset} not implemented.")
+index_names = df_bursts.index.names[:-1]
 # %% get clusters from linkage
-# print("Getting clusters from linkage...")
-# labels = get_agglomerative_labels(
-#     n_clusters, burst_extraction_params, agglomerating_clustering_params
-# )
 clustering = load_clustering_labels(
     clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
 )
 df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
-
-# Define a color palette for the clusters
-# palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
-# cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
-# convert colors to string (hex format)
-# cluster_colors = [
-#     f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
-#     for c in cluster_colors
-# ]
-palette = get_cluster_colors(n_clusters)
-cluster_colors = get_cluster_colors(n_clusters)
 
 
 # %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
@@ -113,30 +54,6 @@ df_bursts_reset = df_bursts.reset_index(
 )  # reset index to access columns in groupby()
 df_cultures = df_bursts_reset.groupby(index_names).agg(
     n_bursts=pd.NamedAgg(column="i_burst", aggfunc="count")
-)
-
-# for all unique combinations of batch and culture
-unique_batch_culture = df_cultures.reset_index()[index_names[:-1]].drop_duplicates()
-# sort by batch and culture
-unique_batch_culture.sort_values(index_names[:-1], inplace=True)
-# assign an index to each unique combination
-unique_batch_culture["i_culture"] = np.arange(len(unique_batch_culture))  # [::-1]
-unique_batch_culture.set_index(index_names[:-1], inplace=True)
-
-df_cultures["i_culture"] = pd.Series(
-    data=(
-        df_cultures.reset_index().apply(
-            lambda x: unique_batch_culture.loc[
-                tuple(
-                    [x[index_label] for index_label in index_names[:-1]]
-                ),  # (x["batch"], x["culture"]),
-                "i_culture",
-            ],
-            axis=1,
-        )
-    ).values,
-    index=df_cultures.index,
-    dtype=int,
 )
 
 # dd cluster information
