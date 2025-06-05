@@ -30,7 +30,7 @@ cm = prepare_plotting()
 plot_statistical_test = False
 
 metric = (
-    # "cosine-similarity"
+    # "cosine-distance"
     "Wasserstein"
     # "Wasserstein-individual-bursts"
     # "Embedding"
@@ -49,7 +49,7 @@ print(f"Detected dataset: {dataset}")
 
 # define df_distance_metric
 match metric:
-    case "cosine-similarity":
+    case "cosine-distance":
         # which clustering to plot
         clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
 
@@ -347,8 +347,8 @@ def _plot_distance_distributions(
 
 def _set_yaxis(ax):
     match metric:
-        case "cosine-similarity":
-            ax.set_ylabel("Similarity")
+        case "cosine-distance":
+            ax.set_ylabel("Cosine\ndistance")
             ax.set_yticks([0, 1])
         case "Wasserstein":
             ax.set_ylabel("Wasserstein\ndistance")
@@ -376,7 +376,7 @@ match dataset:
             column_comparison_combo=["drug_label"],
         )
         fig, ax = _plot_distance_distributions(
-            [similarity_random, similarity_in_group, similarity_between_group],
+            [similarity_random, similarity_between_group, similarity_in_group],
             (6 * cm, 4 * cm),
             ["random", "betw.-\ngroup", "within-\ngroup"],
         )
