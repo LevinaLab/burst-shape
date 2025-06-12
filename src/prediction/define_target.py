@@ -1,4 +1,10 @@
-def make_target_label(dataset, df_cultures, df_bursts=None, special_target=False):
+def make_target_label(
+    dataset,
+    df_cultures,
+    df_bursts=None,
+    special_target=False,
+    target_column_name="target_label",
+):
     match dataset:
         case "inhibblock":
             target_label = "drug_label"
@@ -34,9 +40,9 @@ def make_target_label(dataset, df_cultures, df_bursts=None, special_target=False
                 f"Target label is not implemented for dataset {dataset}."
                 "Go to this function and define a target label."
             )
-    df_cultures["target_label"] = df_cultures.reset_index()[target_label].values
+    df_cultures[target_column_name] = df_cultures.reset_index()[target_label].values
     if df_bursts is not None:
-        df_bursts["target_label"] = df_bursts.reset_index()[target_label].values
+        df_bursts[target_column_name] = df_bursts.reset_index()[target_label].values
     if df_bursts is not None:
         return df_cultures, df_bursts, target_label
     else:

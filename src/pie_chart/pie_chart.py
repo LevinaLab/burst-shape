@@ -1,11 +1,18 @@
 import warnings
+from enum import Enum, auto
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.plot import get_cluster_colors, get_group_colors
+from src.plot import get_group_colors
+
+
+class EmptyBurstStatus(Enum):
+    NO_RECORDING = auto()
+    NO_BURSTS = auto()
 
 
 def prepare_df_cultures_layout(df_cultures):
@@ -46,7 +53,13 @@ def prepare_df_cultures_layout(df_cultures):
 
 
 def plot_df_culture_layout(
-    df_cultures, figsize, dataset, column_names, colors, unique_batch_culture
+    df_cultures,
+    figsize,
+    dataset,
+    column_names,
+    colors,
+    unique_batch_culture,
+    plot_type: Literal["pie_chart", "avg_burst"] = "pie_chart",
 ):
     # prepare setup
     index_names = df_cultures.index.names
@@ -58,18 +71,19 @@ def plot_df_culture_layout(
         .to_list()
     )
     nrows = len(row_day)
-    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
-    sns.despine(fig=fig, top=True, right=True, left=True, bottom=True)
+    fig, axs = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=figsize,
+        sharex=True,
+        sharey=True,
+    )
 
     # set all axes to invisible
-    # plot white circle to ensure alignment of subplots
     for ax in axs.flatten():
-        ax.axis("off")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.spines["left"].set_visible(False)
-        ax.spines["top"].set_visible(False)
-        ax.pie([1], colors=["white"], startangle=90)
+        _plot_data_point(
+            data_point=EmptyBurstStatus.NO_RECORDING, plot_type=plot_type, ax=ax
+        )
 
     # plot data
     for index in df_cultures.index:
@@ -78,11 +92,20 @@ def plot_df_culture_layout(
         ax = axs[i_day, i_culture]
         ax.axis("on")
         if df_cultures.at[index, "n_bursts"] == 0:
-            # empty circle if no bursts are detected
-            ax.pie([1], colors=["white"], wedgeprops=dict(width=0, edgecolor="grey"))
+            _plot_data_point(
+                data_point=EmptyBurstStatus.NO_BURSTS, plot_type=plot_type, ax=ax
+            )
         else:
             relative_shares = np.array(df_cultures.loc[index, column_names])
-            ax.pie(relative_shares, colors=colors, startangle=90)
+            # ax.pie(relative_shares, colors=colors, startangle=90)
+            _plot_data_point(
+                data_point=relative_shares,
+                plot_type=plot_type,
+                ax=ax,
+                colors=colors,
+                index=index,
+                dataset=dataset,
+            )
 
     # Add a shared y-axis for days
     _write_row_count_label(axs, dataset, row_day)
@@ -90,7 +113,67 @@ def plot_df_culture_layout(
     # write batches on the top
     _write_column_group_label(axs, dataset, unique_batch_culture)
 
+    if plot_type == "avg_burst":
+        axs[0, 0].set_ylim(0, None)
     return fig, axs
+
+
+def _plot_data_point(data_point, plot_type, ax, colors=None, index=None, dataset=None):
+    match plot_type:
+        case "pie_chart":
+            if data_point is EmptyBurstStatus.NO_RECORDING:
+                sns.despine(ax=ax, top=True, right=True, left=True, bottom=True)
+                ax.axis("off")
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.spines["left"].set_visible(False)
+                ax.spines["top"].set_visible(False)
+                # plot white circle to ensure alignment of subplots
+                ax.pie([1], colors=["white"], startangle=90)
+            elif data_point is EmptyBurstStatus.NO_BURSTS:
+                # empty circle if no bursts are detected
+                ax.pie(
+                    [1], colors=["white"], wedgeprops=dict(width=0, edgecolor="grey")
+                )
+            else:
+                ax.pie(data_point, colors=colors, startangle=90)
+        case "avg_burst":
+            if data_point is EmptyBurstStatus.NO_RECORDING:
+                ax.set_xticks([])
+                ax.set_yticks([])
+            elif data_point is EmptyBurstStatus.NO_BURSTS:
+                pass
+            else:
+                match dataset:
+                    case "wagenaar":
+                        (batch, _, _) = index
+                        color = get_group_colors(dataset)[batch]
+                    case "kapucu":
+                        (culture_type, mea_number, well_id, _) = index
+                        color = get_group_colors(dataset)[(culture_type, mea_number)]
+                    case "hommersom":
+                        raise NotImplementedError
+                    case "inhibblock":
+                        if len(index) == 2:
+                            if f"{index[1]}{index[0]}" in [
+                                f"{i}{j}" for i in ["A", "B"] for j in range(2, 7)
+                            ]:
+                                color = get_group_colors(dataset)["bic"]
+                            else:
+                                color = get_group_colors(dataset)["control"]
+                        else:
+                            (drug_label, div, _) = index
+                            color = get_group_colors(dataset)[drug_label]
+                    case "mossink":
+                        (group, subject_id, _) = index
+                        color = (get_group_colors(dataset)[f"{group} {subject_id}"],)
+                    case _:
+                        warnings.warn("No color set for average burst. Using black.")
+                        color = "k"
+
+                ax.plot(data_point, color=color)
+        case _:
+            pass
 
 
 def _write_row_count_label(axs, dataset, row_day):
@@ -105,8 +188,6 @@ def _write_row_count_label(axs, dataset, row_day):
         ax.yaxis.set_label_coords(-0.5, 0.15)
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.spines["left"].set_visible(False)
-        ax.spines["top"].set_visible(False)
     return
 
 
@@ -160,8 +241,6 @@ def _write_column_group_label(axs, dataset, unique_batch_culture):
                 )
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.spines["left"].set_visible(False)
-        ax.spines["top"].set_visible(False)
     return
 
 
@@ -226,6 +305,8 @@ def get_df_cultures_subset(df_cultures, dataset):
             df_cultures_subset = df_cultures_subset[
                 df_cultures_subset.index.get_level_values("well_idx") <= 12
             ]
+        case "inhibblock":
+            pass
         case _:
             warnings.warn(
                 f"Taking subset is not implemented for dataset {dataset}. "
