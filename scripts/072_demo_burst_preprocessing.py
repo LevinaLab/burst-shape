@@ -8,6 +8,7 @@ from src.folders import get_fig_folder
 from src.persistence import load_df_bursts, load_df_cultures
 from src.persistence.spike_times import get_inhibblock_spike_times
 from src.plot import prepare_plotting
+from src.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 
@@ -18,39 +19,9 @@ burst_extraction_params = (
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
-if "kapucu" in burst_extraction_params:
-    dataset = "kapucu"
-    n_clusters = 4
-elif "hommersom" in burst_extraction_params:
-    dataset = "hommersom"
-    n_clusters = 4
-elif "inhibblock" in burst_extraction_params:
-    dataset = "inhibblock"
-    n_clusters = 4
-else:
-    dataset = "wagenaar"
-    n_clusters = 6
+dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
 
-# which clustering to plot
-col_cluster = f"cluster_{n_clusters}"
-
-clustering_params = (
-    # "agglomerating_clustering_linkage_complete"
-    # "agglomerating_clustering_linkage_ward"
-    # "agglomerating_clustering_linkage_average"
-    # "agglomerating_clustering_linkage_single"
-    # "spectral_affinity_precomputed_metric_wasserstein"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-)
-labels_params = "labels"
-cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
-cv_split = (
-    None  # set to None for plotting the whole clustering, set to int for specific split
-)
 # load bursts
 df_bursts = load_df_bursts(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
