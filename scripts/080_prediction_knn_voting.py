@@ -1,3 +1,26 @@
+"""
+KNN clustering of recordings based on KNN graph of individual bursts.
+
+Algorithm:
+1) remove bursts of recording that should be predicted from graph
+2) find K nearest neighbors of each burst
+3) accumulate 'votes' of these K-nearest neighbours based on their classes.
+    Weight for:
+    - divide by number of bursts per recording
+      (Motivation: correct for a single recording with a large number of bursts having a disproportionate influence.)
+    - divide by number of recordings per class
+      (Motivation: correct for a single class with a large number of recordings having a disproportionate influence.)
+4) accumulate votes
+5) assign predicted label based on largest share of votes
+
+Plots:
+- confusion matrix of burst level prediction (often bad)
+- confusion matrix of recording level prediction (often a lot better)
+- overview of predictions plotted as pie chart (fraction = fraction of votes)
+"""
+import os
+import re
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -6,7 +29,6 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 
-from src import folders
 from src.folders import get_fig_folder
 from src.persistence import load_df_bursts, load_df_cultures, load_distance_matrix
 from src.pie_chart.pie_chart import (
@@ -19,6 +41,10 @@ from src.prediction.define_target import make_target_label
 from src.prediction.knn_clustering import (
     get_burst_level_predictions,
     get_culture_level_predictions,
+)
+from src.settings import (
+    get_chosen_spectral_embedding_params,
+    get_dataset_from_burst_extraction_params,
 )
 
 cm = prepare_plotting()
@@ -33,32 +59,16 @@ burst_extraction_params = (
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
-if "kapucu" in burst_extraction_params:
-    dataset = "kapucu"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    )
-    kth = 150
-elif "hommersom" in burst_extraction_params:
-    dataset = "hommersom"
-elif "inhibblock" in burst_extraction_params:
-    dataset = "inhibblock"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-    )
-    kth = 85
-elif "mossink" in burst_extraction_params:
-    dataset = "mossink"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-    )
-    kth = 85
+dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
+clustering_params = get_chosen_spectral_embedding_params(dataset)
+match = re.search(r"(\d+)$", clustering_params)
+if match:
+    kth = int(match.group(1))
+    print(f"Using kth value K={kth} for KNN graph")
 else:
-    dataset = "wagenaar"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+    raise RuntimeError(
+        f"No integer found at the end of clustering_params={clustering_params}."
     )
-    kth = 150
 print(f"Detected dataset: {dataset}")
 
 df_cultures = load_df_cultures(burst_extraction_params)
@@ -97,8 +107,10 @@ match dataset:
     predicted_labels,
 ) = get_burst_level_predictions(df_cultures, df_bursts, distance_matrix_square, kth)
 for i in range(1, len(class_labels) + 1):
-    predicted_labels = class_labels[np.argsort(relative_votes, axis=1)[:, -i]]
-    print(f"Share in {i} prediction {np.mean(predicted_labels == true_labels):.3f}")
+    predicted_labels_rank = class_labels[np.argsort(relative_votes, axis=1)[:, -i]]
+    print(
+        f"Share in {i} prediction {np.mean(predicted_labels_rank == true_labels):.3f}"
+    )
 
 fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
 matrix_confusion = confusion_matrix(true_labels, predicted_labels, labels=class_labels)
@@ -136,6 +148,13 @@ sns.heatmap(
 ax.set_xlabel("Predicted")
 ax.set_ylabel("True")
 fig.show()
+fig.savefig(
+    os.path.join(
+        get_fig_folder(),
+        f"{dataset}_knn_clustering_confusion_matrix.svg",
+    ),
+    transparent=True,
+)
 
 print(
     f'Accuracy: {np.mean(df_cultures["target_label"] == df_cultures["predicted_label"]):.2f}'
@@ -192,6 +211,14 @@ fig, axs = plot_df_culture_layout(
 fig.tight_layout()
 fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
 fig.show()
+fig.savefig(
+    os.path.join(
+        get_fig_folder(),
+        f"{dataset}_knn_clustering_predictions.svg",
+    ),
+    transparent=True,
+)
+
 
 # %% special plate layout for inhibblock data
 draw_rectangles = True
@@ -269,8 +296,14 @@ if dataset == "inhibblock":
 
             # fig.subplots_adjust(wspace=0.0, hspace=-0.0)
         fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
-
         fig.show()
+        fig.savefig(
+            os.path.join(
+                get_fig_folder(),
+                f"{dataset}_knn_clustering_predictions_special_div_{div}.svg",
+            ),
+            transparent=True,
+        )
 
 # %% one-vs-rest comparison
 if len(class_labels) > 2:
