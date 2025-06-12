@@ -1,3 +1,13 @@
+"""
+--- Deprecated ---
+
+This script is now deprecated and will be removed in a future version.
+It is no longer needed because the spectral embedding is implicitly
+calculated in spectral clustering.
+The one in spectral clustering is even better because it has more dimensions.
+"""
+import warnings
+
 from matplotlib import pyplot as plt
 from sklearn.manifold import SpectralEmbedding
 
@@ -6,6 +16,11 @@ from src.persistence import (
     load_spectral_embedding,
     save_spectral_embedding,
     spectral_embedding_exists,
+)
+
+warnings.warn(
+    "This script is now deprecated and will be removed in a future version. "
+    "Use instead spectral clustering which implicitly calculates spectral embedding."
 )
 
 burst_extraction_params = (

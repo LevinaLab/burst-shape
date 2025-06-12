@@ -235,14 +235,38 @@ def _get_spectral_embedding_file(burst_extraction_params, params_spectral_cluste
 def load_spectral_embedding(
     burst_extraction_params,
     params_spectral_clustering,
+    params_labels="labels",
+    n_dims=2,
 ):
     """Load spectral embedding."""
-    return np.load(
-        _get_spectral_embedding_file(
-            burst_extraction_params,
+    print("Load spectral embedding from spectral clustering.")
+    try:
+        clustering = load_clustering_labels(
             params_spectral_clustering,
+            burst_extraction_params,
+            params_labels,
         )
-    )
+        n_dims_available = clustering.maps_.shape[1] - 1
+        if n_dims >= n_dims_available:
+            raise RuntimeError(
+                f"Spectral embedding has only {n_dims_available} available dimensions, "
+                f"but you requested n_dims={n_dims} dimensions. "
+                "Decrease the number of dimensions you request."
+            )
+        return clustering.maps_[:, 1 : n_dims + 1]
+    except FileNotFoundError:
+        print(
+            "Spectral embedding not found. "
+            "Run spectral clustering to implicitly compute the spectral embedding. "
+            "Now, attempting to load spectral embedding from legacy code. "
+            "Be aware that this is deprecated and will be removed in a future version."
+        )
+        return np.load(
+            _get_spectral_embedding_file(
+                burst_extraction_params,
+                params_spectral_clustering,
+            )
+        )
 
 
 def save_spectral_embedding(
