@@ -32,7 +32,7 @@ if "DEBUG" in os.environ:
     debug = os.environ["DEBUG"] == "True"
     print(f"DEBUG environment variable present, DEBUG set to {debug}")
 else:
-    print("No DEBUG environment variable: defaulting to debug mode")
+    print("No DEBUG environment variable: defaulting to DEBUG mode")
     debug = True
 
 

@@ -1,3 +1,15 @@
+"""
+Interactive tool for reviewing detected bursts.
+
+This starts a plotly application that displays detected bursts.
+It shows an overview of recordings indicating the number of detected bursts as a heatmap.
+When clicking on a recording it shows the recording's spikes as raster plot and the firing rate.
+The detected bursts are highlighted with rectangles.
+
+
+"""
+
+
 import os
 
 import dash
@@ -15,7 +27,12 @@ from src.persistence.spike_times import (
     get_kapucu_spike_times,
     get_mossink_spike_times,
 )
+from src.settings import get_citation_doi_link, get_dataset_from_burst_extraction_params
 
+# -----------------------------------------------------------------------------
+# Get RESAMPLE and DEBUG from environment
+# RESAMPLE: use FigureResampler() to reduce traffic, useful for deploying online
+# DEBUG:
 if "RESAMPLE" in os.environ:
     RESAMPLE = os.environ["RESAMPLE"] == "True"
     print(f"RESAMPLE environment variable present, RESAMPLE set to {RESAMPLE}")
@@ -29,12 +46,15 @@ if RESAMPLE:
     from plotly_resampler.aggregation import MinMaxLTTB
 
 if "DEBUG" in os.environ:
-    debug = os.environ["DEBUG"] == "True"
-    print(f"DEBUG environment variable present, DEBUG set to {debug}")
+    DEBUG = os.environ["DEBUG"] == "True"
+    print(f"DEBUG environment variable present, DEBUG set to {DEBUG}")
 else:
-    print("No DEBUG environment variable: defaulting to debug mode")
-    debug = True
+    print("No DEBUG environment variable: defaulting to DEBUG mode")
+    DEBUG = True
 
+# -----------------------------------------------------------------------------
+# Select dataset
+# If DATASET is present in environment choose that, otherwise select manually
 if "DATASET" in os.environ:
     match os.environ["DATASET"]:
         case "wagenaar":
@@ -69,32 +89,15 @@ else:
         "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_100_maxISIb_100_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     )
-citation = "the relevant literature"
-doi_link = None
-if "kapucu" in burst_extraction_params:
-    dataset = "kapucu"
-    citation = "Kapucu et al. (2022)"
-    doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
-elif "hommersom" in burst_extraction_params:
-    dataset = "hommersom"
-    citation = "Hommersom et al. (2024)"
-    doi_link = "https://doi.org/10.1101/2024.03.18.585506"
-elif "inhibblock" in burst_extraction_params:
-    dataset = "inhibblock"
-    citation = "Vinogradov et al. (2024)"
-    doi_link = "https://doi.org/10.1101/2024.08.21.608974"
-elif "mossink" in burst_extraction_params:
-    dataset = "mossink"
-    citation = "Mossink et al. (2021)"
-    doi_link = "https://doi.org/10.17632/bvt5swtc5h.1"
-else:
-    dataset = "wagenaar"
-    citation = "Wagenaar et al. (2006)"
-    doi_link = "https://doi.org/10.1186/1471-2202-7-11"
+dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
+citation, doi_link = get_citation_doi_link(dataset)
 print(f"Detected dataset: {dataset}")
 
 df_cultures = load_df_cultures(burst_extraction_params)
 
+# -----------------------------------------------------------------------------
+# Construct pivot table.
+# This is the layout for the recordings overview
 match dataset:
     case "wagenaar":
         pivot_index = ["batch", "culture"]
@@ -112,7 +115,10 @@ match dataset:
         pivot_index = ["group", "subject_id"]
         pivot_columns = "well_idx"
     case _:
-        raise NotImplementedError(f"{dataset} dataset is not implemented.")
+        raise NotImplementedError(
+            f"Dataset {dataset} is not implemented: "
+            f"You must first define rows and columns for plotting."
+        )
 
 # unique culture_type - mea_number - well_id combinations
 pivot_table = pd.pivot(
@@ -161,8 +167,10 @@ if RESAMPLE:
 else:
     app = Dash(__name__, server=server)
 
+RECORDING_OVERVIEW_ID = "matrix-plot"
 GRAPH_ID = "whole-recording"
 OVERVIEW_GRAPH_ID = "whole-recording-overview"
+N_BURSTS_SELECT_ID = "n_bursts_selection"
 
 app.layout = html.Div(
     [
@@ -181,14 +189,40 @@ app.layout = html.Div(
             ]
         ),
         dcc.Graph(
-            id="matrix-plot", config={"displayModeBar": False}, style={"flex": "1"}
+            id=RECORDING_OVERVIEW_ID,
+            config={"displayModeBar": False},
+            style={"flex": "1"},
         ),
-        # html.Div(id='selected-cell', style={'marginTop': '20px', 'flex': '1'}),  # Takes 1 part
-        dcc.Graph(id=GRAPH_ID, config={"displayModeBar": True}, style={"flex": "2"}),
-        dcc.Graph(
-            id=OVERVIEW_GRAPH_ID, config={"displayModeBar": False}, style={"flex": ".2"}
+        html.Div(
+            children=[
+                html.Label("burst colors:", style={"marginRight": "8px"}),
+                dcc.Dropdown(
+                    id=N_BURSTS_SELECT_ID,
+                    options=[
+                        {"label": f"{i}", "value": i}
+                        for i in range(1, len(colors_bursts) + 1)
+                    ],
+                    value=1,
+                    style={"width": "fit-content"},
+                    clearable=False,
+                ),
+            ],
+            style={"display": "flex", "alignItems": "center"},
         ),
-        dcc.Loading(dcc.Store(id="store")),
+        html.Div(
+            [
+                dcc.Graph(
+                    id=GRAPH_ID, config={"displayModeBar": True}, style={"flex": "2"}
+                ),
+                dcc.Graph(
+                    id=OVERVIEW_GRAPH_ID,
+                    config={"displayModeBar": False},
+                    style={"flex": ".2"},
+                ),
+                dcc.Loading(dcc.Store(id="store")),
+            ],
+            style={"display": "flex", "flexDirection": "column", "flex": "2"},
+        ),
     ],
     style={"display": "flex", "flexDirection": "column", "height": "100vh"},
 )
@@ -196,15 +230,18 @@ app.layout = html.Div(
 
 @app.callback(
     [
-        Output("matrix-plot", "figure"),
+        Output(RECORDING_OVERVIEW_ID, "figure"),
         # Output('selected-cell', 'children'),
         Output(GRAPH_ID, "figure"),
         Output(OVERVIEW_GRAPH_ID, "figure"),
         Output("store", "data"),
     ],
-    [Input("matrix-plot", "clickData")],
+    [
+        Input(RECORDING_OVERVIEW_ID, "clickData"),
+        Input(N_BURSTS_SELECT_ID, "value"),
+    ],
 )
-def update_plot(click_data):
+def update_plot(click_data, n_burst_colors):
     # Create the heatmap
     fig = go.Figure(
         data=go.Heatmap(
@@ -265,7 +302,7 @@ def update_plot(click_data):
         )
 
         fig_whole, fig_whole_overview = _create_fig_whole_timeseries(
-            df_cultures, index_select, div_day, selected_text
+            df_cultures, index_select, div_day, selected_text, n_burst_colors
         )
     else:
         selected_text = "Click on a cell to see details."
@@ -282,7 +319,9 @@ def update_plot(click_data):
     return fig, fig_whole, fig_whole_overview, serverside
 
 
-def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_text):
+def _create_fig_whole_timeseries(
+    df_cultures, index_select, div_day, selected_text, n_burst_colors
+):
     match dataset:
         case "kapucu":
             index = (*index_select, div_day)
@@ -379,8 +418,8 @@ def _create_fig_whole_timeseries(df_cultures, index_select, div_day, selected_te
                 range(df_cultures.at[index, "n_bursts"]),
             )
         ):
-            color = colors_bursts[
-                i % len(colors_bursts)
+            color = colors_bursts[:n_burst_colors][
+                i % n_burst_colors
             ]  # Cycle through the three colors
             x_coords = [start / 1000, start / 1000, end / 1000, end / 1000]
             y_coords = [y_min, y_max, y_max, y_min]
@@ -503,9 +542,9 @@ if RESAMPLE:
 
 if __name__ == "__main__":
     print("Starting the app.")
-    if debug is True:
+    if DEBUG is True:
         print("Running locally.")
-        app.run(debug=debug, port=8050)
+        app.run(debug=DEBUG, port=8050)
     else:
         print("Running on the internet.")
         app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
