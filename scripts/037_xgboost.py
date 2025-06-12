@@ -1,4 +1,18 @@
-from collections import Counter
+"""
+Train XGBoost on burst shape and traditional feature sets.
+
+For each of the feature sets (only shape, only traditional, combined) fit XGBoost.
+XGBoost hyperparameters are selected on a 5 fold cross-validation.
+Evaluation (test) is done with a 5 fold cross-validation.
+Class imbalance is handled in fit function.
+Shapley values are evaluated on the full dataset (yes, this is confusing but correct).
+
+Plots:
+- average embedding locations for illustration
+- confusion matrix
+- Shapley values (feature importance)
+"""
+import os
 
 import numpy as np
 import pandas as pd
@@ -12,6 +26,7 @@ from sklearn.utils.class_weight import compute_sample_weight
 from tqdm import tqdm
 from xgboost import XGBClassifier
 
+from src.folders import get_fig_folder
 from src.persistence import load_df_bursts, load_df_cultures, load_spectral_embedding
 from src.plot import get_group_colors, prepare_plotting
 from src.prediction.define_target import make_target_label
@@ -29,8 +44,8 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
@@ -76,6 +91,13 @@ ax.legend(
     loc="upper left",
 )
 fig.show()
+fig.savefig(
+    os.path.join(
+        get_fig_folder(),
+        f"{dataset}_xgboost_recording_embedding_shape.svg",
+    ),
+    transparent=True,
+)
 # %% get classical features
 df_cultures, classical_features = get_classical_features(
     df_cultures, df_bursts, dataset
@@ -104,9 +126,6 @@ random_state = None
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
 inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
 
-# Handle class balancing
-sample_weight = None
-
 # XGBoost hyperparameters grid
 param_grid_xgb = {
     "n_estimators": [100, 150, 200, 250, 300],
@@ -114,13 +133,15 @@ param_grid_xgb = {
     "max_depth": [1, 2, 3, 4, 5, 6, 7, 8, 9],
     "subsample": [0.6, 0.8, 0.9, 1.0],
     "colsample_bytree": [0.6, 0.8, 0.9, 1.0],
+    "reg_alpha": [0, 0.1, 1],
+    "reg_lambda": [0.5, 1, 2],
 }
 
-# TODO potentially weight classes
 xgb = XGBClassifier(
     objective=objective,
     eval_metric=eval_metric,
     random_state=random_state,
+    # do not weight classes here, weighting is done in fit
 )
 scorer = make_scorer(balanced_accuracy_score)
 
@@ -156,7 +177,11 @@ for train_idx, test_idx in tqdm(outer_cv.split(X, y), desc="Outer loop of cv"):
     # grid_search.fit(X_train, y_train)
     # best_model = grid_search.best_estimator_
 
-    random_search.fit(X_train, y_train)
+    random_search.fit(
+        X_train,
+        y_train,
+        sample_weight=compute_sample_weight(class_weight="balanced", y=y_train),
+    )
     best_model = random_search.best_estimator_
 
     y_pred = best_model.predict(X_test)
@@ -191,21 +216,48 @@ if mean_shap_values.ndim == 2:
         features=X,
         plot_type="bar",
         feature_names=X.columns,
-        show=True,
+        show=False,
     )
-    shap.summary_plot(mean_shap_values, features=X, feature_names=X.columns, show=True)
+    fig = plt.gcf()
+    fig.show()
+    fig.savefig(
+        os.path.join(
+            get_fig_folder(),
+            f"{dataset}_xgboost_shapley_values_bar.svg",
+        ),
+        transparent=True,
+    )
+    shap.summary_plot(mean_shap_values, features=X, feature_names=X.columns, show=False)
+    fig = plt.gcf()
+    fig.show()
+    fig.savefig(
+        os.path.join(
+            get_fig_folder(),
+            f"{dataset}_xgboost_shapley_values_bee.svg",
+        ),
+        transparent=True,
+    )
 else:
     shap.summary_plot(
         mean_shap_values,
         features=X,
         plot_type="bar",
         feature_names=X.columns,
-        show=True,
         class_inds="original",
         class_names=list(label_encoder.classes_),
         color=lambda i: [
             get_group_colors(dataset)[j] for j in list(label_encoder.classes_)
         ][i],
+        show=False,
+    )
+    fig = plt.gcf()
+    fig.show()
+    fig.savefig(
+        os.path.join(
+            get_fig_folder(),
+            f"{dataset}_xgboost_shapley_values.svg",
+        ),
+        transparent=True,
     )
 
 # %%
@@ -240,3 +292,17 @@ for label_x, label_y, color in zip(
 ax.set_xlabel("Predicted label")
 ax.set_ylabel("True label")
 fig.show()
+fig.savefig(
+    os.path.join(
+        get_fig_folder(),
+        f"{dataset}_xgboost_confusion_matrix.svg",
+    ),
+    transparent=True,
+)
+
+# %% feature importance for shape vs traditional
+print("\nFeature importance")
+feature_importance = mean_abs_shap_values
+feature_importance = feature_importance / feature_importance.sum()
+print(f"Shape:\n{feature_importance[:2].sum():.3f}")
+print(f"Traditional:\n{feature_importance[2:].sum():.3f}")
