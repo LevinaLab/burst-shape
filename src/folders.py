@@ -5,6 +5,7 @@ _project_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 _data_folder = "data"
 _data_kapucu_folder = "data_kapucu"
+_data_hommersom_test_folder = "data_hommersom_test"
 _data_hommersom_folder = "data_hommersom"
 _data_inhibblock_folder = "data_inhibblock"
 _data_mossink_folder = "data_mossink"
@@ -37,6 +38,15 @@ def get_data_hommersom_folder():
         str: path to the hommersom data folder
     """
     return os.path.join(get_data_folder(), _data_hommersom_folder)
+
+
+def get_data_hommersom_test_folder():
+    """Returns the path to the hommersom data folder.
+
+    Returns:
+        str: path to the hommersom data folder
+    """
+    return os.path.join(get_data_folder(), _data_hommersom_test_folder)
 
 
 def get_data_inhibblock_folder():

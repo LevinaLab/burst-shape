@@ -7,8 +7,8 @@ def get_dataset_from_burst_extraction_params(burst_extraction_params):
     else:
         if "kapucu" in burst_extraction_params:
             dataset = "kapucu"
-        elif "hommersom" in burst_extraction_params:
-            dataset = "hommersom"
+        elif "hommersom_test" in burst_extraction_params:
+            dataset = "hommersom_test"
         elif "inhibblock" in burst_extraction_params:
             dataset = "inhibblock"
         elif "mossink" in burst_extraction_params:
@@ -27,7 +27,7 @@ def get_chosen_spectral_embedding_params(dataset):
             clustering_params = (
                 "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
             )
-        case "hommersom":
+        case "hommersom_test":
             clustering_params = (
                 "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
             )
@@ -52,7 +52,7 @@ def get_chosen_spectral_clustering_params(dataset):
     match dataset:
         case "kapucu":
             n_clusters = 4
-        case "hommersom":
+        case "hommersom_test":
             n_clusters = 4
         case "inhibblock":
             n_clusters = 4
@@ -71,7 +71,7 @@ def get_citation_doi_link(dataset):
         case "kapucu":
             citation = "Kapucu et al. (2022)"
             doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
-        case "hommersom":
+        case "hommersom_test":
             citation = "Hommersom et al. (2024)"
             doi_link = "https://doi.org/10.1101/2024.03.18.585506"
         case "inhibblock":

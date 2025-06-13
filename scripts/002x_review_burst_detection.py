@@ -61,8 +61,8 @@ if "DATASET" in os.environ:
             burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
         case "kapucu":
             burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-        case "hommersom":
-            burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case "hommersom_test":
+            burst_extraction_params = "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "mossink":
@@ -79,9 +79,9 @@ else:
         # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
         # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
         # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
-        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
+        # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
@@ -105,7 +105,7 @@ match dataset:
     case "kapucu":
         pivot_index = ["culture_type", "mea_number", "well_id"]
         pivot_columns = "DIV"
-    case "hommersom":
+    case "hommersom_test":
         pivot_index = ["batch", "clone"]
         pivot_columns = "well_idx"
     case "inhibblock":
@@ -279,7 +279,7 @@ def update_plot(click_data, n_burst_colors):
             case "wagenaar":
                 index_select = [int(x) for x in index_select]
                 selected_text = f"Selected: day {div_day}, batch {index_select[0]}, culture {index_select[1]}"
-            case "hommersom":
+            case "hommersom_test":
                 selected_text = f"Selected: Batch {index_select[0]}, clone {index_select[1]}, well_idx {div_day}"
             case "inhibblock":
                 index_select = (str(index_select[0]), int(index_select[1]))
@@ -331,7 +331,7 @@ def _create_fig_whole_timeseries(
             )
             # st = np.array(st)
             st /= 1000  # convert to seconds
-        case "hommersom":
+        case "hommersom_test":
             index = (*index_select, div_day)
             st, gid = get_hommersom_spike_times(
                 df_cultures,

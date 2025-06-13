@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from src.folders import (
     get_data_folder,
-    get_data_hommersom_folder,
+    get_data_hommersom_test_folder,
     get_data_inhibblock_folder,
     get_data_kapucu_folder,
     get_data_mossink_folder,
@@ -22,7 +22,7 @@ na = np.array
 
 def extract_bursts(
     dataset: Literal[
-        "kapucu", "wagenaar", "hommersom", "inhibblock", "mossink"
+        "kapucu", "wagenaar", "hommersom_test", "inhibblock", "mossink"
     ] = "wagenaar",
     data_folder=None,
     maxISIstart=5,
@@ -46,7 +46,7 @@ def extract_bursts(
     All times in milliseconds.
 
     Args:
-        dataset (Literal["kapucu", "wagenaar", "hommersom", "inhibblock", "mossink"], optional): Dataset to extract bursts from.
+        dataset (Literal["kapucu", "wagenaar", "hommersom_test", "inhibblock", "mossink"], optional): Dataset to extract bursts from.
         data_folder (str, optional): Path to folder containing data files. Defaults to None.
         maxISIstart (int, optional): Maximum inter-spike interval (ISI) for start of burst.
             Defaults to 5.
@@ -82,8 +82,8 @@ def extract_bursts(
                 data_folder = os.path.join(get_data_folder(), "extracted")
             case "kapucu":
                 data_folder = get_data_kapucu_folder()
-            case "hommersom":
-                data_folder = get_data_hommersom_folder()
+            case "hommersom_test":
+                data_folder = get_data_hommersom_test_folder()
             case "inhibblock":
                 data_folder = get_data_inhibblock_folder()
             case "mossink":
@@ -117,8 +117,8 @@ def extract_bursts(
             df_cultures.set_index(
                 ["culture_type", "mea_number", "well_id", "DIV"], inplace=True
             )
-        case "hommersom":
-            df_cultures = _get_hommersom_data_from_file(data_folder)
+        case "hommersom_test":
+            df_cultures = _get_hommersom_test_data_from_file(data_folder)
             df_cultures = _bursts_from_df_culture(
                 df_cultures,
                 data_folder,
@@ -326,7 +326,7 @@ def _bursts_from_df_culture(
     return df
 
 
-def _get_hommersom_data_from_file(
+def _get_hommersom_test_data_from_file(
     data_folder,
     fs=12500,  # samples per second
 ):
@@ -452,7 +452,7 @@ def _build_bursts_df(
                 file_name = df_cultures.at[index, "file_name"]
                 file_path = os.path.join(data_folder, file_name)
                 data = np.loadtxt(file_path)[:, 0] * 1000
-            case "kapucu" | "hommersom" | "inhibblock" | "mossink":
+            case "kapucu" | "hommersom_test" | "inhibblock" | "mossink":
                 data = df_cultures.at[index, "times"] * 1000
             case _:
                 raise NotImplementedError(f"Dataset {dataset} not implemented")

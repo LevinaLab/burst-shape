@@ -45,8 +45,8 @@ if "DATASET" in os.environ:
             burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
         case "kapucu":
             burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-        case "hommersom":
-            burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case "hommersom_test":
+            burst_extraction_params = "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "mossink":
@@ -63,9 +63,9 @@ else:
         # "dataset_kapucu_burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
         # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
         # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
-        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
+        # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
@@ -79,8 +79,8 @@ if "kapucu" in burst_extraction_params:
     )
     citation = "Kapucu et al. (2022)"
     doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
-elif "hommersom" in burst_extraction_params:
-    dataset = "hommersom"
+elif "hommersom_test" in burst_extraction_params:
+    dataset = "hommersom_test"
     citation = "Hommersom et al. (2024)"
     doi_link = "https://doi.org/10.1101/2024.03.18.585506"
     clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
@@ -201,7 +201,7 @@ match dataset:
         df_bursts["batch_culture"] = (
             df_bursts["batch"].astype(str) + "-" + df_bursts["well_id"].astype(str)
         )
-    case "hommersom":
+    case "hommersom_test":
         df_bursts["batch_culture"] = (
             df_bursts["batch"].astype(str) + "-" + df_bursts["clone"].astype(str)
         )
@@ -401,7 +401,7 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
                     category_orders = {
                         color: sorted(df_bursts["batch"].unique(), key=int)
                     }
-                case "kapucu" | "hommersom" | "inhibblock":
+                case "kapucu" | "hommersom_test" | "inhibblock":
                     category_orders = {color: sorted(df_bursts[color].unique())}
                 case _:
                     pass
@@ -419,7 +419,7 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
                             key=lambda x: (int(x.split("-")[0]), int(x.split("-")[1])),
                         )
                     }
-                case "kapucu" | "hommersom" | "inhibblock" | "mossink":
+                case "kapucu" | "hommersom_test" | "inhibblock" | "mossink":
                     category_orders = {
                         color: sorted(df_bursts["batch_culture"].unique())
                     }
@@ -603,7 +603,7 @@ def update_timeseries(tsne_click_data, firing_rate_click_data, n_clusters_curren
                     ]
                 ]
             )
-        case "hommersom":
+        case "hommersom_test":
             title = "Time series for " + ", ".join(
                 [
                     f"{key}: {df_bursts.iloc[point_index][key]}"
@@ -728,7 +728,7 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             title_firing_rate = (
                 f"Firing rate for {culture_type} {mea_number}, {well_id}, DIV {div_day}"
             )
-        case "hommersom":
+        case "hommersom_test":
             batch, clone, well_idx = list(
                 df_bursts.iloc[point_index][["batch", "clone", "well_idx"]]
             )

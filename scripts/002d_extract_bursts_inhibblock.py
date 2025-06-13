@@ -31,7 +31,7 @@ params_burst_extraction = {
 
 # extract bursts
 df_cultures, df_bursts, burst_matrix = burst_extraction.extract_bursts(
-    data_folder=get_data_hommersom_folder(),
+    data_folder=None,
     **params_burst_extraction,
 )
 

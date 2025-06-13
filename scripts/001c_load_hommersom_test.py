@@ -6,7 +6,7 @@ import scipy.io as sio
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_data_hommersom_folder
+from src.folders import get_data_hommersom_test_folder
 
 # file = os.path.join(get_data_hommersom_folder(), "Batch1", "CACN_clone1", "APS_CACN_Clone1_C1.mat")
 
@@ -15,7 +15,7 @@ def _get_hommersom_st(batch, clone: Literal["Clone1", "Clone2", "WTC"], well_id)
     fs = 12500
 
     file = os.path.join(
-        get_data_hommersom_folder(),
+        get_data_hommersom_test_folder(),
         batch,
         "WTC" if clone == "WTC" else f"CACN_{clone.lower()}",
         f"APS_CACN_{clone}_{well_id}.mat",

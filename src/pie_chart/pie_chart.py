@@ -151,7 +151,7 @@ def _plot_data_point(data_point, plot_type, ax, colors=None, index=None, dataset
                     case "kapucu":
                         (culture_type, mea_number, well_id, _) = index
                         color = get_group_colors(dataset)[(culture_type, mea_number)]
-                    case "hommersom":
+                    case "hommersom_test":
                         raise NotImplementedError
                     case "inhibblock":
                         if len(index) == 2:
@@ -212,7 +212,7 @@ def _write_column_group_label(axs, dataset, unique_batch_culture):
                     fontsize=10,
                     color=get_group_colors(dataset)[(culture_type, mea_number)],
                 )
-            case "hommersom":
+            case "hommersom_test":
                 (batch, clone) = index
                 ax.set_title(f"{batch}-{clone}", rotation=90)
             case "inhibblock":

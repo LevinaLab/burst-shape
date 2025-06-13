@@ -1,4 +1,4 @@
-from src.folders import get_data_hommersom_folder
+from src.folders import get_data_hommersom_test_folder
 from src.persistence import (
     save_burst_extraction_params,
     save_burst_matrix,
@@ -9,7 +9,7 @@ from src.preprocess import burst_extraction
 
 # parameters
 params_burst_extraction = {
-    "dataset": "hommersom",
+    "dataset": "hommersom_test",
     "maxISIstart": 20,  # 5,
     "maxISIb": 20,  # 5,
     "minBdur": 50,  # 40,
@@ -31,7 +31,7 @@ params_burst_extraction = {
 
 # extract bursts
 df_cultures, df_bursts, burst_matrix = burst_extraction.extract_bursts(
-    data_folder=get_data_hommersom_folder(),
+    data_folder=get_data_hommersom_test_folder(),
     **params_burst_extraction,
 )
 
