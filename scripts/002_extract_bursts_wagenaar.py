@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import pandas as pd
 
 from src.folders import get_data_folder
 from src.persistence import (
@@ -13,6 +14,7 @@ from src.preprocess import burst_extraction
 
 # parameters
 params_burst_extraction = {
+    "dataset": "wagenaar",
     "maxISIstart": 5,
     "maxISIb": 5,
     "minBdur": 40,
@@ -31,9 +33,27 @@ params_burst_extraction = {
 }
 
 
+def _get_data_from_file():
+    data_folder = os.path.join(get_data_folder(), "extracted")
+    print(f"Build dataframe from files in {data_folder}")
+    file_list = os.listdir(data_folder)
+    # file_list = [file for file in file_list if ".txt" in file]
+    df = pd.DataFrame(file_list, columns=["file_name"])
+    # create columns batch-culture-day
+    df["batch"] = df["file_name"].apply(lambda x: x.split("-")[0])
+    df["culture"] = df["file_name"].apply(lambda x: x.split("-")[1])
+    df["day"] = df["file_name"].apply(lambda x: x.split("-")[2].split(".")[0])
+    for col in ["batch", "culture", "day"]:
+        df[col] = df[col].astype(int)
+    # set index
+    df.set_index(["batch", "culture", "day"], inplace=True)
+    print("Done")
+    return df
+
+
 # extract bursts
 df_cultures, df_bursts, burst_matrix = burst_extraction.extract_bursts(
-    data_folder=os.path.join(get_data_folder(), "extracted"),
+    construct_df_cultures=_get_data_from_file,
     **params_burst_extraction,
 )
 

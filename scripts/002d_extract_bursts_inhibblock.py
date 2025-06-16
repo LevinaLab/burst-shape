@@ -1,4 +1,8 @@
-from src.folders import get_data_hommersom_folder
+import os
+
+import pandas as pd
+
+from src.folders import get_data_inhibblock_folder
 from src.persistence import (
     save_burst_extraction_params,
     save_burst_matrix,
@@ -29,9 +33,15 @@ params_burst_extraction = {
 }
 
 
+def _construct_inhibblock_df_cultures():
+    return pd.read_pickle(
+        os.path.join(get_data_inhibblock_folder(), "df_inhibblock.pkl")
+    )
+
+
 # extract bursts
 df_cultures, df_bursts, burst_matrix = burst_extraction.extract_bursts(
-    data_folder=None,
+    construct_df_cultures=_construct_inhibblock_df_cultures,
     **params_burst_extraction,
 )
 

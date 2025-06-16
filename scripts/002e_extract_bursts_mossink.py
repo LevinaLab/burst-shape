@@ -1,3 +1,7 @@
+import os
+
+import pandas as pd
+
 from src.folders import get_data_mossink_folder
 from src.persistence import (
     save_burst_extraction_params,
@@ -28,9 +32,13 @@ params_burst_extraction = {
 }
 
 
+def _construct_mossink_df_cultures():
+    return pd.read_pickle(os.path.join(get_data_mossink_folder(), "df_mossink.pkl"))
+
+
 # extract bursts
 df_cultures, df_bursts, burst_matrix = burst_extraction.extract_bursts(
-    data_folder=get_data_mossink_folder(),
+    construct_df_cultures=_construct_mossink_df_cultures,
     **params_burst_extraction,
 )
 
