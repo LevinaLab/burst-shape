@@ -23,7 +23,8 @@ burst_extraction_params = (
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 agglomerating_clustering_params = (
     None  # not plotting labels
@@ -33,7 +34,8 @@ agglomerating_clustering_params = (
 spectral_clustering_params = (  # required for spectral embedding initialization
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
     # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_55"
 )
 tsne_params = {
     "initialization": ["pca", "spectral"][0],

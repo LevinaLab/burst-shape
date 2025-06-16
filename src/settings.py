@@ -13,10 +13,12 @@ def get_dataset_from_burst_extraction_params(burst_extraction_params):
             dataset = "inhibblock"
         elif "mossink" in burst_extraction_params:
             dataset = "mossink"
+        elif "hommersom" in burst_extraction_params:
+            dataset = "hommersom"
         else:
             assert (
                 "dataset" not in burst_extraction_params
-            ), "Unknown dataset, cannot use this function."
+            ), "Dataset is currently unknown. Please add it to this function."
             dataset = "wagenaar"
         return dataset
 
@@ -71,7 +73,7 @@ def get_citation_doi_link(dataset):
         case "kapucu":
             citation = "Kapucu et al. (2022)"
             doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
-        case "hommersom_test":
+        case "hommersom" | "hommersom_test":
             citation = "Hommersom et al. (2024)"
             doi_link = "https://doi.org/10.1101/2024.03.18.585506"
         case "inhibblock":

@@ -26,15 +26,18 @@ burst_extraction_params = (
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
-cv_params = "cv"  # set to None if not using cross-validation or to specific cv_params
+cv_params = (
+    None  # "cv"  # set to None if not using cross-validation or to specific cv_params
+)
 all_data = True  # set to False if you want to compute only cross-validation
 clustering_params = {
     "n_components_max": 30,
     "affinity": "precomputed",
     "metric": "wasserstein",
-    "n_neighbors": 85,  # 6,  # 60,  # 150,
+    "n_neighbors": 55,  # 85,  # 6,  # 60,  # 150,
     "random_state": 0,
 }
 
