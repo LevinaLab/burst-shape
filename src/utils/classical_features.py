@@ -2,12 +2,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from src.persistence.spike_times import (
-    get_hommersom_spike_times,
-    get_inhibblock_spike_times,
-    get_kapucu_spike_times,
-    get_wagenaar_spike_times,
-)
+from src.persistence.spike_times import get_spike_times_in_milliseconds
 
 
 def get_classical_features(df_cultures, df_bursts, dataset):
@@ -46,7 +41,7 @@ def get_classical_features(df_cultures, df_bursts, dataset):
 
     if dataset == "wagenaar":
         for index in tqdm(df_cultures.index, desc="Compute classical features"):
-            st, gid = get_wagenaar_spike_times(df_cultures, index)
+            st, gid = get_spike_times_in_milliseconds(df_cultures, index, dataset)
 
             # MFR
             # MFR was calculated for each well individually by averaging the firing rate of each separate channel by the total number of active channels of the well

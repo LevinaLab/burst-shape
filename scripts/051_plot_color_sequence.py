@@ -2,14 +2,13 @@ import os
 
 import matplotlib.patches as mpatches
 import numpy as np
-import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_data_folder, get_data_kapucu_folder
+from src.folders import get_data_folder
 from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.spike_times import get_kapucu_spike_times, get_wagenaar_spike_times
+from src.persistence.spike_times import get_spike_times_in_milliseconds
 
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
@@ -97,11 +96,7 @@ bins = np.arange(0, data.max() + bin_size, bin_size)
 data = np.histogram(data, bins=bins)[0] / (bin_size / 1000)
 
 if plot_raster:
-    match dataset:
-        case "wagenaar":
-            st, gid = get_wagenaar_spike_times(df_cultures, idx)
-        case "kapucu":
-            st, gid = get_kapucu_spike_times(df_cultures, idx)
+    st, gid = get_spike_times_in_milliseconds(df_cultures, idx, dataset)
 
 fig, axs = plt.subplots(
     2 if plot_raster else 1,

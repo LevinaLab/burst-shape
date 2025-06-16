@@ -6,7 +6,7 @@ import seaborn as sns
 
 from src.folders import get_fig_folder
 from src.persistence import load_df_bursts, load_df_cultures
-from src.persistence.spike_times import get_inhibblock_spike_times
+from src.persistence.spike_times import get_spike_times_in_milliseconds
 from src.plot import prepare_plotting
 from src.settings import get_dataset_from_burst_extraction_params
 
@@ -44,7 +44,7 @@ if dataset == "inhibblock":
     # sns.despine()
     for i, index in enumerate(examples_indices):
         start, end = df_bursts.at[index, "start_orig"], df_bursts.at[index, "end_orig"]
-        st, gid = get_inhibblock_spike_times(df_cultures, index[:-1])
+        st, gid = get_spike_times_in_milliseconds(df_cultures, index[:-1], dataset)
         selection = (st >= start) & (st <= end)
         st, gid = st[selection], gid[selection]
         # bins = np.linspace(start, end, num=301, endpoint=True)

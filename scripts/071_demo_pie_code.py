@@ -6,7 +6,7 @@ import seaborn as sns
 
 from src.folders import get_fig_folder
 from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
-from src.persistence.spike_times import get_inhibblock_spike_times
+from src.persistence.spike_times import get_spike_times_in_seconds
 from src.plot import get_cluster_colors, prepare_plotting
 
 cm = prepare_plotting()
@@ -72,8 +72,7 @@ if dataset == "inhibblock":
     print(df_cultures.at[example_index, "well"])
     df_plot = df_bursts.loc[example_index]
 
-    st, gid = get_inhibblock_spike_times(df_cultures, example_index)
-    st /= 1000
+    st, gid = get_spike_times_in_seconds(df_cultures, example_index, dataset)
     bin_size = 0.100
     times_all = np.arange(0, st.max() + bin_size, bin_size)
     firing_rate = np.histogram(st, bins=times_all)[0] / (bin_size)

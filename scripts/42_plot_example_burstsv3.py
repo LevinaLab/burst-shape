@@ -2,11 +2,10 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 
 from src.folders import get_fig_folder
 from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
-from src.persistence.spike_times import get_inhibblock_spike_times
+from src.persistence.spike_times import get_spike_times_in_milliseconds
 from src.plot import get_cluster_colors, prepare_plotting
 
 cm = prepare_plotting()
@@ -111,7 +110,7 @@ if dataset == "inhibblock":
         ax_raster = ax.twinx()
         color = get_cluster_colors(n_clusters)[df_bursts.at[index, "cluster"] - 1]
         start, end = df_bursts.at[index, "start_orig"], df_bursts.at[index, "end_orig"]
-        st, gid = get_inhibblock_spike_times(df_cultures, index[:-1])
+        st, gid = get_spike_times_in_milliseconds(df_cultures, index[:-1], dataset)
         selection = (st >= start - offset_start) & (st <= end + offset_end)
         st, gid = st[selection], gid[selection]
         bins = np.linspace(start, end, num=51, endpoint=True)

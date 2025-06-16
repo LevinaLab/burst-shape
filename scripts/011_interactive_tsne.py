@@ -20,12 +20,7 @@ from src.persistence import (
     load_tsne,
 )
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.spike_times import (
-    get_hommersom_spike_times,
-    get_inhibblock_spike_times,
-    get_kapucu_spike_times,
-    get_mossink_spike_times,
-)
+from src.persistence.spike_times import get_spike_times_in_milliseconds
 from src.plot import get_cluster_colors, get_group_colors
 
 if "DEBUG" in os.environ:
@@ -67,8 +62,8 @@ else:
         # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
         # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     )
 citation = "the relevant literature"
 doi_link = None
@@ -84,6 +79,13 @@ elif "hommersom_test" in burst_extraction_params:
     citation = "Hommersom et al. (2024)"
     doi_link = "https://doi.org/10.1101/2024.03.18.585506"
     clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
+elif "hommersom" in burst_extraction_params:
+    dataset = "hommersom"
+    citation = "Hommersom et al. (2024)"
+    doi_link = "https://doi.org/10.1101/2024.03.18.585506"
+    clustering_params = (
+        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_55"
+    )
 elif "inhibblock" in burst_extraction_params:
     dataset = "inhibblock"
     citation = "Vinogradov et al. (2024)"
@@ -212,6 +214,10 @@ match dataset:
     case "mossink":
         df_bursts["batch_culture"] = (
             df_bursts["group"].astype(str) + "-" + df_bursts["subject_id"].astype(str)
+        )
+    case "hommersom":
+        df_bursts["batch_culture"] = (
+            df_bursts["batch"].astype(str) + "-" + df_bursts["well"].astype(str)
         )
     case _:
         raise NotImplementedError(f"Dataset {dataset} not implemented.")
@@ -700,13 +706,7 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             batch, culture, day = list(
                 df_bursts.iloc[point_index][["batch", "culture", "day"]]
             )
-            # print(f"batch: {batch}, culture: {culture}, day: {day}")
-
-            # Load spike data
-            st, gid = np.loadtxt(
-                "../data/extracted/%s-%s-%s.spk.txt" % (batch, culture, day)
-            ).T
-            st = st * 1000
+            idx = (batch, culture, day)
             title_firing_rate = (
                 f"Firing rate for batch {batch}, culture {culture}, day {day}"
             )
@@ -716,9 +716,7 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
                     ["culture_type", "mea_number", "well_id", "DIV"]
                 ]
             )
-            st, gid = get_kapucu_spike_times(
-                df_cultures, (culture_type, mea_number, well_id, div_day)
-            )
+            idx = (culture_type, mea_number, well_id, div_day)
             df_plot = df_bursts[
                 (df_bursts["culture_type"] == culture_type)
                 & (df_bursts["mea_number"] == mea_number)
@@ -732,7 +730,7 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             batch, clone, well_idx = list(
                 df_bursts.iloc[point_index][["batch", "clone", "well_idx"]]
             )
-            st, gid = get_hommersom_spike_times(df_cultures, (batch, clone, well_idx))
+            idx = (batch, clone, well_idx)
             df_plot = df_bursts[
                 (df_bursts["batch"] == batch)
                 & (df_bursts["clone"] == clone)
@@ -743,9 +741,7 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             drug_label, div, well_idx = list(
                 df_bursts.iloc[point_index][["drug_label", "div", "well_idx"]]
             )
-            st, gid = get_inhibblock_spike_times(
-                df_cultures, (drug_label, div, well_idx)
-            )
+            idx = (drug_label, div, well_idx)
             df_plot = df_bursts[
                 (df_bursts["drug_label"] == drug_label)
                 & (df_bursts["div"] == div)
@@ -758,9 +754,7 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             group, subject_id, well_idx = list(
                 df_bursts.iloc[point_index][["group", "subject_id", "well_idx"]]
             )
-            st, gid = get_mossink_spike_times(
-                df_cultures, (group, subject_id, well_idx)
-            )
+            idx = (group, subject_id, well_idx)
             df_plot = df_bursts[
                 (df_bursts["group"] == group)
                 & (df_bursts["subject_id"] == subject_id)
@@ -771,6 +765,8 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
             )
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
+
+    st, gid = get_spike_times_in_milliseconds(df_cultures, idx, dataset)
 
     # trace of firing rate
     bin_size = 100  # ms

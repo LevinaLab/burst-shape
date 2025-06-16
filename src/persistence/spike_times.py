@@ -1,42 +1,34 @@
 import os
+import warnings
 
 import numpy as np
 
 from src.folders import get_data_folder
 
 
-def get_wagenaar_spike_times(df_cultures, idx):
-    st, gid = np.loadtxt(
-        os.path.join(get_data_folder(), "extracted", df_cultures.loc[idx].file_name)
-    ).T
-    st *= 1000
-    gid = gid.astype(int)
+def get_spike_times_in_seconds(df_cultures, idx, dataset):
+    match dataset:
+        case "wagenaar":
+            st, gid = np.loadtxt(
+                os.path.join(
+                    get_data_folder(), "extracted", df_cultures.loc[idx].file_name
+                )
+            ).T
+            gid = gid.astype(int)
+        case "kapucu" | "hommersom" | "hommersom_test" | "inhibblock" | "mossink":
+            st = df_cultures.at[idx, "times"]
+            gid = df_cultures.at[idx, "gid"]
+        case _:
+            warnings.warn(
+                f"get_spike_times_in_seconds() not implemented for dataset={dataset}. "
+                "Trying to load with default behaviour: Loading from df_cultures columns 'times' and 'gid'. "
+                "If this doesn't work or to suppress this warning implement your dataset explicitly here."
+            )
+            st = df_cultures.at[idx, "times"]
+            gid = df_cultures.at[idx, "gid"]
     return st, gid
 
 
-def get_kapucu_spike_times(df_cultures, idx):
-    return (
-        df_cultures.at[idx, "times"] * 1000,
-        df_cultures.at[idx, "gid"],
-    )
-
-
-def get_hommersom_spike_times(df_cultures, idx):
-    return (
-        df_cultures.at[idx, "times"] * 1000,
-        df_cultures.at[idx, "gid"],
-    )
-
-
-def get_inhibblock_spike_times(df_cultures, idx):
-    return (
-        df_cultures.at[idx, "times"] * 1000,
-        df_cultures.at[idx, "gid"],
-    )
-
-
-def get_mossink_spike_times(df_cultures, idx):
-    return (
-        df_cultures.at[idx, "times"] * 1000,
-        df_cultures.at[idx, "gid"],
-    )
+def get_spike_times_in_milliseconds(df_cultures, idx, dataset):
+    st, gid = get_spike_times_in_seconds(df_cultures, idx, dataset)
+    return st * 1000, gid
