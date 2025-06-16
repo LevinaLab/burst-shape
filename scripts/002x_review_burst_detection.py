@@ -11,6 +11,7 @@ The detected bursts are highlighted with rectangles.
 
 
 import os
+import warnings
 
 import dash
 import numpy as np
@@ -21,12 +22,7 @@ from flask import Flask
 from plotly.subplots import make_subplots
 
 from src.persistence import load_df_cultures
-from src.persistence.spike_times import (
-    get_hommersom_spike_times,
-    get_inhibblock_spike_times,
-    get_kapucu_spike_times,
-    get_mossink_spike_times,
-)
+from src.persistence.spike_times import get_spike_times_in_seconds
 from src.settings import get_citation_doi_link, get_dataset_from_burst_extraction_params
 
 # -----------------------------------------------------------------------------
@@ -86,8 +82,9 @@ else:
         # "burst_dataset_mossink_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_100_maxISIb_100_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 citation, doi_link = get_citation_doi_link(dataset)
@@ -96,29 +93,56 @@ print(f"Detected dataset: {dataset}")
 df_cultures = load_df_cultures(burst_extraction_params)
 
 # -----------------------------------------------------------------------------
-# Construct pivot table.
+# DATASET specific settings
 # This is the layout for the recordings overview
+# pivot_index will be the row index
+# pivot columns will be the columns
 match dataset:
     case "wagenaar":
         pivot_index = ["batch", "culture"]
         pivot_columns = "day"
+        rows_title = "Batch-Culture"
+        columns_title = "Days"
     case "kapucu":
         pivot_index = ["culture_type", "mea_number", "well_id"]
         pivot_columns = "DIV"
+        rows_title = "Culture Type - MEA - Well"
+        columns_title = "DIV"
     case "hommersom_test":
         pivot_index = ["batch", "clone"]
         pivot_columns = "well_idx"
+        rows_title = "Batch-Clone"
+        columns_title = "Well Index"
     case "inhibblock":
         pivot_index = ["drug_label", "div"]
         pivot_columns = "well_idx"
+        rows_title = "Group - Batch"
+        columns_title = "Well Index"
     case "mossink":
         pivot_index = ["group", "subject_id"]
         pivot_columns = "well_idx"
+        rows_title = "Group - Subject ID"
+        columns_title = "Well Index"
+    case "hommersom":
+        pivot_index = ["batch"]
+        pivot_columns = "well"
+        rows_title = "Batch"
+        columns_title = "Well"
     case _:
-        raise NotImplementedError(
-            f"Dataset {dataset} is not implemented: "
-            f"You must first define rows and columns for plotting."
+        index_cultures = df_cultures.index.names
+        pivot_index = index_cultures[:-1]
+        pivot_columns = index_cultures[-1]
+        rows_title = f"{index_cultures[:-1]}"
+        columns_title = index_cultures[-1]
+        warnings.warn(
+            f"No layout for the recordings overview defined for dataset={dataset}. "
+            f"Defaulting now to pivot_index={pivot_index} and pivot_columns={pivot_columns}."
         )
+
+
+def _generate_selected_text(index_select, column_select):
+    return f"Selected: {rows_title} {index_select}; {columns_title} {column_select}."
+
 
 # unique culture_type - mea_number - well_id combinations
 pivot_table = pd.pivot(
@@ -128,10 +152,40 @@ pivot_table = pd.pivot(
     values="n_bursts",
 )
 
-subjects = pivot_table.index.tolist()
-if isinstance(subjects[0], tuple):
-    subjects = ["-".join([str(s) for s in subject]) for subject in subjects]
-days = [f"D{day}" for day in pivot_table.columns.tolist()]
+DELIM = " | "
+
+
+def _encode_index(idx_val):
+    """Encode single-level or multi-level index value into a human-readable string."""
+    if not isinstance(idx_val, tuple):
+        idx_val = (idx_val,)
+    return DELIM.join(str(v) for v in idx_val)
+
+
+label_to_index = {_encode_index(tup): tup for tup in pivot_table.index}
+
+
+def _decode_label_to_index(label):
+    idx = label_to_index.get(label, None)
+    if isinstance(idx, tuple):
+        return idx
+    else:
+        return (idx,)
+
+
+def _encode_column(col_val):
+    return str(col_val)
+
+
+label_to_column = {_encode_column(col): col for col in pivot_table.columns}
+
+
+def _decode_column(label):
+    return label_to_column.get(label, None)
+
+
+subjects = [_encode_index(tup) for tup in pivot_table.index]
+days = [_encode_column(col) for col in pivot_table.columns]
 z = pivot_table.to_numpy()
 
 # Custom Colorscale
@@ -195,7 +249,7 @@ app.layout = html.Div(
         ),
         html.Div(
             children=[
-                html.Label("burst colors:", style={"marginRight": "8px"}),
+                html.Label("number of burst colors:", style={"marginRight": "8px"}),
                 dcc.Dropdown(
                     id=N_BURSTS_SELECT_ID,
                     options=[
@@ -251,52 +305,42 @@ def update_plot(click_data, n_burst_colors):
             colorscale=colorscale if z.min() == 0 else colorscale_alternative,
             showscale=True,  # Show color legend
             hoverongaps=False,  # Avoid hover info for empty cells
+            colorbar=dict(
+                title="Number of Bursts",
+                titleside="right",
+                titlefont=dict(size=20),
+            ),
         )
     )
     fig.update_layout(
         title="Subject-Day Matrix",
-        xaxis_title="Days",
-        yaxis_title="Subjects",
-        xaxis=dict(tickvals=list(range(len(days))), ticktext=days, side="top"),
-        yaxis=dict(tickvals=list(range(len(subjects))), ticktext=subjects),
+        xaxis_title=columns_title,
+        yaxis_title=rows_title,
+        xaxis=dict(
+            side="top",
+            titlefont=dict(size=20),
+        ),
+        yaxis=dict(
+            titlefont=dict(size=20),
+        ),
         plot_bgcolor="white",
     )
 
     # Handle cell click
     if click_data:
-        x = click_data["points"][0]["x"]  # Day label
-        div_day = int(x[1:])
-        y = click_data["points"][0]["y"]  # Subject label
-        index_select = y.split("-")
-
-        # value = z[subjects.index(y)][days.index(x)]
-        match dataset:
-            case "kapucu":
-                selected_text = (
-                    f"Selected: day {div_day}, culture_type {index_select[0]}, "
-                    f"mea_number {index_select[1]}, well_id {index_select[2]}"
-                )
-            case "wagenaar":
-                index_select = [int(x) for x in index_select]
-                selected_text = f"Selected: day {div_day}, batch {index_select[0]}, culture {index_select[1]}"
-            case "hommersom_test":
-                selected_text = f"Selected: Batch {index_select[0]}, clone {index_select[1]}, well_idx {div_day}"
-            case "inhibblock":
-                index_select = (str(index_select[0]), int(index_select[1]))
-                selected_text = f"Selected: drug_label {index_select[0]}, div {index_select[1]}, well_idx {div_day}"
-            case "mossink":
-                index_select = (str(index_select[0]), int(index_select[1]))
-                selected_text = f"Selected: group {index_select[0]}, subject_id {index_select[1]}, well_idx {div_day}"
-            case _:
-                raise NotImplementedError(f"{dataset} dataset is not implemented.")
+        x_label = click_data["points"][0]["x"]
+        div_day = _decode_column(x_label)
+        y_label = click_data["points"][0]["y"]
+        index_select = _decode_label_to_index(y_label)
+        selected_text = _generate_selected_text(index_select, div_day)
 
         # Add a black rectangle around the selected cell
         fig.add_shape(
             type="rect",
-            x0=days.index(x) - 0.5,  # Start of the cell in the x direction
-            x1=days.index(x) + 0.5,  # End of the cell in the x direction
-            y0=subjects.index(y) - 0.5,  # Start of the cell in the y direction
-            y1=subjects.index(y) + 0.5,  # End of the cell in the y direction
+            x0=days.index(x_label) - 0.5,  # Start of the cell in the x direction
+            x1=days.index(x_label) + 0.5,  # End of the cell in the x direction
+            y0=subjects.index(y_label) - 0.5,  # Start of the cell in the y direction
+            y1=subjects.index(y_label) + 0.5,  # End of the cell in the y direction
             line=dict(color="black", width=5),  # Black border with width
             fillcolor="rgba(0, 0, 0, 0)",  # Transparent fill
         )
@@ -322,42 +366,8 @@ def update_plot(click_data, n_burst_colors):
 def _create_fig_whole_timeseries(
     df_cultures, index_select, div_day, selected_text, n_burst_colors
 ):
-    match dataset:
-        case "kapucu":
-            index = (*index_select, div_day)
-            st, gid = get_kapucu_spike_times(
-                df_cultures,
-                index,
-            )
-            # st = np.array(st)
-            st /= 1000  # convert to seconds
-        case "hommersom_test":
-            index = (*index_select, div_day)
-            st, gid = get_hommersom_spike_times(
-                df_cultures,
-                index,
-            )
-            # st = np.array(st)
-            st /= 1000  # convert to seconds
-        case "wagenaar":
-            index = (*index_select, div_day)
-            st, gid = np.loadtxt("../data/extracted/%s-%s-%s.spk.txt" % index).T
-        case "inhibblock":
-            index = (*index_select, div_day)
-            st, gid = get_inhibblock_spike_times(
-                df_cultures,
-                index,
-            )
-            st /= 1000  # convert to seconds
-        case "mossink":
-            index = (*index_select, div_day)
-            st, gid = get_mossink_spike_times(
-                df_cultures,
-                index,
-            )
-            st /= 1000
-        case _:
-            raise NotImplementedError(f"{dataset} dataset is not implemented.")
+    index_df_cultures = (*index_select, div_day)
+    st, gid = get_spike_times_in_seconds(df_cultures, index_df_cultures, dataset)
 
     # trace of firing rate
     bin_size = 0.1  # s
@@ -365,13 +375,11 @@ def _create_fig_whole_timeseries(
     firing_rate = np.histogram(st, bins=times_all)[0] / (bin_size)  #  / 1000)
     times_all = 0.5 * (times_all[1:] + times_all[:-1])
 
-    # fig_whole = make_subplots(rows=2, cols=1, shared_xaxes=True, x_title="Time [s]")
     _fig_inside = make_subplots(
         rows=2,
         cols=1,
         shared_xaxes="columns",
         horizontal_spacing=0.03,
-        x_title="Time [s]",
     )
     if RESAMPLE:
         fig_whole: FigureResampler = FigureResampler(
@@ -411,11 +419,10 @@ def _create_fig_whole_timeseries(
     )
 
     for row, y_min, y_max in zip([1, 2], [0, min(gid)], [max(firing_rate), max(gid)]):
-        x_coords_list, y_coords_list, color_list = [], [], []
         for i, ((start, end), _) in enumerate(
             zip(
-                df_cultures.at[index, "burst_start_end"],
-                range(df_cultures.at[index, "n_bursts"]),
+                df_cultures.at[index_df_cultures, "burst_start_end"],
+                range(df_cultures.at[index_df_cultures, "n_bursts"]),
             )
         ):
             color = colors_bursts[:n_burst_colors][
@@ -459,7 +466,6 @@ def _create_fig_whole_timeseries(
             marker=dict(
                 symbol="line-ns",
                 size=5,
-                # color=palette[i_cluster - 1],
                 line_width=1,
             ),
             name="Spikes",
@@ -486,12 +492,23 @@ def _create_fig_whole_timeseries(
     )
     # update layout
     fig_whole.update_layout(
-        title=selected_text,  # + f", {len(burst_starts)} bursts",
-        # xaxis_title="Time [ms]",
-        yaxis_title="Rate [Hz]",
-        yaxis2_title="GID",
-        # xaxis=dict(range=[start, end], showgrid=False),
-        # yaxis=dict(showgrid=False),
+        title=selected_text,
+        xaxis=dict(
+            title="Time [s]",
+            titlefont=dict(size=20),
+        ),
+        xaxis2=dict(
+            title="Time [s]",
+            titlefont=dict(size=20),
+        ),
+        yaxis=dict(
+            title="Rate [Hz]",
+            titlefont=dict(size=20),
+        ),
+        yaxis2=dict(
+            title="GID",
+            titlefont=dict(size=20),
+        ),
         plot_bgcolor="white",
         showlegend=False,
     )
