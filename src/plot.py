@@ -70,6 +70,10 @@ def get_group_colors(dataset):
             return get_kapucu_colors()
         case "mossink":
             return get_mossink_colors()
+        case "hommersom":
+            return get_hommersom_colors()
+        case "hommersom_binary":
+            return get_hommersom_binary_colors()
         case _:
             return None
 
@@ -125,6 +129,23 @@ def get_mossink_colors():
     label_color_dict["Control"] = _average_color(control_colors)
     label_color_dict["MELAS"] = _average_color(melas_colors)
     label_color_dict["KS"] = _average_color(ks_colors)
+    return label_color_dict
+
+
+def get_hommersom_colors():
+    label_color_dict = {
+        "Control": "#0fff00",  # "#d62728",  # "#7f7f7f",
+        "CACNA1A": "#1A75A1",
+        "Other": "#DAA520",  # "#7f7f7f",
+    }
+    return label_color_dict
+
+
+def get_hommersom_binary_colors():
+    label_color_dict = {
+        "Control": "#7f7f7f",  # "#0fff00",  # "#d62728",
+        "CACNA1A": "#C87533",  # "#DAA520",  # "#1A75A1",
+    }
     return label_color_dict
 
 
