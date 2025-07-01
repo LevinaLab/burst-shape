@@ -1,3 +1,4 @@
+import warnings
 from collections import Counter
 
 import numpy as np
@@ -20,6 +21,10 @@ from src.settings import (
     get_dataset_from_burst_extraction_params,
 )
 from src.utils.classical_features import get_classical_features
+
+warnings.warn(
+    "This script is deprecated. It does not include cross-validation for hyperparameter tuning."
+)
 
 cm = prepare_plotting()
 special_target = True  # changes target in mossink from disease label to subject label

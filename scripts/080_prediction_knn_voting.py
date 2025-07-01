@@ -26,11 +26,12 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import patches
 from matplotlib import pyplot as plt
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 from tqdm import tqdm
 
 from src.folders import get_fig_folder
 from src.persistence import load_df_bursts, load_df_cultures, load_distance_matrix
+from src.persistence.knn_clustering import save_knn_clustering_results
 from src.pie_chart.pie_chart import (
     get_df_cultures_subset,
     plot_df_culture_layout,
@@ -48,7 +49,7 @@ from src.settings import (
 )
 
 cm = prepare_plotting()
-special_target = True  # for mossink: if True chooses subjects as target instead, if False chooses group
+special_target = False  # for mossink: if True chooses subjects as target instead, if False chooses group
 
 
 # parameters which clustering to plot
@@ -56,8 +57,10 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 clustering_params = get_chosen_spectral_embedding_params(dataset)
@@ -89,7 +92,7 @@ df_cultures, df_bursts, target_label = make_target_label(
 print("Target label", target_label)
 
 match dataset:
-    case "inhibblock" | "kapucu" | "wagenaar":
+    case "inhibblock" | "kapucu" | "wagenaar" | "hommersom" | "hommersom_binary":
         figsize = (6 * cm, 6 * cm)
     case "mossink":
         if special_target is True:
@@ -131,6 +134,20 @@ fig.show()
 df_cultures = get_culture_level_predictions(
     df_cultures, df_bursts, relative_votes, class_labels
 )
+score = balanced_accuracy_score(
+    df_cultures["target_label"], df_cultures["predicted_label"]
+)
+save_knn_clustering_results(
+    burst_extraction_params,
+    clustering_params,
+    score,
+    np.array(df_cultures["target_label"].values),
+    np.array(df_cultures["predicted_label"].values),
+    np.array(class_labels),
+    np.vstack(df_cultures["relative_votes"]),
+)
+print("Saved KNN Clustering to file.")
+
 matrix_confusion = confusion_matrix(
     df_cultures["target_label"], df_cultures["predicted_label"], labels=class_labels
 )
@@ -200,12 +217,17 @@ else:
 df_cultures_pie_chart, unique_batch_culture = prepare_df_cultures_layout(
     df_cultures_pie_chart
 )
+group_colors = (
+    None
+    if get_group_colors(dataset) is None
+    else [get_group_colors(dataset)[class_label] for class_label in class_labels]
+)
 fig, axs = plot_df_culture_layout(
     df_cultures=df_cultures_pie_chart,
     figsize=figsize,
     dataset=dataset,
     column_names="relative_votes",
-    colors=[get_group_colors(dataset)[class_label] for class_label in class_labels],
+    colors=group_colors,
     unique_batch_culture=unique_batch_culture,
 )
 fig.tight_layout()

@@ -7,6 +7,7 @@ _data_folder = "data"
 _data_kapucu_folder = "data_kapucu"
 _data_hommersom_test_folder = "data_hommersom_test"
 _data_hommersom_folder = "data_hommersom"
+_data_hommersom_binary_folder = "data_hommersom_binary"
 _data_inhibblock_folder = "data_inhibblock"
 _data_mossink_folder = "data_mossink"
 _fig_folder = "figures"
@@ -38,6 +39,15 @@ def get_data_hommersom_folder():
         str: path to the hommersom data folder
     """
     return os.path.join(get_data_folder(), _data_hommersom_folder)
+
+
+def get_data_hommersom_binary_folder():
+    """Returns the path to the hommersom_binary data folder.
+
+    Returns:
+        str: path to the hommersom_binary data folder
+    """
+    return os.path.join(get_data_folder(), _data_hommersom_binary_folder)
 
 
 def get_data_hommersom_test_folder():

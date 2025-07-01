@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def make_target_label(
     dataset,
     df_cultures,
@@ -35,6 +38,8 @@ def make_target_label(
                     )
             else:
                 target_label = "group"
+        case "hommersom" | "hommersom_binary":
+            target_label = "group"
         case _:
             raise NotImplementedError(
                 f"Target label is not implemented for dataset {dataset}."
@@ -42,7 +47,14 @@ def make_target_label(
             )
     df_cultures[target_column_name] = df_cultures.reset_index()[target_label].values
     if df_bursts is not None:
-        df_bursts[target_column_name] = df_bursts.reset_index()[target_label].values
+        try:
+            df_bursts[target_column_name] = df_bursts.reset_index()[target_label].values
+        except KeyError:
+            df_bursts[target_column_name] = pd.Series()
+            for index in df_bursts.index:
+                df_bursts.at[index, target_column_name] = df_cultures.loc[index[:-1]][
+                    target_label
+                ]
     if df_bursts is not None:
         return df_cultures, df_bursts, target_label
     else:
