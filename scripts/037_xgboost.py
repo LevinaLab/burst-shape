@@ -67,8 +67,6 @@ df_bursts = load_df_bursts(burst_extraction_params, cv_params=None)
 df_cultures, target_label = make_target_label(
     dataset, df_cultures, None, special_target=special_target
 )
-if dataset == "hommersom":
-    df_cultures = df_cultures[df_cultures["target_label"].isin(["Control", "CACNA1A"])]
 
 print(f"Dataset:\t\t{dataset}\nTarget label:\t{target_label}")
 
