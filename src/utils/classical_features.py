@@ -148,4 +148,8 @@ def get_classical_features(df_cultures, df_bursts, dataset):
         # High frequency bursts (HFBs) within an NB period were detected by decreasing the burst detection ISI to 5 ms, with a maximum IBI of 10 ms, to individually detect each HFB.
         # TODO we don't detect HFBs
 
+    # set all columns to float
+    for feature in features:
+        df_cultures[feature] = df_cultures[feature].astype(float)
+
     return df_cultures, features
