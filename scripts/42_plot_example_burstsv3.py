@@ -2,13 +2,19 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.collections import LineCollection
 
 from src.folders import get_fig_folder
 from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
 from src.persistence.spike_times import get_spike_times_in_milliseconds
-from src.plot import get_cluster_colors, prepare_plotting
+from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
+from src.settings import (
+    get_chosen_spectral_clustering_params,
+    get_dataset_from_burst_extraction_params,
+)
 
 cm = prepare_plotting()
+color_by = ["spectral_cluster", "group"][1]
 
 # parameters which clustering to plot
 burst_extraction_params = (
@@ -17,75 +23,30 @@ burst_extraction_params = (
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
-if "kapucu" in burst_extraction_params:
-    dataset = "kapucu"
-    n_clusters = 4
-elif "hommersom_test" in burst_extraction_params:
-    dataset = "hommersom_test"
-    n_clusters = 4
-elif "inhibblock" in burst_extraction_params:
-    dataset = "inhibblock"
-    n_clusters = 4
-else:
-    dataset = "wagenaar"
-    n_clusters = 6
+dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
 
-# which clustering to plot
-col_cluster = f"cluster_{n_clusters}"
-
-clustering_params = (
-    # "agglomerating_clustering_linkage_complete"
-    # "agglomerating_clustering_linkage_ward"
-    # "agglomerating_clustering_linkage_average"
-    # "agglomerating_clustering_linkage_single"
-    # "spectral_affinity_precomputed_metric_wasserstein"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_60"
-    # "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-    "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-)
-labels_params = "labels"
-cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
-cv_split = (
-    None  # set to None for plotting the whole clustering, set to int for specific split
-)
 # load bursts
 df_bursts = load_df_bursts(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
 np.random.seed(0)
 
-match dataset:
-    case "kapucu":
-        index_names = ["culture_type", "mea_number", "well_id", "DIV"]
-    case "wagenaar":
-        index_names = ["batch", "culture", "day"]
-    case "hommersom_test":
-        index_names = ["batch", "clone", "well_idx"]
-    case "inhibblock":
-        index_names = ["drug_label", "div", "well_idx"]
-    case _:
-        raise NotImplementedError(f"Dataset {dataset} not implemented.")
-#  get clusters from linkage
-# print("Getting clusters from linkage...")
-# labels = get_agglomerative_labels(
-#     n_clusters, burst_extraction_params, agglomerating_clustering_params
-# )
-clustering = load_clustering_labels(
-    clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
-)
-df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
+if color_by == "spectral_cluster":
+    # which clustering to plot
+    clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
+    col_cluster = f"cluster_{n_clusters}"
 
-# Define a color palette for the clusters
-# palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
-# cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
-# convert colors to string (hex format)
-# cluster_colors = [
-#     f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
-#     for c in cluster_colors
-# ]
-palette = get_cluster_colors(n_clusters)
-cluster_colors = get_cluster_colors(n_clusters)
+    labels_params = "labels"
+    cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
+    cv_split = None  # set to None for plotting the whole clustering, set to int for specific split
+
+    clustering = load_clustering_labels(
+        clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
+    )
+    df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
+
+    palette = get_cluster_colors(n_clusters)
+    cluster_colors = get_cluster_colors(n_clusters)
 
 
 # %% inhibblock examples
@@ -108,7 +69,15 @@ if dataset == "inhibblock":
         fig, ax = plt.subplots(constrained_layout=True, figsize=(4 * cm, 3 * cm))
         # ax = axs[i]
         ax_raster = ax.twinx()
-        color = get_cluster_colors(n_clusters)[df_bursts.at[index, "cluster"] - 1]
+        match color_by:
+            case "spectral cluster":
+                color = get_cluster_colors(n_clusters)[
+                    df_bursts.at[index, "cluster"] - 1
+                ]
+            case "group":
+                color = get_group_colors(dataset)[index[0]]
+            case _:
+                raise NotImplementedError(f"color_by={color_by} not implemented.")
         start, end = df_bursts.at[index, "start_orig"], df_bursts.at[index, "end_orig"]
         st, gid = get_spike_times_in_milliseconds(df_cultures, index[:-1], dataset)
         selection = (st >= start - offset_start) & (st <= end + offset_end)
@@ -123,14 +92,40 @@ if dataset == "inhibblock":
         ax_raster.plot(x_time_bar, [y_time_bar, y_time_bar], color="k", linewidth=3)
         ax_raster.set_yticks([])
 
-        ax.plot(
-            bins_mid - start, df_bursts.at[index, "burst"], color=color, linewidth=2
+        # ax.plot(
+        #     bins_mid - start, df_bursts.at[index, "burst"], color=color, linewidth=2
+        # )
+
+        # plot firing rate
+        bin_size = 30
+        hist, bin_edges = np.histogram(
+            st - start,
+            bins=np.linspace(
+                -offset_start,
+                end - start + offset_end,
+                int((end - start + offset_start + offset_end) // bin_size),
+            ),
         )
+        hist = hist / (bin_edges[1] - bin_edges[0])
+        bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
+        mask = (bin_centers > 0) & (bin_centers < end - start)
+        x = bin_centers
+        y = hist
+        points = np.array([x, y]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+        # Color: red inside mask, gray outside
+        colors = np.where(mask[:-1] | mask[1:], color, "k")
+
+        # Create LineCollection
+        lc = LineCollection(segments, colors=colors, linewidths=2)
+        ax.add_collection(lc)
+
         ax.set_yticks([])
-        # ax.set_xticks([0, 500])
         ax.set_xticks([])
         ax.set_xticklabels([])
         ax.set_xlim(-offset_start, x_end + offset_end)
+        ax.set_ylim(-y.max() * 0.15, y.max() * 1.1)
 
         # sns.despine(left=True, bottom=True)
         fig.show()
