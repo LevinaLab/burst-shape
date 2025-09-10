@@ -23,6 +23,7 @@ from sklearn.metrics import balanced_accuracy_score, confusion_matrix, make_scor
 from sklearn.model_selection import (
     GridSearchCV,
     RandomizedSearchCV,
+    RepeatedStratifiedKFold,
     StratifiedKFold,
     StratifiedShuffleSplit,
 )
@@ -49,15 +50,23 @@ from src.utils.classical_features import get_classical_features
 
 cm = prepare_plotting()
 special_target = False  # changes target in mossink from disease label to subject label
+cv_type = (
+    # "RepeatedStratifiedKFold"
+    "StratifiedShuffleSplit"
+)
+random_state = 1234567890
+n_splits = 100
 
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_KS"
+    # "burst_dataset_mossink_MELAS"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
@@ -86,22 +95,27 @@ for i_dim in range(n_spectral_dims):
             df_bursts[name_dim].values[mask_recording].mean()
         )
 
-fig, ax = plt.subplots(constrained_layout=True)
-ax.set_title("Spectral Embedding (Shape features) for each recording")
-sns.despine()
+fig, ax = plt.subplots(figsize=(3 * cm, 3 * cm), constrained_layout=True)
+# ax.set_title("Spectral Embedding (Shape features) for each recording")
+sns.despine(bottom=True, left=True)
 sns.scatterplot(
     data=df_cultures.reset_index(),
     x="shape_1",
     y="shape_2",
     hue="target_label",
     palette=get_group_colors(dataset),
+    legend=False,
 )
-ax.legend(
+"""ax.legend(
     frameon=False,
     title="Recordings\naverage location\nin embedding",
     bbox_to_anchor=(1.1, 0.8),
     loc="upper left",
-)
+)"""
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_xlabel("")
+ax.set_ylabel("")
 fig.show()
 fig.savefig(
     os.path.join(
@@ -115,6 +129,28 @@ df_cultures, classical_features = get_classical_features(
     df_cultures, df_bursts, dataset
 )
 
+
+# %% get manual shape features
+def _get_manual_shape_features(df_cultures, df_bursts):
+    # get average burst_shapes
+    index_names = df_cultures.index.names
+    df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
+        avg_burst=pd.NamedAgg(column="burst", aggfunc="mean")
+    )
+
+    # compute features
+    df_cultures["argmax_bin"] = df_cultures["avg_burst"].apply(np.argmax)
+    df_cultures["rel_peak"] = (df_cultures["argmax_bin"] + 0.5) / 50
+    df_cultures["activity_80%"] = df_cultures["avg_burst"].apply(lambda x: x[39])
+    shape_manual_features = ["rel_peak", "activity_80%"]
+    return df_cultures, shape_manual_features
+
+
+df_cultures, shape_manual_features = _get_manual_shape_features(
+    df_cultures,
+    df_bursts,
+)
+
 # %% define feature sets
 shape_features = [f"shape_{i_dim + 1}" for i_dim in range(n_spectral_dims)]
 # classical features
@@ -124,6 +160,7 @@ feature_dict = {
     "combined": all_features,
     "shape": shape_features,
     "traditional": classical_features,
+    "shape_manual": shape_manual_features,
 }
 # %% prediction with xgboost
 for feature_set_name, features in feature_dict.items():
@@ -138,21 +175,26 @@ for feature_set_name, features in feature_dict.items():
     y = df_cultures["encoded_label"]  # .values
 
     if not exist_xgboost_results(
-        burst_extraction_params, spectral_clustering_params, feature_set_name
+        burst_extraction_params, spectral_clustering_params, feature_set_name, cv_type
     ):
         print(
-            f"XBoost results for feature set {feature_set_name} don't exists. Computing them."
+            f"XGBoost results for feature set {feature_set_name} don't exists. Computing them."
         )
 
         objective = "multi:softprob" if num_classes > 2 else "binary:logistic"
         eval_metric = "mlogloss" if num_classes > 2 else "logloss"
 
-        random_state = 1234567890
-        n_splits = 100
-        outer_cv = StratifiedShuffleSplit(
-            n_splits=n_splits, test_size=0.2, random_state=random_state
-        )
-        # outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+        match cv_type:
+            case "StratifiedShuffleSplit":
+                outer_cv = StratifiedShuffleSplit(
+                    n_splits=n_splits, test_size=0.2, random_state=random_state
+                )
+            case "RepeatedStratifiedKFold":
+                outer_cv = RepeatedStratifiedKFold(
+                    n_splits=5, n_repeats=n_splits // 5, random_state=random_state
+                )
+            case _:
+                raise NotImplementedError(f"Unknown cv type: {cv_type}")
         inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
 
         # XGBoost hyperparameters grid
@@ -236,6 +278,7 @@ for feature_set_name, features in feature_dict.items():
             burst_extraction_params,
             spectral_clustering_params,
             feature_set_name,
+            cv_type,
             features,
             nested_scores,
             all_shap_values,
@@ -254,7 +297,10 @@ for feature_set_name, features in feature_dict.items():
             all_y_pred,
             all_y_test,
         ) = load_xgboost_results(
-            burst_extraction_params, spectral_clustering_params, feature_set_name
+            burst_extraction_params,
+            spectral_clustering_params,
+            feature_set_name,
+            cv_type,
         )
         print(f"Loaded the results for feature set {feature_set_name}.")
 
