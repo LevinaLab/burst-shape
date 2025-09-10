@@ -5,22 +5,22 @@ There are several options for coloring the spectral embedding:
 - 'group' will color by group color (drug group, batches, ...)
 - 'cluster' will plot spectral clusters
 """
-
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
 
-from src.folders import get_fig_folder
 from src.persistence import (
+    load_burst_matrix,
     load_clustering_labels,
     load_df_bursts,
+    load_df_cultures,
     load_spectral_embedding,
 )
-from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
+from src.plot import get_cluster_colors, get_group_colors, prepare_plotting, savefig
 from src.settings import (
     get_chosen_spectral_clustering_params,
+    get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )
 
@@ -28,8 +28,11 @@ from src.settings import (
 # Settings for plot
 cm = prepare_plotting()
 plot_density = False
-color_by = ["cluster", "group"][1]
-s = lambda dataset: 1 if dataset == "mossink" else 5
+color_by = ["cluster", "group", "relative_peak"][1]
+# s = lambda dataset: 1 if dataset == "mossink" else 5
+s = lambda dataset: 1
+dim1 = 1  # usually should be 1
+dim2 = 2  # usually should be 2
 figsize = (4 * cm, 4 * cm)
 
 # -----------------------------------------------------------------------------
@@ -40,16 +43,24 @@ burst_extraction_params = (
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 
 # -----------------------------------------------------------------------------
 # Load data
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
-clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
+match color_by:
+    case "cluster":
+        clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
+    case "group":
+        clustering_params = get_chosen_spectral_embedding_params(dataset)
+    case "relative_peak":
+        burst_matrix = load_burst_matrix(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
 
-# which clustering to plot
-col_cluster = f"cluster_{n_clusters}"
+# manually selecting clustering_params
+# clustering_params = "spectral_affinity_precomputed_metric_euclidean_n_neighbors_85"
+# clustering_params = "spectral_affinity_precomputed_metric_euclidean_n_neighbors_21"
 
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -68,10 +79,14 @@ df_bursts.loc[:, spectral_columns] = load_spectral_embedding(
     n_dims=10,
 )
 if color_by == "cluster":
+    # which clustering to plot
+    col_cluster = f"cluster_{n_clusters}"
     clustering = load_clustering_labels(
         clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
     )
     df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
+if color_by == "relative_peak":
+    df_bursts["relative_peak"] = np.argmax(burst_matrix, axis=1)
 
 # %% Plot embedding
 hue_order = None
@@ -114,7 +129,20 @@ match color_by:
                     + df_bursts.reset_index()["subject_id"].astype(str)
                 )
                 palette = get_group_colors(dataset)
-
+            case "hommersom_binary":
+                df_bursts["group"] = pd.Series()
+                df_cultures = load_df_cultures(burst_extraction_params)
+                for index_culture in df_cultures.index:
+                    df_bursts.loc[index_culture, "group"] = df_cultures.at[
+                        index_culture, "group"
+                    ]
+                color = "group"
+                palette = get_group_colors(dataset)
+            case _:
+                raise NotImplementedError
+    case "relative_peak":
+        color = "relative_peak"
+        palette = "viridis"  # "RedBlue"
 
 fig, ax = plt.subplots(1, 1, figsize=figsize, constrained_layout=True)
 sns.despine(left=True, bottom=True)
@@ -123,28 +151,45 @@ ax.set_yticks([])
 if plot_density:
     sns.kdeplot(
         data=df_bursts,
-        x="Spec.-Dim. 1",
-        y="Spec.-Dim. 2",
+        x=f"Spec.-Dim. {dim1}",
+        y=f"Spec.-Dim. {dim2}",
         levels=7,
         alpha=0.5,
         color="k",
     )
-sns.scatterplot(
-    data=df_bursts,
-    x="Spec.-Dim. 1",
-    y="Spec.-Dim. 2",
-    s=s(dataset),
-    alpha=0.4,
-    hue=color,  # "cluster",
-    hue_order=hue_order,  # sorted(df_bursts["cluster"].unique()),
-    palette=palette,  # get_cluster_colors(n_clusters),
-    legend=False,
-)
+efficient = True
+if efficient:
+    for hue in (
+        df_bursts.reset_index()[color].unique() if hue_order is None else hue_order
+    ):
+        subset = df_bursts.reset_index()[color] == hue
+        ax.plot(
+            df_bursts[f"Spec.-Dim. {dim1}"].values[subset],
+            df_bursts[f"Spec.-Dim. {dim2}"].values[subset],
+            linestyle="",
+            marker="o",
+            markersize=np.sqrt(s(dataset)),
+            alpha=0.4,
+            color=palette[hue] if isinstance(palette, dict) else None,
+            markerfacecolor=palette[hue] if isinstance(palette, dict) else None,
+            markeredgecolor=None,  # border color
+            markeredgewidth=0,  # border thickness
+        )
+else:
+    sns.scatterplot(
+        data=df_bursts,
+        x=f"Spec.-Dim. {dim1}",
+        y=f"Spec.-Dim. {dim2}",
+        s=s(dataset),
+        alpha=0.4,
+        hue=color,  # "cluster",
+        hue_order=hue_order,  # sorted(df_bursts["cluster"].unique()),
+        palette=palette,  # get_cluster_colors(n_clusters),
+        legend=False,
+    )
 fig.show()
-fig.savefig(
-    os.path.join(
-        get_fig_folder(),
-        f"{dataset}_spectral_embedding_{color_by}{'_density' if plot_density else ''}.svg",
-    ),
-    transparent=True,
+savefig(
+    fig,
+    f"{dataset}_spectral_embedding_{color_by}{'_density' if plot_density else ''}_dim_{dim1}_{dim2}.svg",
+    file_format=["pdf", "svg"],
 )
