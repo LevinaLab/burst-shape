@@ -164,9 +164,9 @@ def _plot_data_point(data_point, plot_type, ax, colors=None, index=None, dataset
                         else:
                             (drug_label, div, _) = index
                             color = get_group_colors(dataset)[drug_label]
-                    case "mossink":
+                    case "mossink" | "mossink_KS" | "mossink_MELAS":
                         (group, subject_id, _) = index
-                        color = (get_group_colors(dataset)[f"{group} {subject_id}"],)
+                        color = get_group_colors(dataset)[f"{group} {subject_id}"]
                     case _:
                         warnings.warn("No color set for average burst. Using black.")
                         color = "k"
@@ -181,7 +181,7 @@ def _write_row_count_label(axs, dataset, row_day):
         ax = axs[i_day, 0]
         ax.axis("on")
         match dataset:
-            case "mossink":
+            case "mossink" | "mossink_KS" | "mossink_MELAS":
                 ax.set_ylabel("")
             case _:
                 ax.set_ylabel(f"{day}", rotation=0, fontsize=9)
@@ -231,13 +231,34 @@ def _write_column_group_label(axs, dataset, unique_batch_culture):
                         fontsize=10,
                         color=get_group_colors(dataset)[drug_label],
                     )
-            case "mossink":
+            case "mossink" | "mossink_KS" | "mossink_MELAS":
                 (group, subject_id) = index
                 ax.set_title(
                     f"{group} {subject_id}",
                     rotation=90,
                     fontsize=10,
                     color=get_group_colors(dataset)[f"{group} {subject_id}"],
+                )
+            case "hommersom_binary" | "hommersom":
+                if len(index) == 1:
+                    ax.set_title(
+                        index,
+                        fontsize=10,
+                        pad=0,
+                    )
+                else:
+                    batch, well_id = index
+                    ax.set_title(
+                        f"{batch} {well_id}",
+                        rotation=90,
+                        fontsize=10,
+                    )
+            case _:
+                ax.set_title(
+                    f"{index}",
+                    rotation=90,
+                    fontsize=10,
+                    color=get_group_colors(dataset).get(index, "black"),
                 )
         ax.set_xticks([])
         ax.set_yticks([])
@@ -301,7 +322,7 @@ def get_df_cultures_subset(df_cultures, dataset):
                     )
                 ]
             ]
-        case "mossink":
+        case "mossink" | "mossink_KS" | "mossink_MELAS":
             df_cultures_subset = df_cultures_subset[
                 df_cultures_subset.index.get_level_values("well_idx") <= 12
             ]
