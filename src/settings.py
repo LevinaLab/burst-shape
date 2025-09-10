@@ -9,8 +9,14 @@ def get_dataset_from_burst_extraction_params(burst_extraction_params):
             dataset = "kapucu"
         elif "hommersom_test" in burst_extraction_params:
             dataset = "hommersom_test"
+        elif "hommersom_binary" in burst_extraction_params:
+            dataset = "hommersom_binary"
         elif "inhibblock" in burst_extraction_params:
             dataset = "inhibblock"
+        elif "mossink_KS" in burst_extraction_params:
+            dataset = "mossink_KS"
+        elif "mossink_MELAS" in burst_extraction_params:
+            dataset = "mossink_MELAS"
         elif "mossink" in burst_extraction_params:
             dataset = "mossink"
         elif "hommersom" in burst_extraction_params:
@@ -33,9 +39,21 @@ def get_chosen_spectral_embedding_params(dataset):
             clustering_params = (
                 "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
             )
+        case "hommersom_binary":
+            clustering_params = (
+                "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_21"
+            )
         case "inhibblock":
             clustering_params = (
                 "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
+            )
+        case "mossink_KS":
+            clustering_params = (
+                "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_89"
+            )
+        case "mossink_MELAS":
+            clustering_params = (
+                "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_84"
             )
         case "mossink":
             clustering_params = (
@@ -44,6 +62,10 @@ def get_chosen_spectral_embedding_params(dataset):
         case "wagenaar":
             clustering_params = (
                 "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
+            )
+        case "hommersom":
+            clustering_params = (
+                "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_55"
             )
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented.")
@@ -58,7 +80,7 @@ def get_chosen_spectral_clustering_params(dataset):
             n_clusters = 4
         case "inhibblock":
             n_clusters = 4
-        case "mossink":
+        case "mossink" | "mossink_KS" | "mossink_MELAS":
             n_clusters = 4
         case "wagenaar":
             n_clusters = 6
@@ -79,7 +101,7 @@ def get_citation_doi_link(dataset):
         case "inhibblock":
             citation = "Vinogradov et al. (2024)"
             doi_link = "https://doi.org/10.1101/2024.08.21.608974"
-        case "mossink":
+        case "mossink" | "mossink_KS" | "mossink_MELAS":
             citation = "Mossink et al. (2021)"
             doi_link = "https://doi.org/10.17632/bvt5swtc5h.1"
         case "wagenaar":
