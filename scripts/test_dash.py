@@ -1,8 +1,17 @@
+import os
+
 import dash
 import numpy as np
 import plotly.graph_objs as go
 from dash import dcc, html
 from dash.dependencies import Input, Output
+
+if "DEBUG" in os.environ:
+    debug = os.environ["DEBUG"] == "True"
+    print(f"DEBUG environment variable present, DEBUG set to {debug}")
+else:
+    print("No DEBUG environment variable: defaulting to DEBUG mode")
+    debug = True
 
 # Sample Data (Assume already computed)
 tsne_embedding = np.random.rand(10, 2)  # t-SNE embedding of 10 points
@@ -82,4 +91,5 @@ def update_time_series(clickData):
 
 # Run the app
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run(debug=False, port=8050)
+    # app.run(DEBUG=False, port=5000, host="0.0.0.0")
