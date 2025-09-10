@@ -9,7 +9,7 @@ WORKDIR /app
 # Copy files to the container
 # COPY . /app
 COPY src /app/src
-# COPY scripts/011_interactive_tsne.py /app/interactive_tsne.py
+# COPY scripts/011_explore_embeddings.py /app/interactive_tsne.py
 COPY requirements.txt /app/requirements.txt
 
 # Install dependencies
@@ -56,10 +56,10 @@ COPY ${PATH_TO_DATA}/df_cultures.pkl /app/${PATH_TO_DATA}/df_cultures.pkl
 
 FROM intermediate AS review
 # application-specific settings
-COPY scripts/002x_review_burst_detection.py /app/main.py
+COPY scripts/2_interactive_tools/002x_review_burst_detection.py /app/main.py
 
 FROM intermediate AS embedding
-COPY scripts/011_interactive_tsne.py /app/main.py
+COPY scripts/2_interactive_tools/011_explore_embeddings.py /app/main.py
 COPY ${PATH_TO_DATA}/df_bursts.pkl /app/${PATH_TO_DATA}/df_bursts.pkl
 COPY ${PATH_TO_DATA}/pca.npy /app/${PATH_TO_DATA}/pca.npy
 COPY ${PATH_TO_DATA}/tsne.npy /app/${PATH_TO_DATA}/tsne.npy
