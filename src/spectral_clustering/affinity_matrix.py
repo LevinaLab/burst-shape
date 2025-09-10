@@ -38,6 +38,18 @@ def _compute_connections_cosine(i, bursts, n_neighbors):
     return i, connections
 
 
+@ray.remote
+def _compute_connections_euclidean(i, bursts, n_neighbors):
+    distance_matrix_row = np.zeros(bursts.shape[0])
+    for j in range(bursts.shape[0]):
+        distance_matrix_row[j] = scipy.spatial.distance.euclidean(bursts[i], bursts[j])
+    # get indices of the n_neighbors smallest distances
+    connections = np.argpartition(distance_matrix_row, n_neighbors + 1)[
+        : n_neighbors + 1
+    ]
+    return i, connections
+
+
 def compute_affinity_matrix(bursts, n_jobs=1, metric="wasserstein", n_neighbors=10):
     # see this website for the pattern used here
     # https://docs.ray.io/en/latest/ray-core/patterns/limit-pending-tasks.html
@@ -46,10 +58,12 @@ def compute_affinity_matrix(bursts, n_jobs=1, metric="wasserstein", n_neighbors=
             _compute_connections = _compute_connections_wasserstein
         case "cosine":
             _compute_connections = _compute_connections_cosine
+        case "euclidean":
+            _compute_connections = _compute_connections_euclidean
         case _:
             raise NotImplementedError(
                 f"Metric '{metric}' not implemented, "
-                f"options are 'wasserstein' and 'cosine'."
+                f"options are 'wasserstein' and 'cosine' and 'euclidean'."
             )
     max_tasks = 3 * n_jobs
     # initialize connectivity matrix as sparse matrix
