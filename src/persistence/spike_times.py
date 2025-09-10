@@ -15,7 +15,7 @@ def get_spike_times_in_seconds(df_cultures, idx, dataset):
                 )
             ).T
             gid = gid.astype(int)
-        case "kapucu" | "hommersom" | "hommersom_test" | "inhibblock" | "mossink":
+        case "kapucu" | "hommersom" | "hommersom_binary" | "hommersom_test" | "inhibblock" | "mossink":
             st = df_cultures.at[idx, "times"]
             gid = df_cultures.at[idx, "gid"]
         case _:
