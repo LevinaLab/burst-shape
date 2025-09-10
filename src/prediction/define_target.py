@@ -15,7 +15,7 @@ def make_target_label(
             target_label = "culture_type"
         case "wagenaar":
             target_label = "batch"
-        case "mossink":
+        case "mossink" | "mossink_KS" | "mossink_MELAS":
             if special_target is True:
                 target_label = "group-subject"
                 df_cultures.reset_index(inplace=True)
