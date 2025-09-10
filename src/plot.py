@@ -1,7 +1,12 @@
+import os
+from collections.abc import Iterable
+
 import met_brewer
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
+
+from src.folders import get_fig_folder
 
 
 def prepare_plotting():
@@ -18,6 +23,17 @@ def prepare_plotting():
 
     cm = 1 / 2.54
     return cm
+
+
+def savefig(fig, filename, file_format="svg", dpi=300, transparent=True):
+    if not isinstance(file_format, Iterable):
+        file_format = [file_format]
+    for fmt in file_format:
+        fig.savefig(
+            os.path.join(get_fig_folder(), f"{filename}.{fmt}"),
+            dpi=dpi,
+            transparent=transparent,
+        )
 
 
 def get_cluster_colors(n_clusters):
@@ -60,6 +76,30 @@ def make_cluster_legend(n_clusters, n_cols, symbol):
     return fig, ax
 
 
+def get_group_labels(dataset, group):
+    if get_group_labels_dictionary(dataset) is None:
+        return group
+    else:
+        return get_group_labels_dictionary(dataset).get(group, group)
+
+
+def get_group_labels_dictionary(dataset):
+    match dataset:
+        case "inhibblock":
+            return {
+                "bic": "Inhib. Off",
+                "control": "Control",
+            }
+        case "mossink" | "mossink_KS" | "mossink_MELAS":
+            return {
+                "Control": "Control",
+                "MELAS": "MELAS",
+                "KS": "Kleefstra",
+            }
+        case _:
+            return None
+
+
 def get_group_colors(dataset):
     match dataset:
         case "inhibblock":
@@ -68,7 +108,7 @@ def get_group_colors(dataset):
             return get_wagenaar_colors()
         case "kapucu":
             return get_kapucu_colors()
-        case "mossink":
+        case "mossink" | "mossink_KS" | "mossink_MELAS":
             return get_mossink_colors()
         case "hommersom":
             return get_hommersom_colors()
@@ -133,11 +173,13 @@ def get_mossink_colors():
 
 
 def get_hommersom_colors():
-    label_color_dict = {
-        "Control": "#0fff00",  # "#d62728",  # "#7f7f7f",
-        "CACNA1A": "#1A75A1",
-        "Other": "#DAA520",  # "#7f7f7f",
-    }
+    # label_color_dict = {
+    #     "Control": "#0fff00",  # "#d62728",  # "#7f7f7f",
+    #     "CACNA1A": "#1A75A1",
+    #     "Other": "#DAA520",  # "#7f7f7f",
+    # }
+    label_color_dict = get_hommersom_binary_colors()
+    label_color_dict["Other"] = "#0fff00"
     return label_color_dict
 
 
@@ -150,8 +192,20 @@ def get_hommersom_binary_colors():
 
 
 def label_sig_diff(
-    ax, inds, max_data, text_sig, y_sig, length_sig, col_sig, ft_sig, lw_sig
+    ax,
+    inds,
+    data,
+    text_sig,
+    y_sig=None,
+    length_sig=None,
+    col_sig="k",
+    ft_sig=10,
+    lw_sig=1,
 ):
+    if y_sig is None:
+        y_sig = 0.05 * (np.max(data) - np.min(data))
+    if length_sig is None:
+        length_sig = 0.02 * (np.max(data) - np.min(data))
     if isinstance(text_sig, float):
         if text_sig < 0.001:
             text_sig = r"***"
@@ -163,7 +217,7 @@ def label_sig_diff(
             text_sig = "n.s."
     # Custom function to draw the diff bars
     x1, x2 = inds
-    y = np.max(max_data) + y_sig
+    y = np.max(data) + y_sig
     h = length_sig
     ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], lw=lw_sig, c=col_sig)
     ax.text(
