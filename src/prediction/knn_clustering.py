@@ -54,6 +54,66 @@ def get_burst_level_predictions(
     return class_labels, relative_votes, true_labels, predicted_labels
 
 
+def get_burst_level_predictions_cv(
+    df_cultures,
+    df_bursts,
+    distance_matrix_square,
+    kth,
+    train_idx,
+    test_idx,
+    target_label="target_label",
+):
+    """Compute the burst-level predictions of KNN-Clustering.
+
+    :param df_cultures: dataframe of cultures, must have a target column named "target_label"
+    :param df_bursts: dataframe of bursts, must have a target column named "target_label"
+    :param distance_matrix_square: distance matrix of bursts
+    :param kth: number of neighbors to consider
+    :param target_label: use this to specify if the column "target_label" is named differently
+    :return:
+        class_labels: list of unique labels present in target column
+        relative_votes: matrix of size (n_bursts, len(class_labels)) with relative votes
+        true_labels: true labels of individual bursts from target column
+        predicted_labels: predicted labels as the maximum votes of relative votes matrix
+    """
+    train_burst_mask = get_recording_mask(
+        df_bursts, df_cultures.index[train_idx].to_list()
+    )
+    test_burst_mask = ~train_burst_mask
+    n_bursts = len(df_bursts)
+    class_frequencies = (
+        df_cultures.iloc[train_idx][target_label].value_counts().sort_index()
+    )
+    class_labels = class_frequencies.index.values
+    weight_matrix = np.ones(n_bursts)
+    for index in df_cultures.iloc[train_idx].index:
+        mask_recording = get_recording_mask(df_bursts, index)
+        # normalize by n_bursts per recording
+        weight_matrix[mask_recording] /= df_cultures.at[index, "n_bursts"]
+        # normalize by number of recordings by class
+        weight_matrix[mask_recording] /= class_frequencies[
+            df_cultures.at[index, target_label]
+        ]
+    weight_matrix = weight_matrix[train_burst_mask]
+    true_labels_train = df_bursts[target_label][train_burst_mask].values
+    true_labels_test = df_bursts[target_label][test_burst_mask].values
+
+    votes = np.zeros((len(true_labels_test), len(class_labels)))
+    distances_recording = distance_matrix_square[test_burst_mask][:, train_burst_mask]
+    nearest_neighbours = np.argpartition(distances_recording, kth=kth, axis=1)[:, :kth]
+    weights_neighbours = weight_matrix[nearest_neighbours]
+    labels_neighbours = true_labels_train[nearest_neighbours]
+    for i_class, class_label in enumerate(class_labels):
+        votes[:, i_class] = np.sum(
+            weights_neighbours * (labels_neighbours == class_label),
+            axis=1,
+        )
+
+    relative_votes = votes / np.sum(votes, axis=1, keepdims=True)
+    predicted_labels = class_labels[np.argmax(relative_votes, axis=1)]
+    return class_labels, relative_votes, true_labels_test, predicted_labels
+
+
 def get_culture_level_predictions(df_cultures, df_bursts, relative_votes, class_labels):
     """Aggregates the results from burst-level KNN clustering to the culture level.
 
@@ -72,8 +132,37 @@ def get_culture_level_predictions(df_cultures, df_bursts, relative_votes, class_
     df_cultures["predicted_label"] = df_cultures["relative_votes"].apply(
         lambda x: class_labels[np.argmax(x)]
     )
-
     return df_cultures
+
+
+def get_culture_level_predictions_cv(
+    df_cultures,
+    df_bursts,
+    relative_votes,
+    class_labels,
+    test_idx,
+    return_relative_votes=False,
+):
+    """Aggregates the results from burst-level KNN clustering to the culture level.
+
+    :param df_cultures: dataframe of cultures where the column "relative_votes" and "predicted_label" will be added
+    :param df_bursts: dataframe of bursts
+    :param relative_votes: relative votes on individual burst level, result from get_burst_level_predictions()
+    :param class_labels: unique class labels present in target column, must be the result from get_burst_level_predictions() to ensure consistency with relative_votes!
+    :return: df_cultures with additional columns "relative_votes" and "predicted_label"
+    """
+    test_burst_mask = get_recording_mask(
+        df_bursts, df_cultures.index[test_idx].to_list()
+    )
+    relative_votes_recording = np.zeros((len(test_idx), len(class_labels)))
+    for i, index in enumerate(df_cultures.index[test_idx]):
+        mask_recording = get_recording_mask(df_bursts.iloc[test_burst_mask], index)
+        relative_votes_recording[i] = relative_votes[mask_recording].mean(axis=0)
+    predicted_labels = class_labels[np.argmax(relative_votes_recording, axis=1)]
+    if return_relative_votes:
+        return predicted_labels, relative_votes_recording
+    else:
+        return predicted_labels
 
 
 def get_recording_mask(df_bursts, culture_index):
@@ -83,9 +172,17 @@ def get_recording_mask(df_bursts, culture_index):
     :param culture_index: index from df_cultures for which the corresponding indices in df_burst should be found
     :return: boolean mask for df_bursts of size (n_bursts)
     """
-    # Number of levels to match
-    N = len(culture_index)
-    # Create a boolean mask by comparing index levels
-    return (
-        df_bursts.index.to_frame(index=False).iloc[:, :N].eq(culture_index).all(axis=1)
-    )
+    if isinstance(culture_index, list):
+        return np.logical_or.reduce(
+            [get_recording_mask(df_bursts, index) for index in culture_index]
+        )
+    else:
+        # Number of levels to match
+        N = len(culture_index)
+        # Create a boolean mask by comparing index levels
+        return (
+            df_bursts.index.to_frame(index=False)
+            .iloc[:, :N]
+            .eq(culture_index)
+            .all(axis=1)
+        )
