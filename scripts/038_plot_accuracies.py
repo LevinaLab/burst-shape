@@ -1,15 +1,16 @@
 import os
 import warnings
 
+import baycomp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from src.folders import get_fig_folder
-from src.persistence.knn_clustering import load_knn_clustering_results
+from src.persistence.knn_clustering import load_knn_clustering_results_cv
 from src.persistence.xgboost import load_xgboost_results
-from src.plot import prepare_plotting
+from src.plot import prepare_plotting, savefig
 from src.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
@@ -22,8 +23,15 @@ burst_extraction_params_list = [
     "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
     "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4",
     "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4",
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30",
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30",
+    "burst_dataset_mossink_KS",
+    # "burst_dataset_mossink_MELAS",
 ]
+
+cv_type = (
+    # "RepeatedStratifiedKFold"
+    "StratifiedShuffleSplit"
+)
 
 n_classes = {}
 df_accuracies = []
@@ -33,7 +41,10 @@ for burst_extraction_params in burst_extraction_params_list:
 
     for feature_set_name in ["combined", "shape", "traditional"]:
         _, nested_scores, _, _, all_y_test = load_xgboost_results(
-            burst_extraction_params, spectral_clustering_params, feature_set_name
+            burst_extraction_params,
+            spectral_clustering_params,
+            feature_set_name,
+            cv_type,
         )
         n_classes[dataset] = len(np.unique(all_y_test))
         for i_score, score in enumerate(nested_scores):
@@ -46,17 +57,18 @@ for burst_extraction_params in burst_extraction_params_list:
                 }
             )
     try:
-        score, _, _, _, _ = load_knn_clustering_results(
-            burst_extraction_params, spectral_clustering_params
+        nested_scores, _, _ = load_knn_clustering_results_cv(
+            burst_extraction_params, spectral_clustering_params, cv_type
         )
-        df_accuracies.append(
-            {
-                "dataset": dataset,
-                "feature_set": "knn_clustering",
-                "cv_fold": 0,  # there is only one sample
-                "score": float(score),
-            }
-        )
+        for i_score, score in enumerate(nested_scores):
+            df_accuracies.append(
+                {
+                    "dataset": dataset,
+                    "feature_set": "knn_clustering",
+                    "cv_fold": i_score,
+                    "score": score,
+                }
+            )
     except FileNotFoundError:
         warnings.warn(
             f"KNN Clustering not found for dataset={dataset}. " "Continuing without it."
@@ -72,7 +84,7 @@ for i, dataset_name in enumerate(dataset_list):
     sns.lineplot(
         data=df_accuracies[
             (df_accuracies["dataset"] == dataset_name)
-            & (df_accuracies["feature_set"] != "knn_clustering")
+            # & (df_accuracies["feature_set"] != "knn_clustering")
         ],
         x="cv_fold",
         y="score",
@@ -91,10 +103,10 @@ fig.tight_layout()
 fig.show()
 # %%
 custom_label_mapping = {
-    "knn_clustering": "Shape KNN",
-    "traditional": "XGBoost trad.",
-    "shape": "XGBoost shape",
-    "combined": "XGBoost comb.",
+    "knn_clustering": "    Individual\n    burst shapes",
+    "traditional": "Traditional",
+    "shape": "Shape",
+    "combined": "Combined",
 }
 # Create the FacetGrid: one subplot per dataset
 g = sns.FacetGrid(
@@ -103,14 +115,21 @@ g = sns.FacetGrid(
     # hue="feature_set",
     sharey=False,
     height=9 * cm,
-    aspect=0.4,
+    aspect=0.5,
 )
 plot_type = (
     # "pointplot"
-    "boxplot"
+    # "boxplot"
     # "violinplot"
     # "stripplot"
+    "boxplot-manual"
 )
+
+# Add dashed line for random accuracy
+for dataset, ax in zip(df_accuracies["dataset"].unique(), g.axes.flat):
+    random_level = 1 / n_classes[dataset]
+    ax.axhline(random_level, ls="--", color="gray", label="Chance level")
+
 match plot_type:
     case "pointplot":
         g.map_dataframe(
@@ -130,9 +149,11 @@ match plot_type:
             sns.boxplot,
             x="feature_set",
             y="score",
-            hue="feature_set",
-            palette="Set2",
+            # hue="feature_set",
+            # palette="Set2",
             order=["knn_clustering", "traditional", "shape", "combined"],
+            boxprops=dict(facecolor="none"),
+            medianprops=dict(color="red"),
         )
     case "violinplot":
         g.map_dataframe(
@@ -156,6 +177,37 @@ match plot_type:
             jitter=True,  # Add some jitter to spread out points
             size=6,  # Marker size
         )
+    case "boxplot-manual":
+        positions = [0, 2, 3, 4]
+
+        def _manual_boxplot(data, color, **kwargs):
+            order = ["knn_clustering", "traditional", "shape", "combined"]
+
+            # Collect data for each feature_set in order
+            grouped_scores = [
+                data.loc[data["feature_set"] == fs, "score"] for fs in order
+            ]
+
+            plt.boxplot(
+                grouped_scores,
+                positions=positions,
+                widths=0.6,
+                patch_artist=True,
+                boxprops=dict(facecolor="none"),
+                medianprops=dict(color="red"),
+            )
+
+            plt.text(
+                x=(positions[1] + positions[3]) / 2,
+                y=plt.ylim()[0] - 0.5 * (plt.ylim()[1] - plt.ylim()[0]),
+                s="Summary\nfeatures",
+                ha="center",
+                va="top",
+                fontsize=10,
+            )
+            plt.xticks(positions, order)  # Label x-axis ticks manually
+
+        g.map_dataframe(_manual_boxplot)
 for ax in g.axes.flat:
     ax.set_xticks(ax.get_xticks())
     ax.set_xticklabels(
@@ -164,29 +216,53 @@ for ax in g.axes.flat:
             for label in ax.get_xticklabels()
         ],
         rotation=90,
-        ha="right",
+        ha="center",
     )
 
-# Add dashed line for random accuracy
-for dataset, ax in zip(df_accuracies["dataset"].unique(), g.axes.flat):
-    random_level = 1 / n_classes[dataset]
-    ax.axhline(random_level, ls="--", color="gray", label="Chance level")
 
 # Adjust the plot
 g.set_axis_labels(
     "",  # "Feature Set",
-    "Balanced Accuracy",
+    "Balanced accuracy",
 )
 g.set_titles(col_template="{col_name}")
 g.tight_layout()
 
 fig = g.figure
 fig.show()
-fig.savefig(
-    os.path.join(get_fig_folder(), f"accuracies_all_data.svg"),
-    transparent=True,
+for filetype in ("svg", "pdf"):
+    fig.savefig(
+        os.path.join(get_fig_folder(), f"accuracies_all_data.{filetype}"),
+        transparent=True,
+    )
+# %% print accuracies
+df_accuracies_mean = df_accuracies.groupby(["dataset", "feature_set"])["score"].agg(
+    "mean"
 )
-
+print(df_accuracies_mean)
+# to copy it directly into latex table
+feature_set_order = ["knn_clustering", "traditional", "shape", "combined"]
+for dataset in df_accuracies_mean.index.get_level_values("dataset").unique():
+    accuracies_mean_dataset = np.array(
+        [
+            df_accuracies_mean.loc[(dataset, feature_set)]
+            for feature_set in feature_set_order
+        ]
+    )
+    max_accuracy_dataset = np.argmax(accuracies_mean_dataset)
+    print(
+        dataset,
+        " & "
+        + " & ".join(
+            [
+                f"\\textbf{{{accuracy:.3f}}}"
+                if max_accuracy_dataset == i
+                else f"{accuracy:.3f}"
+                for i, accuracy in enumerate(accuracies_mean_dataset)
+            ]
+        ),
+        "\\\\",
+    )
 # %% statistical tests
 from itertools import combinations
 
@@ -222,7 +298,9 @@ results = []
 
 # Iterate over each dataset
 for dataset, df_dataset in df_accuracies[
-    df_accuracies["feature_set"] != "knn_clustering"
+    np.ones(
+        len(df_accuracies), dtype=bool
+    )  # df_accuracies["feature_set"] != "knn_clustering"
 ].groupby("dataset"):
     # Pivot the table to have feature_set as columns, cv_fold as rows
     pivot = df_dataset.pivot(index="cv_fold", columns="feature_set", values="score")
@@ -247,19 +325,22 @@ for dataset, df_dataset in df_accuracies[
 
 # Convert results to DataFrame
 df_results = pd.DataFrame(results)
-df_results["n"] = df_results["diff"].apply(lambda x: len(x) - 1)
+df_results["n"] = df_results["diff"].apply(lambda x: len(x))
 df_results["mean"] = df_results["diff"].apply(np.mean)
 df_results["std_corr"] = df_results["diff"].apply(lambda x: _corrected_std(x, 4, 1))
 df_results["t_stat"] = df_results["mean"] / df_results["std_corr"]
 for index in df_results.index:
     df_results.at[index, "p_val"] = 2 * t.sf(
-        np.abs(df_results.at[index, "t_stat"]), df_results.at[index, "n"]
+        np.abs(df_results.at[index, "t_stat"]), df_results.at[index, "n"] - 1
     )
 df_results["sign."] = df_results["p_val"].apply(lambda x: "*" if x < 0.05 else "n.s.")
+
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
 print(
     df_results[
         ["dataset", "feature_set_1", "feature_set_2", "t_stat", "p_val", "sign."]
-    ]
+    ].to_string(line_width=1000)
 )
 
 
@@ -269,5 +350,159 @@ df_results["equal"] = df_results["diff"].apply(lambda x: np.mean(x == 0))
 print(
     df_results[
         ["dataset", "feature_set_1", "feature_set_2", "better", "worse", "equal"]
-    ]
+    ].to_string(line_width=1000)
 )
+
+df_results["std"] = df_results["diff"].apply(np.std)
+df_results["t_stat_naive"] = (
+    df_results["mean"] / df_results["std"] * df_results["n"].apply(np.sqrt)
+)
+for index in df_results.index:
+    df_results.at[index, "p_val_naive"] = 2 * t.sf(
+        np.abs(df_results.at[index, "t_stat_naive"]), df_results.at[index, "n"]
+    )
+df_results["sign. naive"] = df_results["p_val_naive"].apply(
+    lambda x: "*" if x < 0.05 else "n.s."
+)
+print(
+    df_results[
+        [
+            "dataset",
+            "feature_set_1",
+            "feature_set_2",
+            "t_stat_naive",
+            "p_val_naive",
+            "sign. naive",
+        ]
+    ].to_string(line_width=1000)
+)
+# %%
+# https://jmlr.org/papers/volume18/16-305/16-305.pdf
+# https://github.com/janezd/baycomp
+# https://baycomp.readthedocs.io/en/latest/
+np.set_printoptions(precision=3, suppress=True)
+
+for first, second in [
+    ("combined", "traditional"),
+    ("knn_clustering", "traditional"),
+]:
+    print(f"\nBayesian test: {first} better than {second}?")
+    for dataset in df_accuracies["dataset"].unique():
+        probs, fig = baycomp.two_on_single(
+            df_accuracies[
+                (df_accuracies["dataset"] == dataset)
+                & (df_accuracies["feature_set"] == first)
+            ]["score"].values,
+            df_accuracies[
+                (df_accuracies["dataset"] == dataset)
+                & (df_accuracies["feature_set"] == second)
+            ]["score"].values,
+            plot=True,
+            runs=20,
+            rope=0.01,
+        )
+        print(dataset, np.array(probs))
+        ax = fig.axes[0]
+        xlabel = ax.get_xlabel()
+        ax.set_xlabel(xlabel[:10] + "\n" + xlabel[11:], fontsize=10, ha="left", x=0.0)
+        fig.set_size_inches(6.5 * cm, 4 * cm)
+        ax.legend(
+            loc="upper left",
+            bbox_to_anchor=(1, 0.4),
+            ncol=1,
+            fontsize=10,
+            frameon=False,
+        )
+        # ax.set_xlabel(ax.get_label(), fontsize=10)
+        fig.tight_layout()
+        fig.text(
+            0.5,
+            0.95,
+            f"{dataset}\n"
+            f"yes   ={probs[0]:.3f},\nequal={probs[1]:.3f},\nno    ={probs[2]:.3f}",
+            ha="left",
+            va="top",
+            fontsize=10,
+        )
+        fig.subplots_adjust(right=0.5)
+        fig.show()
+        fig.savefig(
+            os.path.join(
+                get_fig_folder(),
+                f"accuracies_all_data_bayesian_test_{dataset}_{first}_vs_{second}.svg",
+            ),
+            transparent=True,
+        )
+
+# %% plot for Figure 1 abstract
+custom_label_mapping = {
+    "knn_clustering": "Burst shape",
+    "traditional": "Traditional",
+    "shape": "Shape",
+    "combined": "Combined",
+}
+# Create the FacetGrid: one subplot per dataset
+g = sns.FacetGrid(
+    df_accuracies[df_accuracies["dataset"].isin(["inhibblock", "hommersom_binary"])],
+    col="dataset",
+    # hue="feature_set",
+    sharey=True,
+    height=5.5 * cm,
+    aspect=0.52,
+    margin_titles=False,
+)
+
+# Add dashed line for random accuracy
+for dataset, ax in zip(df_accuracies["dataset"].unique(), g.axes.flat):
+    random_level = 1 / n_classes[dataset]
+    ax.axhline(random_level, ls="--", color="gray", label="Chance level")
+
+
+def _manual_boxplot(data, color, **kwargs):
+    order = ["knn_clustering", "traditional"]  # , "shape", "combined"]
+
+    # Collect data for each feature_set in order
+    grouped_scores = [data.loc[data["feature_set"] == fs, "score"] for fs in order]
+
+    plt.boxplot(
+        grouped_scores,
+        widths=0.6,
+        patch_artist=True,
+        boxprops=dict(facecolor="none"),
+        medianprops=dict(color="red"),
+        flierprops=dict(
+            marker="o",
+            # markerfacecolor='black',
+            markersize=2,
+            linestyle="none",
+        ),
+    )
+    plt.xticks([1, 2], order)  # Label x-axis ticks manually
+
+
+g.map_dataframe(_manual_boxplot)
+
+for ax in g.axes.flat:
+    ax.set_xticks(ax.get_xticks())
+    ax.set_xticklabels(
+        [
+            custom_label_mapping.get(label.get_text(), label.get_text())
+            for label in ax.get_xticklabels()
+        ],
+        rotation=90,
+        ha="center",
+    )
+
+
+# Adjust the plot
+g.set_axis_labels(
+    "",  # "Feature Set",
+    "Balanced accuracy",
+)
+# g.set_titles(col_template="{col_name}")
+g.set_titles("")
+g.tight_layout()
+
+fig = g.figure
+fig.show()
+savefig(fig, f"accuracies_figure_1_abstract", file_format=["pdf", "svg"])
