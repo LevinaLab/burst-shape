@@ -1,5 +1,6 @@
 import os
 import warnings
+from collections.abc import Iterable
 from typing import List
 
 import matplotlib
@@ -18,7 +19,7 @@ from src.persistence import (
     load_df_cultures,
     load_spectral_embedding,
 )
-from src.plot import label_sig_diff, prepare_plotting
+from src.plot import label_sig_diff, prepare_plotting, savefig
 from src.prediction.knn_clustering import get_recording_mask
 from src.settings import (
     get_chosen_spectral_clustering_params,
@@ -27,7 +28,6 @@ from src.settings import (
 )
 
 cm = prepare_plotting()
-plot_statistical_test = False
 
 metric = (
     # "cosine-distance"
@@ -38,11 +38,12 @@ metric = (
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
@@ -175,6 +176,8 @@ def _select_distances(
     column_separate_combo: List[str] = None,
     column_comparison_combo: List[str] = None,
     column_day_to_day: str = None,
+    special_function=None,
+    special_columns: List[str] = None,
 ):
     """
     Selects the distances from the full distance matrix according to the constraints.
@@ -205,7 +208,13 @@ def _select_distances(
     j_values = pd.DataFrame(
         col_idx, columns=pd.MultiIndex.from_product([["j"], level_names])
     )
+    row_pos = index.get_indexer(row_idx)
+    col_pos = index.get_indexer(col_idx)
+    distances = df_distance_matrix.values[row_pos, col_pos]
+
+    # create df_pairs
     df_pairs = pd.concat([i_values, j_values], axis=1)
+    df_pairs["distance"] = distances
 
     # Apply within-group (separate) filter: i[col] == j[col]
     for col in column_separate_combo or []:
@@ -226,20 +235,17 @@ def _select_distances(
         ).abs()
         df_pairs[("filter", column_day_to_day)] = day_diff == 1
 
+    if special_function:
+        df_pairs[("filter", "special_function")] = special_function(
+            *[df_pairs[("i", special_column)] for special_column in special_columns],
+            *[df_pairs[("j", special_column)] for special_column in special_columns],
+        )
+
     # Combine all filters (AND logic)
     filter_cols = [col for col in df_pairs.columns if col[0] == "filter"]
     if filter_cols:
         combined_mask = df_pairs[filter_cols].all(axis=1)
         df_pairs = df_pairs[combined_mask]
-
-    # Extract distances using original tuples (i, j)
-    df_pairs["distance"] = [
-        df_distance_matrix.loc[tuple(row), tuple(col)]
-        for row, col in zip(
-            df_pairs[[("i", name) for name in level_names]].values,
-            df_pairs[[("j", name) for name in level_names]].values,
-        )
-    ]
 
     # Group distances by i
     df_pairs[("i", "tuple")] = list(
@@ -260,12 +266,18 @@ def _select_distances(
         np.mean
     )
 
-    return df_selected_distances
+    return df_selected_distances.dropna()
 
 
 # %%
 def _plot_distance_distributions(
-    similarities: List[pd.DataFrame], figsize, xtick_labels, xtick_labels_args=None
+    similarities: List[pd.DataFrame],
+    figsize,
+    xtick_labels,
+    xtick_labels_args=None,
+    y_min=0,
+    plot_statistical_test=False,
+    plot_stats_lims=None,
 ):
     if xtick_labels_args is None:
         xtick_labels_args = {}
@@ -277,16 +289,16 @@ def _plot_distance_distributions(
     fig, ax = plt.subplots(constrained_layout=True, figsize=figsize)
     sns.despine()
 
-    sns.violinplot(
+    """sns.violinplot(
         data=data,
         ax=ax,
         inner=None,  # Remove internal boxplot
         facecolor=(1, 1, 1, 0),  # Transparent fill
         edgecolor="grey",
         linewidth=1.5,
-    )
+    )"""
     # Overlay boxplot in red
-    sns.boxplot(
+    """sns.boxplot(
         data=data,
         ax=ax,
         showcaps=False,
@@ -297,6 +309,17 @@ def _plot_distance_distributions(
         medianprops={"color": "red"},
         flierprops={"markerfacecolor": "grey", "markeredgecolor": "grey"},
         fliersize=0,
+    )"""
+    sns.pointplot(
+        data=data_avg,
+        ax=ax,
+        errorbar="ci",
+        linestyle="",
+        color="k",
+        markers="D",  # Diamond marker
+        capsize=0.2,  # Adds caps to error bars
+        errwidth=1.5,  # (Optional) make error bars thicker
+        markersize=2,
     )
 
     # Overlay dots for individual data points
@@ -317,8 +340,7 @@ def _plot_distance_distributions(
         ax.get_xticklabels()[2].get_transform()
         + matplotlib.transforms.Affine2D().translate(4, 0)
     )
-
-    _set_yaxis(ax)
+    ax.set_xlim(-0.5, len(xtick_labels) - 0.5)
 
     for i, distribution1 in enumerate(data_avg):
         for j, distribution2 in enumerate(data_avg):
@@ -329,35 +351,43 @@ def _plot_distance_distributions(
                 distribution1,
                 distribution2,
             )
-            print(test_mannwhitneyu)
-            if plot_statistical_test and (test_mannwhitneyu.pvalue < 0.001):
+            test_t_ind = scipy.stats.ttest_ind(
+                distribution1,
+                distribution2,
+            )
+            print(test_t_ind)
+            if plot_statistical_test:
+                if isinstance(test_t_ind, Iterable):
+                    if (i, j) in plot_statistical_test:
+                        pass
+                    else:
+                        continue
                 label_sig_diff(
-                    ax,
-                    (i, j),
-                    1,
-                    r"***",
-                    0.3 if j - i == 1 else 0.9,
-                    0.1,
-                    "k",
-                    ft_sig=10,
-                    lw_sig=1,
+                    ax=ax,
+                    inds=(i, j),
+                    data=plot_stats_lims
+                    if plot_stats_lims is not None
+                    else ax.get_ylim(),
+                    text_sig=test_t_ind.pvalue,
                 )
+
+    _set_yaxis(ax, y_min=y_min)
     return fig, ax
 
 
-def _set_yaxis(ax):
+def _set_yaxis(ax, y_min=0):
     match metric:
         case "cosine-distance":
             ax.set_ylabel("Cosine\ndistance")
             ax.set_yticks([0, 1])
         case "Wasserstein":
             ax.set_ylabel("Wasserstein\ndistance")
-            ax.set_ylim(0, None)
+            ax.set_ylim(y_min, None)
         case "Wasserstein-individual-bursts":
             warnings.warn(f"Undefined function _set_yaxis() for metric {metric}.")
         case "Embedding":
             ax.set_ylabel("Embedding\ndistance")
-            ax.set_ylim(0, None)
+            ax.set_ylim(y_min, None)
         case _:
             ax.set_ylabel("Distance")
             warnings.warn(f"Undefined function _set_yaxis() for metric {metric}.")
@@ -382,7 +412,7 @@ match dataset:
         )
         fig.show()
         fig.savefig(
-            os.path.join(get_fig_folder(), f"{dataset}_distances_{metric}.svg"),
+            os.path.join(get_fig_folder(), f"{dataset}_distances_{metric}.pdf"),
             transparent=True,
         )
     case "kapucu":
@@ -408,12 +438,12 @@ match dataset:
                 similarity_day_to_day,
             ],
             (5 * cm, 4.5 * cm),
-            ["random", "betw.-group", "in-group", "day-to-day"],
+            ["random", "betw.-group", "in-group", "day-over-day"],
             xtick_labels_args={"rotation": 30, "ha": "right"},
         )
         fig.show()
         fig.savefig(
-            os.path.join(get_fig_folder(), f"{dataset}_distances_{metric}.svg"),
+            os.path.join(get_fig_folder(), f"{dataset}_distances_{metric}.pdf"),
             transparent=True,
         )
     case "wagenaar":
@@ -421,6 +451,7 @@ match dataset:
         similarity_in_group = _select_distances(
             df_distance_matrix,
             column_separate_combo=["batch"],
+            column_comparison_combo=["culture"],
         )
         similarity_between_group = _select_distances(
             df_distance_matrix,
@@ -431,22 +462,42 @@ match dataset:
             column_separate_combo=["batch", "culture"],
             column_day_to_day="day",
         )
+        similarity_culture = _select_distances(
+            df_distance_matrix,
+            column_separate_combo=["batch", "culture"],
+        )
+        similarity_day_to_day_across_group = _select_distances(
+            df_distance_matrix,
+            column_separate_combo=["batch"],
+            column_day_to_day="day",
+        )
         fig, ax = _plot_distance_distributions(
             [
                 similarity_random,
-                similarity_between_group,
+                # similarity_between_group,
                 similarity_in_group,
+                similarity_culture,
                 similarity_day_to_day,
+                # similarity_day_to_day_across_group,
             ],
-            (5 * cm, 4.5 * cm),
-            ["random", "betw.-group", "in-group", "day-to-day"],
-            xtick_labels_args={"rotation": 30, "ha": "right"},
+            (6 * cm, 6 * cm),
+            [
+                "Random",
+                # "Betw.-litter",
+                "Litter",
+                "Culture",
+                "Day-over-day",
+                # "Day-to-day\n(across litters)"
+            ],
+            xtick_labels_args={"rotation": 45, "ha": "right"},
+            y_min=None,
+            plot_statistical_test=[(0, 1), (1, 2), (2, 3)],
+            plot_stats_lims=(2, 4.5),
         )
+        ax.set_position([0.3, 0.5, 0.65, 0.45])
         fig.show()
-        fig.savefig(
-            os.path.join(get_fig_folder(), f"{dataset}_distances_{metric}.svg"),
-            transparent=True,
-        )
+        savefig(fig, f"{dataset}_distances_{metric}", file_format=["pdf", "svg"])
+
     case "mossink":
         # add additional info to the index to evaluate them in terms of distance/similarity
         df_cultures_metadata = load_df_cultures(burst_extraction_params)
@@ -487,6 +538,39 @@ match dataset:
             df_distance_matrix,
             column_separate_combo=["coating"],
         )
+        _isogenic_map = {
+            ("KS", 3): ("Control", 9),
+            ("KS", 4): ("Control", 10),
+            ("MELAS", 1): ("Control", 2),
+            ("MELAS", 2): ("Control", 4),
+            ("MELAS", 3): ("Control", 5),
+        }
+        similarity_subject_pair = []
+        for (group_1, subject_1), (group_2, subject_2) in _isogenic_map.items():
+
+            def _function_subject_pair(
+                group1,
+                subject_id1,
+                group2,
+                subject_id2,
+            ):
+                selection = (
+                    (group1 == group_1)
+                    & (subject_id1 == subject_1)
+                    & (group2 == group_2)
+                    & (subject_id2 == subject_2)
+                )
+                return selection
+
+            similarity_subject_pair.append(
+                _select_distances(
+                    df_distance_matrix,
+                    special_columns=["group", "subject_id"],
+                    special_function=_function_subject_pair,
+                ).dropna()
+            )
+
+        print("\nstandard")
         fig, ax = _plot_distance_distributions(
             [
                 similarity_random,
@@ -496,7 +580,7 @@ match dataset:
                 similarity_in_gender,
                 similarity_in_coating,
             ],
-            (5 * cm, 4.5 * cm),
+            (7 * cm, 5 * cm),
             [
                 "random",
                 # "betw.-\ngroup",
@@ -506,10 +590,119 @@ match dataset:
                 "coating",
             ],
             xtick_labels_args={"rotation": 45, "ha": "right"},
+            y_min=None,
+            plot_statistical_test=[(0, 2)],
+        )
+        fig.show()
+        savefig(fig, f"{dataset}_distances_{metric}", file_format=["pdf", "svg"])
+
+        print("\nreduced for paper")
+        fig, ax = _plot_distance_distributions(
+            [
+                similarity_random,
+                similarity_in_group,
+                similarity_in_subject,
+            ],
+            (5 * cm, 6 * cm),
+            [
+                "Random",
+                "Group",
+                "Subject",
+            ],
+            xtick_labels_args={"rotation": 45, "ha": "right"},
+            y_min=None,
+            plot_statistical_test=[(0, 1), (1, 2)],
+            plot_stats_lims=(2.5, 4),
+        )
+        ax.set_position([0.4, 0.5, 0.65, 0.45])
+        fig.show()
+        savefig(
+            fig, f"{dataset}_distances_{metric}_reduced", file_format=["pdf", "svg"]
+        )
+
+        print("\nisogenic pairs")
+        fig, ax = _plot_distance_distributions(
+            [
+                similarity_random,
+                *similarity_subject_pair,
+            ],
+            (6 * cm, 6 * cm),
+            [
+                "random",
+                *[f"{key}-{value}" for key, value in _isogenic_map.items()],
+            ],
+            xtick_labels_args={"rotation": 45, "ha": "right"},
+        )
+        fig.show()
+        savefig(fig, f"{dataset}_distances_{metric}_pairs", file_format=["pdf", "svg"])
+
+        print("\nisogenic pairs reduced")
+        fig, ax = _plot_distance_distributions(
+            [
+                similarity_between_group,
+                *similarity_subject_pair[2:],  # only MELAS pairs
+            ],
+            (6 * cm, 6 * cm),
+            [
+                "Between group",
+                # *[f"{key}-{value}" for key, value in list(_isogenic_map.items())[2:]],  # only MELAS pairs
+                "MELAS 1 - Contr. 2",
+                "MELAS 2 - Contr. 4",
+                "MELAS 3 - Contr. 5",
+            ],
+            xtick_labels_args={"rotation": 45, "ha": "right"},
+            y_min=None,
+            plot_statistical_test=[(0, 1), (0, 2), (0, 3)],
+            plot_stats_lims=(2, 4.3),
+        )
+        ax.set_position([0.35, 0.5, 0.6, 0.45])
+        fig.show()
+        savefig(
+            fig,
+            f"{dataset}_distances_{metric}_pairs_reduced",
+            file_format=["pdf", "svg"],
+        )
+    case "hommersom_binary":
+        df_cultures_metadata = load_df_cultures(burst_extraction_params)
+        df_cultures_metadata = df_cultures_metadata[
+            df_cultures_metadata["n_bursts"] > 0
+        ]
+        assert len(df_cultures_metadata) == len(df_distance_matrix)
+        index_names = df_cultures_metadata.index.names
+        df_cultures_metadata.reset_index(inplace=True)
+        df_cultures_metadata.set_index(index_names + ["group"], inplace=True)
+
+        # add the index to df_distance_matrix
+        df_distance_matrix.index = df_cultures_metadata.index
+        df_distance_matrix.columns = df_cultures_metadata.index
+
+        # compute and plot as usual
+        similarity_random = _select_distances(df_distance_matrix)
+        similarity_in_group = _select_distances(
+            df_distance_matrix,
+            column_separate_combo=["group"],
+        )
+        similarity_in_batch = _select_distances(
+            df_distance_matrix,
+            column_separate_combo=["batch"],
+        )
+        fig, ax = _plot_distance_distributions(
+            [
+                similarity_random,
+                similarity_in_group,
+                similarity_in_batch,
+            ],
+            (5 * cm, 4.5 * cm),
+            [
+                "random",
+                "group",
+                "batch",
+            ],
+            xtick_labels_args={"rotation": 45, "ha": "right"},
         )
         fig.show()
         fig.savefig(
-            os.path.join(get_fig_folder(), f"{dataset}_distances_{metric}.svg"),
+            os.path.join(get_fig_folder(), f"{dataset}_distances_{metric}.pdf"),
             transparent=True,
         )
     case _:
