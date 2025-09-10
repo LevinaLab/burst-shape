@@ -5,11 +5,7 @@ This starts a plotly application that displays detected bursts.
 It shows an overview of recordings indicating the number of detected bursts as a heatmap.
 When clicking on a recording it shows the recording's spikes as raster plot and the firing rate.
 The detected bursts are highlighted with rectangles.
-
-
 """
-
-
 import os
 import warnings
 
@@ -80,13 +76,14 @@ else:
         # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
         # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_mossink_maxISIstart_100_maxISIb_100_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 citation, doi_link = get_citation_doi_link(dataset)
@@ -125,7 +122,7 @@ match dataset:
         pivot_columns = "well_idx"
         rows_title = "Group - Subject ID"
         columns_title = "Well Index"
-    case "hommersom":
+    case "hommersom" | "hommersom_binary":
         pivot_index = ["batch"]
         pivot_columns = "well"
         rows_title = "Batch"
