@@ -13,6 +13,7 @@ from sklearn.manifold import SpectralEmbedding
 
 from src.persistence import (
     load_affinity_matrix,
+    load_burst_matrix,
     load_spectral_embedding,
     save_spectral_embedding,
     spectral_embedding_exists,
@@ -30,17 +31,23 @@ burst_extraction_params = (
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 clustering_params = {
     "n_components_max": 30,
     "affinity": "precomputed",
-    "metric": "wasserstein",
-    "n_neighbors": 85,  # 6,  # 60,   # 150,
+    "metric": "euclidean",  # "wasserstein",
+    "n_neighbors": None,  # 21,  # 85,  # 6,  # 60,   # 150,
     "random_state": 0,
 }
+if clustering_params["n_neighbors"] is None:
+    burst_matrix = load_burst_matrix(burst_extraction_params)
+    clustering_params["n_neighbors"] = burst_matrix.shape[0] // 100
+    del burst_matrix
+
 
 recompute_spectral_embedding = False
 

@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import dash
 import numpy as np
@@ -22,6 +23,12 @@ from src.persistence import (
 from src.persistence.agglomerative_clustering import get_agglomerative_labels
 from src.persistence.spike_times import get_spike_times_in_milliseconds
 from src.plot import get_cluster_colors, get_group_colors
+from src.prediction.define_target import make_target_label
+from src.settings import (
+    get_chosen_spectral_embedding_params,
+    get_citation_doi_link,
+    get_dataset_from_burst_extraction_params,
+)
 
 if "DEBUG" in os.environ:
     debug = os.environ["DEBUG"] == "True"
@@ -42,6 +49,8 @@ if "DATASET" in os.environ:
             burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
         case "hommersom_test":
             burst_extraction_params = "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        case "hommersom_binary":
+            burst_extraction_params = "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "inhibblock":
             burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
         case "mossink":
@@ -61,53 +70,15 @@ else:
         # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
         # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
         # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     )
-citation = "the relevant literature"
-doi_link = None
-if "kapucu" in burst_extraction_params:
-    dataset = "kapucu"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    )
-    citation = "Kapucu et al. (2022)"
-    doi_link = "https://doi.org/10.1038/s41597-022-01242-4"
-elif "hommersom_test" in burst_extraction_params:
-    dataset = "hommersom_test"
-    citation = "Hommersom et al. (2024)"
-    doi_link = "https://doi.org/10.1101/2024.03.18.585506"
-    clustering_params = "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6"
-elif "hommersom" in burst_extraction_params:
-    dataset = "hommersom"
-    citation = "Hommersom et al. (2024)"
-    doi_link = "https://doi.org/10.1101/2024.03.18.585506"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_55"
-    )
-elif "inhibblock" in burst_extraction_params:
-    dataset = "inhibblock"
-    citation = "Vinogradov et al. (2024)"
-    doi_link = "https://doi.org/10.1101/2024.08.21.608974"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-    )
-elif "mossink" in burst_extraction_params:
-    dataset = "mossink"
-    citation = "Mossink et al. (2021)"
-    doi_link = "https://doi.org/10.17632/bvt5swtc5h.1"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85"
-    )
-else:
-    dataset = "wagenaar"
-    citation = "Wagenaar et al. (2006)"
-    doi_link = "https://doi.org/10.1186/1471-2202-7-11"
-    clustering_params = (
-        "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150"
-    )
+dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
+citation, doi_link = get_citation_doi_link(dataset)
+clustering_params = get_chosen_spectral_embedding_params(dataset)
 
 # clustering_params = (
 # "agglomerating_clustering_linkage_complete"
@@ -136,6 +107,7 @@ embedding_type_init = ["tsne", "pca", "spectral"][2]
 # get df_bursts and labels
 df_cultures = load_df_cultures(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
+burst_index_names = df_bursts.index.names
 match clustering_type:
     case "agglomerating":
         # load labels
@@ -164,64 +136,86 @@ match clustering_type:
 
 
 def _load_embedding(embedding_type_):
-    match embedding_type_:
-        case "tsne":
-            embedding = load_tsne(burst_extraction_params)
-        case "pca":
-            embedding = load_pca(burst_extraction_params)
-        case "spectral":
-            embedding = load_spectral_embedding(
-                burst_extraction_params, clustering_params
-            )
-    # df_bursts["embedding_x"] = embedding[:, 0]
-    # df_bursts["embedding_y"] = embedding[:, 1]
-    return embedding
+    try:
+        match embedding_type_:
+            case "tsne":
+                embedding = load_tsne(burst_extraction_params)
+            case "pca":
+                embedding = load_pca(burst_extraction_params)
+            case "spectral":
+                embedding = load_spectral_embedding(
+                    burst_extraction_params,
+                    clustering_params,
+                    n_dims=20,
+                )
+        # df_bursts["embedding_x"] = embedding[:, 0]
+        # df_bursts["embedding_y"] = embedding[:, 1]
+        return embedding
+    except Exception as e:
+        warnings.warn(
+            f"While trying to load embedding {embedding_type_} an exception occured: {e}"
+        )
+        return None
 
 
-for embedding_type in ["tsne", "pca", "spectral"]:
+print("Attempting to load embeddings...")
+embedding_type_list = []
+for embedding_type in ["spectral", "pca", "tsne"]:
+    print(f"Loading {embedding_type}...")
     embedding = _load_embedding(embedding_type)
-    for i in range(1, 3):
-        df_bursts[f"{embedding_type}_{i}"] = embedding[:, i - 1]
-del embedding, embedding_type
+    if embedding is not None:
+        n_dims = embedding.shape[1]
+        for i in range(n_dims):
+            df_bursts[f"{embedding_type}_{i + 1}"] = embedding[:, i]
+        embedding_type_list.append(embedding_type)
+        print(f"Successfully loaded {embedding_type}.")
+    else:
+        warnings.warn(
+            f"No embedding found for {embedding_type}. Continuing without it."
+        )
+embedding_type_options = [
+    {"label": "Spectral", "value": "spectral"},
+    {"label": "t-SNE", "value": "tsne"},
+    {"label": "PCA", "value": "pca"},
+]
+embedding_type_options = [
+    embedding_option
+    for embedding_option in embedding_type_options
+    if embedding_option["value"] in embedding_type_list
+]
+del embedding, embedding_type, embedding_type_list
 
 
 # prepare for plotly
-df_bursts.reset_index(inplace=True)
-
 df_bursts["firing_rate"] = df_bursts["integral"] / 50  # df_bursts["time_orig"]
-match dataset:
-    case "wagenaar":
-        df_bursts["batch_culture"] = (
-            df_bursts["batch"].astype(str) + "-" + df_bursts["culture"].astype(str)
-        )
-    case "kapucu":
-        df_bursts["batch"] = (
-            df_bursts["culture_type"].astype(str)
-            + "-"
-            + df_bursts["mea_number"].astype(str)
-        )
-        df_bursts["batch_culture"] = (
-            df_bursts["batch"].astype(str) + "-" + df_bursts["well_id"].astype(str)
-        )
-    case "hommersom_test":
-        df_bursts["batch_culture"] = (
-            df_bursts["batch"].astype(str) + "-" + df_bursts["clone"].astype(str)
-        )
-    case "inhibblock":
-        df_bursts["batch_culture"] = (
-            df_bursts["drug_label"].astype(str) + "-" + df_bursts["div"].astype(str)
-        )
-    case "mossink":
-        df_bursts["batch_culture"] = (
-            df_bursts["group"].astype(str) + "-" + df_bursts["subject_id"].astype(str)
-        )
-    case "hommersom":
-        df_bursts["batch_culture"] = (
-            df_bursts["batch"].astype(str) + "-" + df_bursts["well"].astype(str)
-        )
-    case _:
-        raise NotImplementedError(f"Dataset {dataset} not implemented.")
 
+# define the options for coloring the embedding
+color_by_options = [
+    {"label": "Cluster", "value": "cluster"},
+    {"label": "Duration", "value": "time_orig"},
+    {"label": "Firing rate", "value": "firing_rate"},
+]
+# add the target label if available
+try:
+    df_cultures, df_bursts, target_label = make_target_label(
+        dataset, df_cultures, df_bursts, special_target=True
+    )
+    color_by_options.insert(0, {"label": target_label, "value": "target_label"})
+except NotImplementedError:
+    warnings.warn(
+        f"make_target_label() not defined for dataset {dataset}. Continuing without it. "
+        "Define it if you want to color a certain target label like drug or genetic group."
+    )
+# add the index options
+for index_name in burst_index_names[:-1]:
+    color_by_options.append({"label": index_name, "value": index_name})
+"""
+color_by_options.extend([
+    {"label": "Batch", "value": "batch"},
+    {"label": "Culture", "value": "batch_culture"},
+    {"label": "Day", "value": "day"},
+])
+"""
 # confirm burst_matrix and df_bursts["burst"] are the same
 # for i in range(len(burst_matrix)):
 #     assert np.allclose(burst_matrix[i], df_bursts["burst"].iloc[i])
@@ -241,6 +235,8 @@ app = Dash(__name__, server=server)  # Attach Dash to Flask
 
 ID_EMBEDDING = "tsne-plot"
 ID_EMBEDDING_TYPE = "embedding-type"
+ID_EMBEDDING_DIM1 = "embedding-dim1"
+ID_EMBEDDING_DIM2 = "embedding-dim2"
 ID_COLOR_BY = "color-by"
 ID_N_CLUSTERS = "n-clusters-slider"
 ID_DOWNLOAD_FORMAT = "download-format"
@@ -250,64 +246,103 @@ ID_BURST_RASTER = "raster-plot"
 ID_FIRING_RATE = "firing-rate"
 
 # Create the initial t-SNE plot
-# tsne_fig = update_tsne_plot(df_bursts, n_clusters_init)
-# tsne_plot = dcc.Graph(id=ID_EMBEDDING, figure=tsne_fig, style={"flex": "1"})
+# fig_embedding = update_tsne_plot(df_bursts, n_clusters_init)
+# tsne_plot = dcc.Graph(id=ID_EMBEDDING, figure=fig_embedding, style={"flex": "1"})
 tsne_plot = dcc.Graph(id=ID_EMBEDDING, style={"flex": "1"})
 
 # Define layout of the Dash app
+_citation_text = html.P(
+    [
+        "If you use the data presented here, please cite ",
+        citation
+        if doi_link is None
+        else html.A(
+            citation,
+            href=doi_link,
+            target="_blank",
+            style={"textDecoration": "none", "color": "blue"},
+        ),
+        ".",
+    ]
+)
+# drop-down menu for selecting what to plot
+_embedding_type_dropdown = html.Div(
+    [
+        html.Label("Embedding:", style={"marginBottom": "4px"}),
+        dcc.Dropdown(
+            id=ID_EMBEDDING_TYPE,
+            options=embedding_type_options,
+            value=embedding_type_init,
+            clearable=False,
+            style={"width": "100%"},
+        ),
+    ],
+    style={"display": "flex", "flexDirection": "column", "alignItems": "flex-start"},
+)
+# Dropdown menu for selecting the dimensions for the embedding
+_embedding_dim_dropdown = html.Div(
+    [
+        html.Label(
+            "Embedding\nDimensions:",
+            style={"whiteSpace": "pre-line", "marginBottom": "4px"},
+        ),
+        html.Div(
+            [
+                dcc.Dropdown(
+                    id=ID_EMBEDDING_DIM1,
+                    options=[{"label": str(i), "value": i} for i in range(1, 21)],
+                    value=1,
+                    clearable=False,
+                    style={"width": "50%"},
+                ),
+                dcc.Dropdown(
+                    id=ID_EMBEDDING_DIM2,
+                    options=[{"label": str(i), "value": i} for i in range(1, 21)],
+                    value=2,
+                    clearable=False,
+                    style={"width": "50%"},
+                ),
+            ],
+            style={"display": "flex", "flexDirection": "row", "width": "100%"},
+        ),
+    ],
+    style={"display": "flex", "flexDirection": "column", "alignItems": "flex-start"},
+)
+# drop-down menu for selecting which column to color by
+_color_by_dropdown = html.Div(
+    [
+        html.Label("Color by:", style={"marginBottom": "4px"}),
+        dcc.Dropdown(
+            id=ID_COLOR_BY,
+            options=color_by_options,
+            value=color_by_options[0]["value"],  # color_by_init,
+            clearable=False,
+            style={"width": "100%"},
+        ),
+    ],
+    style={"display": "flex", "flexDirection": "column", "alignItems": "flex-start"},
+)
+# slider for selecting the number of clusters with label "slide to select number of clusters"
+_number_of_clusters_slider = dcc.Slider(
+    id=ID_N_CLUSTERS,
+    min=n_clusters[0],
+    max=n_clusters[-1],
+    step=1,
+    value=n_clusters_init,
+    tooltip={"placement": "bottom", "always_visible": True},
+    vertical=True,
+)
 app.layout = html.Div(
     [
-        html.P(
-            [
-                "If you use the data presented here, please cite ",
-                citation
-                if doi_link is None
-                else html.A(
-                    citation,
-                    href=doi_link,
-                    target="_blank",
-                    style={"textDecoration": "none", "color": "blue"},
-                ),
-                ".",
-            ]
-        ),
+        _citation_text,
         html.Div(
             [
                 html.Div(
                     [
-                        # drop-down menu for selecting what to plot
-                        dcc.Dropdown(
-                            id=ID_EMBEDDING_TYPE,
-                            options=[
-                                {"label": "Spectral", "value": "spectral"},
-                                {"label": "t-SNE", "value": "tsne"},
-                                {"label": "PCA", "value": "pca"},
-                            ],
-                            value=embedding_type_init,
-                        ),
-                        # drop-down menu for selecting which column to color by
-                        dcc.Dropdown(
-                            id=ID_COLOR_BY,
-                            options=[
-                                {"label": "Cluster", "value": "cluster"},
-                                {"label": "Batch", "value": "batch"},
-                                {"label": "Culture", "value": "batch_culture"},
-                                {"label": "Duration", "value": "time_orig"},
-                                {"label": "Firing rate", "value": "firing_rate"},
-                                {"label": "Day", "value": "day"},
-                            ],
-                            value=color_by_init,
-                        ),
-                        # slider for selecting the number of clusters with label "slide to select number of clusters"
-                        dcc.Slider(
-                            id=ID_N_CLUSTERS,
-                            min=n_clusters[0],
-                            max=n_clusters[-1],
-                            step=1,
-                            value=n_clusters_init,
-                            tooltip={"placement": "bottom", "always_visible": True},
-                            vertical=True,
-                        ),
+                        _embedding_type_dropdown,
+                        _embedding_dim_dropdown,
+                        _color_by_dropdown,
+                        _number_of_clusters_slider,
                         html.Button("Save to figures/", id="download-button"),
                         # dcc.Download(id="download-pdf"),
                         dcc.Dropdown(
@@ -320,9 +355,9 @@ app.layout = html.Div(
                         ),
                     ],
                     style={
-                        "flex": "0 0 100px",
                         "display": "flex",
-                        "flex-direction": "column",
+                        "flexDirection": "column",
+                        # "flex": "1 1 min-content",
                     },
                 ),
                 html.Div(
@@ -360,11 +395,20 @@ app.layout = html.Div(
         Input(ID_N_CLUSTERS, "value"),
         Input(ID_COLOR_BY, "value"),
         Input(ID_EMBEDDING_TYPE, "value"),
+        Input(ID_EMBEDDING_DIM1, "value"),
+        Input(ID_EMBEDDING_DIM2, "value"),
         Input(ID_MARKER_SIZE, "value"),
     ],
 )
-def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
-    global tsne_fig
+def _update_embedding_plot(
+    n_clusters_current,
+    color_by,
+    embedding_type,
+    embedding_dim1,
+    embedding_dim2,
+    marker_size,
+):
+    global fig_embedding
     color_discrete_sequence = None
     color_discrete_map = None
     color_continuous_scale = None
@@ -373,6 +417,10 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
     color_log = None
 
     match color_by:
+        case "target_label":
+            color = "target_label"
+            color_discrete_map = get_group_colors(dataset)
+            legend_title = target_label
         case "cluster":
             color = f"cluster_{n_clusters_current}"
             color_discrete_sequence = get_cluster_colors(n_clusters_current)
@@ -382,69 +430,6 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
                 ]
             }
             legend_title = "Cluster"
-        case "batch":
-            color = "batch"
-            match dataset:
-                case "inhibblock":
-                    color = "drug_label"
-                    color_discrete_map = get_group_colors(dataset)
-                case "wagenaar":
-                    color_discrete_map_load = get_group_colors(dataset)
-                    color_discrete_map = {}
-                    for key, value in color_discrete_map_load.items():
-                        color_discrete_map[str(key)] = value
-                case "kapucu":
-                    color_discrete_map_load = get_group_colors(dataset)
-                    color_discrete_map = {}
-                    for key, value in color_discrete_map_load.items():
-                        color_discrete_map["-".join(key)] = value
-                case "mossink":
-                    color = "group"
-            df_bursts[color] = df_bursts[color].astype(str)
-            color_discrete_sequence = px.colors.qualitative.Set1
-            match dataset:
-                case "wagenaar":
-                    category_orders = {
-                        color: sorted(df_bursts["batch"].unique(), key=int)
-                    }
-                case "kapucu" | "hommersom_test" | "inhibblock":
-                    category_orders = {color: sorted(df_bursts[color].unique())}
-                case _:
-                    pass
-                    # raise NotImplementedError(f"Dataset {dataset} not implemented.")
-            legend_title = "Batch"
-        case "batch_culture":
-            color = "batch_culture"
-            df_bursts[color] = df_bursts[color].astype(str)
-            color_discrete_sequence = px.colors.qualitative.Set1
-            match dataset:
-                case "wagenaar":
-                    category_orders = {
-                        color: sorted(
-                            df_bursts["batch_culture"].unique(),
-                            key=lambda x: (int(x.split("-")[0]), int(x.split("-")[1])),
-                        )
-                    }
-                case "kapucu" | "hommersom_test" | "inhibblock" | "mossink":
-                    category_orders = {
-                        color: sorted(df_bursts["batch_culture"].unique())
-                    }
-                case _:
-                    raise NotImplementedError(f"Dataset {dataset} not implemented.")
-            legend_title = "Batch-Culture"
-        case "day":
-            color = "day" if dataset == "wagenaar" else "DIV"
-            df_bursts[color] = df_bursts[color].astype(str)
-            unique_days = sorted(df_bursts[color].unique(), key=int)
-            category_orders = {color: unique_days}
-            viridis_colors = plotly.colors.sample_colorscale(
-                px.colors.sequential.Viridis,
-                [i / len(unique_days) for i in range(len(unique_days))],
-            )
-            color_discrete_map = {
-                str(day): viridis_colors[i] for i, day in enumerate(unique_days)
-            }
-            legend_title = "Day"
         case "time_orig":
             color = np.log10(pd.to_numeric(df_bursts["time_orig"], errors="coerce"))
             # df_bursts[color] = pd.to_numeric(df_bursts[color], errors='coerce')
@@ -456,15 +441,31 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
             color_continuous_scale = px.colors.sequential.Viridis
             legend_title = "Firing rate"
             color_log = True
+        case index_name if index_name in burst_index_names:
+            legend_title = index_name
+            if index_name in ["day", "DIV"]:
+                color = df_bursts.index.get_level_values(index_name).astype(str)
+                unique_days = sorted(color.unique(), key=int)
+                # category_orders = {index_name: unique_days}
+                viridis_colors = plotly.colors.sample_colorscale(
+                    px.colors.sequential.Viridis,
+                    [i / len(unique_days) for i in range(len(unique_days))],
+                )
+                color_discrete_map = {
+                    str(day): viridis_colors[i] for i, day in enumerate(unique_days)
+                }
+            else:
+                color = df_bursts.index.get_level_values(index_name).astype(str)
+                color_discrete_sequence = px.colors.qualitative.Set1
         case _:
             print(f"Invalid color_by: {color_by}")
             raise ValueError(f"Invalid color_by: {color_by}")
 
     n_clusters_ = n_clusters_current
-    tsne_fig = px.scatter(
+    fig_embedding = px.scatter(
         df_bursts,
-        x=f"{embedding_type}_1",
-        y=f"{embedding_type}_2",
+        x=f"{embedding_type}_{embedding_dim1}",
+        y=f"{embedding_type}_{embedding_dim2}",
         color=color,
         color_discrete_sequence=color_discrete_sequence,
         color_discrete_map=color_discrete_map,
@@ -481,15 +482,15 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
             "time_orig": True,
         },
         title="t-SNE plot",
-        custom_data=[df_bursts.index],
+        custom_data=[df_bursts.index.to_list()],
     )
-    tsne_fig.update_traces(marker=dict(size=marker_size))
+    fig_embedding.update_traces(marker=dict(size=marker_size))
 
     if color_log is True:
         c_min_max = [color.min(), color.max()]
         tickvals = np.linspace(c_min_max[0], c_min_max[1], 5, endpoint=True)
         tickvalues = [f"{10**v:.0f}" for v in tickvals]
-        tsne_fig.update_coloraxes(
+        fig_embedding.update_coloraxes(
             colorbar=dict(
                 title=legend_title,
                 tickvals=tickvals,
@@ -497,13 +498,13 @@ def update_tsne_plot(n_clusters_current, color_by, embedding_type, marker_size):
             )
         )
 
-    tsne_fig.update_layout(
+    fig_embedding.update_layout(
         legend_title=legend_title,
         legend_itemclick="toggle",
         legend_itemdoubleclick="toggleothers",
         plot_bgcolor="white",
     )
-    return tsne_fig
+    return fig_embedding
 
 
 @app.callback(
@@ -551,7 +552,7 @@ def download_pdf(n_clicks, figure, format):
     return
 
 
-# Update time series plot based on the selected point in the t-SNE plot
+# Update burst shape plot based on the selected point in embedding
 @app.callback(
     Output(ID_BURST_SHAPE, "figure"),
     [
@@ -561,106 +562,43 @@ def download_pdf(n_clicks, figure, format):
     ],
     prevent_initial_call=True,
 )
-def update_timeseries(tsne_click_data, firing_rate_click_data, n_clusters_current):
+def _update_burst_shape_plot(
+    embedding_clicked_data, firing_rate_click_data, n_clusters_current
+):
     # Determine which plot was clicked
     ctx = dash.callback_context
     if ctx.triggered[0]["prop_id"].split(".")[0] == ID_FIRING_RATE:
         selected_data = firing_rate_click_data
     else:
-        selected_data = tsne_click_data
+        selected_data = embedding_clicked_data
     if selected_data is None:
         return px.line(pd.DataFrame(), title="Select a point to view time series")
 
     # Extract index of selected point
     if "customdata" in selected_data["points"][0]:
-        point_index = selected_data["points"][0]["customdata"][0]
+        burst_idx = selected_data["points"][0]["customdata"][0]
+        burst_idx = tuple(burst_idx)
     else:
         return dash.no_update
 
     # Create time series plot and title
-    # Title should be the same as hovering info in t-SNE plot
-    match dataset:
-        case "wagenaar":
-            title = "Time series for " + ", ".join(
-                [
-                    f"{key}: {df_bursts.iloc[point_index][key]}"
-                    for key in [
-                        f"cluster_{n_clusters_current}",
-                        "batch",
-                        "culture",
-                        "day",
-                        "start_orig",
-                        "time_orig",
-                    ]
-                ]
-            )
-        case "kapucu":
-            title = "Time series for " + ", ".join(
-                [
-                    f"{key}: {df_bursts.iloc[point_index][key]}"
-                    for key in [
-                        f"cluster_{n_clusters_current}",
-                        "batch",
-                        "culture_type",
-                        "mea_number",
-                        "well_id",
-                        "start_orig",
-                        "time_orig",
-                    ]
-                ]
-            )
-        case "hommersom_test":
-            title = "Time series for " + ", ".join(
-                [
-                    f"{key}: {df_bursts.iloc[point_index][key]}"
-                    for key in [
-                        f"cluster_{n_clusters_current}",
-                        "batch",
-                        "clone",
-                        "well_idx",
-                        # "well_id",
-                        "start_orig",
-                        "time_orig",
-                    ]
-                ]
-            )
-        case "inhibblock":
-            # print(df_bursts.iloc[point_index])
-            title = "Time series for " + ", ".join(
-                [
-                    f"{key}: {df_bursts.iloc[point_index][key]}"
-                    for key in [
-                        f"cluster_{n_clusters_current}",
-                        "drug_label",
-                        "div",
-                        "well_idx",
-                        "i_burst",
-                        # "well_id",
-                        "start_orig",
-                        "time_orig",
-                    ]
-                ]
-            )
-        case "mossink":
-            title = "Time series for " + ", ".join(
-                [
-                    f"{key}: {df_bursts.iloc[point_index][key]}"
-                    for key in [
-                        f"cluster_{n_clusters_current}",
-                        "group",
-                        "subject_id",
-                        "well_idx",
-                        "i_burst",
-                        # "well_id",
-                        "start_orig",
-                        "time_orig",
-                    ]
-                ]
-            )
-        case _:
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
+    _title_category_list = burst_index_names + ("start_orig", "time_orig")
+    title = (
+        "Burst shape for "
+        + ", ".join(
+            [f"{key}: {value}" for key, value in zip(burst_index_names, burst_idx)]
+        )
+        + ", "
+        + ", ".join(
+            [
+                f"{key}: {df_bursts.at[burst_idx, key]}"
+                for key in ["start_orig", "time_orig"]
+            ]
+        )
+    )
+
     timeseries_fig = px.line(
-        df_bursts.iloc[point_index]["burst"],
+        df_bursts.at[burst_idx, "burst"],
         title=title,
         line_shape="linear",
         line_dash_sequence=["solid"],
@@ -686,87 +624,28 @@ def update_timeseries(tsne_click_data, firing_rate_click_data, n_clusters_curren
     ],
     prevent_initial_call=True,
 )
-def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
+def _update_raster_plot(
+    embedding_click_data, firing_rate_click_data, n_clusters_current
+):
     ctx = dash.callback_context
     if ctx.triggered[0]["prop_id"].split(".")[0] == ID_FIRING_RATE:
         selected_data = firing_rate_click_data
     else:
-        selected_data = tsne_click_data
+        selected_data = embedding_click_data
     if selected_data is None:
         return px.line(pd.DataFrame(), title="Select a point to view time series")
 
     # Extract index of selected point
     if "customdata" in selected_data["points"][0]:
-        point_index = selected_data["points"][0]["customdata"][0]
+        burst_idx = selected_data["points"][0]["customdata"][0]
+        burst_idx = tuple(burst_idx)
     else:
         return dash.no_update, dash.no_update
 
-    match dataset:
-        case "wagenaar":
-            batch, culture, day = list(
-                df_bursts.iloc[point_index][["batch", "culture", "day"]]
-            )
-            idx = (batch, culture, day)
-            title_firing_rate = (
-                f"Firing rate for batch {batch}, culture {culture}, day {day}"
-            )
-        case "kapucu":
-            culture_type, mea_number, well_id, div_day = list(
-                df_bursts.iloc[point_index][
-                    ["culture_type", "mea_number", "well_id", "DIV"]
-                ]
-            )
-            idx = (culture_type, mea_number, well_id, div_day)
-            df_plot = df_bursts[
-                (df_bursts["culture_type"] == culture_type)
-                & (df_bursts["mea_number"] == mea_number)
-                & (df_bursts["well_id"] == well_id)
-                & (df_bursts["DIV"] == div_day)
-            ]
-            title_firing_rate = (
-                f"Firing rate for {culture_type} {mea_number}, {well_id}, DIV {div_day}"
-            )
-        case "hommersom_test":
-            batch, clone, well_idx = list(
-                df_bursts.iloc[point_index][["batch", "clone", "well_idx"]]
-            )
-            idx = (batch, clone, well_idx)
-            df_plot = df_bursts[
-                (df_bursts["batch"] == batch)
-                & (df_bursts["clone"] == clone)
-                & (df_bursts["well_idx"] == well_idx)
-            ]
-            title_firing_rate = f"Firing rate for {batch} {clone}, well {well_idx}"
-        case "inhibblock":
-            drug_label, div, well_idx = list(
-                df_bursts.iloc[point_index][["drug_label", "div", "well_idx"]]
-            )
-            idx = (drug_label, div, well_idx)
-            df_plot = df_bursts[
-                (df_bursts["drug_label"] == drug_label)
-                & (df_bursts["div"] == div)
-                & (df_bursts["well_idx"] == well_idx)
-            ]
-            title_firing_rate = (
-                f"Firing rate for {drug_label}, div {div}, well {well_idx}"
-            )
-        case "mossink":
-            group, subject_id, well_idx = list(
-                df_bursts.iloc[point_index][["group", "subject_id", "well_idx"]]
-            )
-            idx = (group, subject_id, well_idx)
-            df_plot = df_bursts[
-                (df_bursts["group"] == group)
-                & (df_bursts["subject_id"] == subject_id)
-                & (df_bursts["well_idx"] == well_idx)
-            ]
-            title_firing_rate = (
-                f"Firing rate for {group}, subject {subject_id}, well {well_idx}"
-            )
-        case _:
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
+    df_plot = df_bursts.loc[(*burst_idx[:-1], slice(None))]
+    title_firing_rate = f"FIring rate for {burst_idx} {burst_index_names}"
 
-    st, gid = get_spike_times_in_milliseconds(df_cultures, idx, dataset)
+    st, gid = get_spike_times_in_milliseconds(df_cultures, burst_idx[:-1], dataset)
 
     # trace of firing rate
     bin_size = 100  # ms
@@ -775,8 +654,8 @@ def update_raster(tsne_click_data, firing_rate_click_data, n_clusters_current):
     times_all = 0.5 * (times_all[1:] + times_all[:-1])
 
     # cut out a window around the burst
-    start_orig = df_bursts.iloc[point_index]["start_orig"]
-    duration = df_bursts.iloc[point_index]["time_orig"]
+    start_orig = df_bursts.at[burst_idx, "start_orig"]
+    duration = df_bursts.at[burst_idx, "time_orig"]
     start = start_orig - max(800, duration)
     end = start_orig + max(2000, 2 * duration)
     # if start_orig + duration > end:
