@@ -20,6 +20,7 @@ Plots:
 """
 import os
 import re
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -54,13 +55,14 @@ special_target = False  # for mossink: if True chooses subjects as target instea
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_KS"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 clustering_params = get_chosen_spectral_embedding_params(dataset)
@@ -92,7 +94,7 @@ df_cultures, df_bursts, target_label = make_target_label(
 print("Target label", target_label)
 
 match dataset:
-    case "inhibblock" | "kapucu" | "wagenaar" | "hommersom" | "hommersom_binary":
+    case "inhibblock" | "kapucu" | "wagenaar" | "hommersom" | "hommersom_binary" | "mossink_KS":
         figsize = (6 * cm, 6 * cm)
     case "mossink":
         if special_target is True:
@@ -100,7 +102,8 @@ match dataset:
         else:
             figsize = (6 * cm, 6 * cm)
     case _:
-        raise NotImplementedError
+        figsize = (6 * cm, 6 * cm)
+        warnings.warn(f"Using default figsize {figsize} for dataset {dataset}.")
 
 # %% burst-level knn clustering
 (
@@ -207,6 +210,11 @@ match dataset:
             figsize = (10 * cm, 9 * cm)
         else:
             figsize = (10 * cm, 30 * cm)
+    case "mossink_KS" | "mossink_MELAS":
+        if plot_subset is True:
+            figsize = (8 * cm, 9 * cm)
+        else:
+            figsize = (8 * cm, 30 * cm)
     case _:
         figsize = (15, 12)
 
@@ -236,7 +244,7 @@ fig.show()
 fig.savefig(
     os.path.join(
         get_fig_folder(),
-        f"{dataset}_knn_clustering_predictions.svg",
+        f"{dataset}_knn_clustering_predictions{'_full' if plot_subset is False else ''}.svg",
     ),
     transparent=True,
 )
@@ -323,6 +331,40 @@ if dataset == "inhibblock":
             os.path.join(
                 get_fig_folder(),
                 f"{dataset}_knn_clustering_predictions_special_div_{div}.svg",
+            ),
+            transparent=True,
+        )
+# %% special plate layout for hommersom_binary data
+draw_rectangles = True
+if dataset == "hommersom_binary":
+    for batch in df_cultures.index.get_level_values("batch").unique():
+        df_cultures_special = df_cultures.reset_index()
+        df_cultures_special = df_cultures_special[df_cultures_special["batch"] == batch]
+        df_cultures_special["layout_column"] = df_cultures_special["well_string"].str[0]
+        df_cultures_special["layout_row"] = df_cultures_special["well_string"].str[1]
+        df_cultures_special.set_index(["layout_row", "layout_column"], inplace=True)
+
+        df_cultures_special, unique_batch_culture_special = prepare_df_cultures_layout(
+            df_cultures_special
+        )
+        fig, axs = plot_df_culture_layout(
+            df_cultures=df_cultures_special,
+            figsize=(2.5 * cm, 3 * cm),
+            dataset=dataset,
+            column_names="relative_votes",
+            colors=[
+                get_group_colors(dataset)[class_label] for class_label in class_labels
+            ],
+            unique_batch_culture=unique_batch_culture_special,
+        )
+
+        fig.tight_layout()
+        fig.subplots_adjust(wspace=-0.15, hspace=-0.15)
+        fig.show()
+        fig.savefig(
+            os.path.join(
+                get_fig_folder(),
+                f"{dataset}_knn_clustering_predictions_special_batch_{batch}.svg",
             ),
             transparent=True,
         )
