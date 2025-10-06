@@ -19,15 +19,18 @@ corresponding to [Schäfer et al., 2025, bioRxiv: Data-driven burst shape analys
 You can also try out the analysis pipeline without installing anything using the following online tools.
 
 ## Burst visualization
-For all recordings with burst detection. This is used for adjusting burst detection hyperparameters.
+[Try burst visualization (10s loading time)!](https://review-inhibblock-659951261078.europe-west1.run.app)
+This is used to visualize all recordings and for adjusting burst detection hyperparameters.
+
 <img src="figures/Figure_Suppl_interactive_tools/inhibblock_burst_review.png" width="500"/>
 
 ## Embedding visualization
-Visualizes spectral embeddings of individual burst shapes.
-This is used for exploring the burst shape space.
+[Try embedding visualization (10s loading time)!](https://embedding-inhibblock-659951261078.europe-west1.run.app)
+This is used for visualizing the spectral embedding (of individual burst shapes) and exploring this burst shape space.
+
 <img src="figures/Figure_Suppl_interactive_tools/inhibblock_embedding.png" width="500"/>
 
-## Links to online tools
+## Links for other datasets
 <ul style="display: inline-block; text-align: left;">
     <li>Blocked inhibition --- Bicuculline (data: <a href="https://doi.org/10.1101/2024.08.21.608974" target="_blank">Vinogradov et al., 2024</a>)</li>
         <ul>
