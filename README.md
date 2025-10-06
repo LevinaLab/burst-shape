@@ -19,13 +19,13 @@ corresponding to [Schäfer et al., 2025, bioRxiv: Data-driven burst shape analys
 You can also try out the analysis pipeline without installing anything using the following online tools.
 
 ## Burst visualization
-[Try burst visualization (10s loading time)!](https://review-inhibblock-659951261078.europe-west1.run.app)
+<a href="https://review-inhibblock-659951261078.europe-west1.run.app" target="_blank">Try burst visualization (10s loading time)!</a>
 This is used to visualize all recordings and for adjusting burst detection hyperparameters.
 
 <img src="figures/Figure_Suppl_interactive_tools/inhibblock_burst_review.png" width="500"/>
 
 ## Embedding visualization
-[Try embedding visualization (10s loading time)!](https://embedding-inhibblock-659951261078.europe-west1.run.app)
+<a href="https://embedding-inhibblock-659951261078.europe-west1.run.app" target="_blank">Try embedding visualization (10s loading time)!</a>
 This is used for visualizing the spectral embedding (of individual burst shapes) and exploring this burst shape space.
 
 <img src="figures/Figure_Suppl_interactive_tools/inhibblock_embedding.png" width="500"/>
