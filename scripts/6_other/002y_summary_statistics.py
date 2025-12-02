@@ -6,7 +6,7 @@ Print it in a table that can be copy-pasted to latex.
 """
 import pandas as pd
 
-from src.persistence import load_df_cultures
+from src.persistence import load_df_bursts, load_df_cultures
 from src.settings import get_dataset_from_burst_extraction_params
 
 burst_extraction_params_list = [
@@ -14,7 +14,7 @@ burst_extraction_params_list = [
     "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
     "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30",
     "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4",
-    "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4",
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4",
     # "burst_dataset_mossink_KS",
     # "burst_dataset_mossink_MELAS",
 ]
@@ -24,6 +24,8 @@ for burst_extraction_params in burst_extraction_params_list:
     dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
     print(f"Processing dataset: {dataset}")
     df_cultures = load_df_cultures(burst_extraction_params)
+    df_bursts = load_df_bursts(burst_extraction_params)
+
     statistics_list.append(
         {
             "dataset": dataset,
@@ -34,6 +36,16 @@ for burst_extraction_params in burst_extraction_params_list:
             .max()
             / 1000
             / 60,  # convert to minutes
+            "min_duration": df_bursts["time_orig"].min(),
+            "max_duration": df_bursts["time_orig"].max(),
+            "duration_quantiles": df_bursts["time_orig"]
+            .quantile([0.1, 0.5, 0.9])
+            .to_list(),
+            "min_firing_rate": df_bursts["firing_rate"].min(),
+            "max_firing_rate": df_bursts["firing_rate"].max(),
+            "firing_rate_quantiles": df_bursts["firing_rate"]
+            .quantile([0.1, 0.5, 0.9])
+            .to_list(),
         }
     )
 

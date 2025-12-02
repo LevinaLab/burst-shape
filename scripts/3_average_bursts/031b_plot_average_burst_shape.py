@@ -41,11 +41,11 @@ burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_KS"
+    # "burst_dataset_mossink_KS"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
@@ -60,8 +60,8 @@ df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
     avg_burst=pd.NamedAgg(column="burst", aggfunc="mean")
 )
 df_cultures = df_cultures[df_cultures["n_bursts"] > 0]
-df_cultures, target_label = make_target_label(
-    dataset, df_cultures, special_target=False
+df_cultures, df_bursts, target_label = make_target_label(
+    dataset, df_cultures, df_bursts, special_target=False
 )
 
 # %% plot average burst shape per group
@@ -110,9 +110,7 @@ for i, group in enumerate(df_cultures["target_label"].unique()):
                         edgecolor=None,
                     )
         case "bursts":
-            df_bursts_group = df_bursts[
-                df_bursts.index.get_level_values("target_label") == group
-            ]["burst"]
+            df_bursts_group = df_bursts[df_bursts["target_label"] == group]["burst"]
             for value in df_bursts_group:
                 ax.plot(value, color=color, alpha=0.01, linewidth=0.5, zorder=1)
         case _:
@@ -131,12 +129,15 @@ ax.set_xticks([0, 25, 40, 50])
 ax.set_xticklabels([0, 0.5, 0.8, 1])
 ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
 if dataset != "wagenaar":
-    ax.legend(
+    leg = ax.legend(
         frameon=False,
         loc="upper left",
         bbox_to_anchor=(0.9, 1.2),
         handlelength=1,
     )
+    for line, text in zip(leg.get_lines(), leg.get_texts()):
+        if text.get_text() == "CACNA1A":
+            text.set_fontstyle("italic")
 # plot vertical line indicating peaks, decay measurement location
 match dataset:
     case "inhibblock":
@@ -197,8 +198,8 @@ def _run_group_comparison(df_cultures, compare_column, plot_significance=True):
         f_stat, p_val = stats.f_oneway(*values)
         print("Run f_oneway")
         return_values = (f_stat, p_val)
-    fig, ax = plt.subplots(figsize=(4 * cm, 5 * cm), constrained_layout=True)
-    ax.set_position([0.5, 0.2, 0.4, 0.7])
+    fig, ax = plt.subplots(figsize=(2.6 * cm, 5 * cm), constrained_layout=True)
+    ax.set_position([0.55, 0.2, 0.4, 0.7])
     sns.despine()
     sns.boxplot(
         data=df_cultures.reset_index(),
@@ -217,6 +218,8 @@ def _run_group_comparison(df_cultures, compare_column, plot_significance=True):
     )
     for i, label in enumerate(ax.get_xticklabels()):
         label.set_y(label.get_position()[1] - 0.1 * (i % 2))
+        if label.get_text() == "CACNA1A":
+            label.set_fontstyle("italic")
     if plot_significance is True:
         label_sig_diff(
             ax,

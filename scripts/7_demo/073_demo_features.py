@@ -10,6 +10,9 @@ from src.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 
+color_shape = "C3"  # "#00AA00"
+color_traditional = "grey"  # "#800000"
+
 # parameters which clustering to plot
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
@@ -127,9 +130,11 @@ sns.despine(ax=ax, left=True, bottom=True)
 ax.plot(t_values, firing_rate, color="black")
 for start, end in burst_start_end:
     selection = (t_values >= start) & (t_values <= end)
-    ax.plot(t_values[selection], firing_rate[selection], color="#008000")
-ax.axhline(mean_firing_rate, color="#AA0000", linestyle="--", label="mean")
-ax.axhline(burst_spike_rate, color="#AA0000", linestyle="--", label="burst spike rate")
+    ax.plot(t_values[selection], firing_rate[selection], color=color_shape)
+ax.axhline(mean_firing_rate, color=color_traditional, linestyle="--", label="mean")
+ax.axhline(
+    burst_spike_rate, color=color_traditional, linestyle="--", label="burst spike rate"
+)
 # ax.set_xlabel("Time [s]")
 # ax.set_ylabel("Firing rate [Hz]")
 ax.set_yticks([])
@@ -141,10 +146,10 @@ ax_burst.set_xticks([])
 ax_burst.set_yticks([])
 for start, end in burst_start_end[-1:]:
     # Draw burst line
-    ax_burst.plot([start, end], [0.5, 0.5], color="#AA0000", lw=1)
+    ax_burst.plot([start, end], [0.5, 0.5], color=color_traditional, lw=1)
     # Draw whiskers
-    ax_burst.plot([start, start], [0.3, 0.7], color="#AA0000", lw=1)
-    ax_burst.plot([end, end], [0.3, 0.7], color="#AA0000", lw=1)
+    ax_burst.plot([start, start], [0.3, 0.7], color=color_traditional, lw=1)
+    ax_burst.plot([end, end], [0.3, 0.7], color=color_traditional, lw=1)
 
 for start, end in burst_start_end:
     for ax in axs:
@@ -159,17 +164,17 @@ savefig(
 # %%
 fig, ax = plt.subplots(
     constrained_layout=True,
-    figsize=(3.5 * cm, 4 * cm),
+    figsize=(3.5 * cm, 3.5 * cm),
 )
 sns.despine()
 matplotlib.rcParams["hatch.linewidth"] = 4
 bars = ax.bar(
     [0, 1, 2],
-    [0.6, 0.8, 1],
-    color=["#AA0000", "#008000", "#008000"],
+    [0.887, 0.917, 0.994],
+    color=[color_traditional, color_shape, color_shape],
     fill=True,
     alpha=0.5,
-    edgecolor=["#AA0000", "#008000", "#AA0000"],
+    edgecolor=[color_traditional, color_shape, color_traditional],
     hatch=["", "", "//"],
     linewidth=2,
 )
@@ -177,9 +182,10 @@ bars = ax.bar(
 ax.set_xticks([0, 1, 2])
 ax.set_xticklabels(["Traditional", "Burst shape", "Combined"], rotation=0, ha="center")
 label_trad, label_shape, label_combined = ax.get_xticklabels()
-label_trad.set_color("#AA0000")
-label_shape.set_color("#008000")
+label_trad.set_color(color_traditional)
+label_shape.set_color(color_shape)
 label_shape.set_y(-0.14)
+ax.set_ylim(0.5, 1)
 ax.set_yticks([])
 ax.set_ylabel("Accuracy")
 fig.show()

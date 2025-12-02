@@ -27,9 +27,6 @@ params_burst_extraction = {
     "pad_right": False,
     "normalization": "integral",
     "min_length": 30,
-    # "min_firing_rate": 1585,  #  10 ** 3.2
-    # "smoothing_kernel": 4,
-    # TODO consider a minimum starting time
 }
 
 

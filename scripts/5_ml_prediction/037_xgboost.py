@@ -57,6 +57,8 @@ cv_type = (
 random_state = 1234567890
 n_splits = 100
 
+spectral_embedding_dims_list = np.arange(1, 21)
+
 burst_extraction_params = (
     # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
@@ -81,11 +83,11 @@ print(f"Dataset:\t\t{dataset}\nTarget label:\t{target_label}")
 
 # %% get embedding coordinates
 spectral_clustering_params = get_chosen_spectral_embedding_params(dataset)
+n_spectral_dims_max = max(spectral_embedding_dims_list)
 spectral_embedding = load_spectral_embedding(
-    burst_extraction_params, spectral_clustering_params
+    burst_extraction_params, spectral_clustering_params, n_dims=n_spectral_dims_max
 )
-n_spectral_dims = spectral_embedding.shape[1]
-for i_dim in range(n_spectral_dims):
+for i_dim in range(n_spectral_dims_max):
     name_dim = f"shape_{i_dim + 1}"
     df_bursts[name_dim] = spectral_embedding[:, i_dim]
     df_cultures[name_dim] = pd.Series(dtype=float)
@@ -152,16 +154,18 @@ df_cultures, shape_manual_features = _get_manual_shape_features(
 )
 
 # %% define feature sets
-shape_features = [f"shape_{i_dim + 1}" for i_dim in range(n_spectral_dims)]
+shape_features = [f"shape_{i_dim + 1}" for i_dim in range(n_spectral_dims_max)]
 # classical features
-all_features = shape_features + classical_features
+all_features = shape_features[:2] + classical_features
 
 feature_dict = {
     "combined": all_features,
-    "shape": shape_features,
+    # "shape": shape_features,
     "traditional": classical_features,
     "shape_manual": shape_manual_features,
 }
+for n_spectral_dims in spectral_embedding_dims_list:
+    feature_dict[f"shape_{n_spectral_dims}D"] = shape_features[:n_spectral_dims]
 # %% prediction with xgboost
 for feature_set_name, features in feature_dict.items():
     # Encode target labels

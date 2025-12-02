@@ -78,6 +78,7 @@ column_burst_shapes = "burst_shape_absolute_mean"
 x_values = (bins[:-1] + bins[1:]) / 2  # center of bins
 
 figsize = (7 * cm, 3.5 * cm)
+plot_mean = False
 background = [None, "recordings"][1]
 element = ["lines", "std", "3sem"][2]
 fig, ax = plt.subplots(figsize=(8 * cm, 3.5 * cm), constrained_layout=True)
@@ -122,18 +123,22 @@ for i, group in enumerate(df_cultures["target_label"].unique()):
                     )
         case _:
             pass
-    ax.plot(
-        x_values,
-        df_group.mean(),
-        color=color,
-        linewidth=1,
-        label=get_group_labels(dataset, group),
-    )
+    if plot_mean is True:
+        ax.plot(
+            x_values,
+            df_group.mean(),
+            color=color,
+            linewidth=1,
+            label=get_group_labels(dataset, group),
+        )
+if plot_mean is True:
+    ax.set_xlim(start_offset, max_duration)
+else:
+    pass
 ax.set_xlabel("Time [ms]")
 ax.set_ylabel("Firing rate [Hz]")
 ax.yaxis.set_label_coords(-0.4, 0.4)
 # ax.yaxis.set_label_coords(-0.32, 0.4)
-ax.set_xlim(start_offset, max_duration)
 # ax.axvline(0, color="k", linestyle="--", linewidth=0.5)
 # ax.set_xticks([0, 25, 50])
 if dataset != "wagenaar":

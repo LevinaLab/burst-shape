@@ -203,10 +203,10 @@ for file_type in ["pdf", "svg"]:
 dataset_map = {
     "inhibblock": "Blocked inhib.",
     "hommersom_binary": "CACNA1A",
-    "wagenaar": "Wagenaar",
+    "wagenaar": "Rat Cortex",
     "kapucu": "Rat vs hPSC",
     "mossink": "hPSC disease",
-    "mossink_KS": "KS iPSC",
+    "mossink_KS": "Kleefstra",
 }
 df_shape_share["dataset_label"] = df_shape_share["dataset"].map(dataset_map)
 
@@ -217,14 +217,19 @@ datasets_order = [
         "hommersom_binary",
         "mossink_KS",
         "wagenaar",
-        "kapucu",
+        # "kapucu",
     ]
 ]
 
-fig, ax = plt.subplots(figsize=(5.5 * cm, 3.5 * cm), constrained_layout=True)
-ax.xaxis.set_ticks_position("top")
-ax.xaxis.set_label_position("top")
-sns.despine(bottom=True, top=False)
+axis_on_top = False
+
+fig, ax = plt.subplots(figsize=(5 * cm, 2.5 * cm), constrained_layout=True)
+if axis_on_top:
+    ax.xaxis.set_ticks_position("top")
+    ax.xaxis.set_label_position("top")
+    sns.despine(bottom=True, top=False)
+else:
+    sns.despine()
 sns.barplot(
     data=df_shape_share,
     y="dataset_label",
@@ -241,9 +246,13 @@ sns.barplot(
 ax.set_xlim(0, 1)
 ax.axvline(x=1, color="k", linestyle="--", linewidth=1)
 ax.axvline(x=0.5, color="k", linestyle="--", linewidth=1)
-ax.set_xticks([0, 0.5, 1])
-ax.set_xticklabels([0.0, 0.5, 1.0])
-ax.set_xlabel("Share of shape\nimportance")
+ax.axvline(x=2 / 7, color="k", linestyle="--", linewidth=1)
+ax.set_xticks([0, 2 / 7, 0.5, 1])
+ax.set_xticklabels([0.0, 0.28, 0.5, 1.0])
+ax.set_xlabel("Share of shape importance")
+for label in ax.get_yticklabels():
+    if label.get_text() == "CACNA1A":
+        label.set_fontstyle("italic")
 ax.set_ylabel("")
 fig.show()
 for file_type in ["pdf", "svg"]:

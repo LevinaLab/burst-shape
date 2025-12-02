@@ -38,12 +38,13 @@ metric = (
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_mossink_KS"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
@@ -356,6 +357,7 @@ def _plot_distance_distributions(
                 distribution2,
             )
             print(test_t_ind)
+            print(test_mannwhitneyu)
             if plot_statistical_test:
                 if isinstance(test_t_ind, Iterable):
                     if (i, j) in plot_statistical_test:
@@ -624,11 +626,17 @@ match dataset:
         fig, ax = _plot_distance_distributions(
             [
                 similarity_random,
+                pd.concat(similarity_subject_pair),
+                pd.concat(similarity_subject_pair[:2]),  # only KS pairs
+                pd.concat(similarity_subject_pair[2:]),  # only MELAS pairs
                 *similarity_subject_pair,
             ],
             (6 * cm, 6 * cm),
             [
                 "random",
+                "isogenic pairs",
+                "KS pairs",
+                "MELAS pairs",
                 *[f"{key}-{value}" for key, value in _isogenic_map.items()],
             ],
             xtick_labels_args={"rotation": 45, "ha": "right"},
@@ -637,6 +645,32 @@ match dataset:
         savefig(fig, f"{dataset}_distances_{metric}_pairs", file_format=["pdf", "svg"])
 
         print("\nisogenic pairs reduced")
+        fig, ax = _plot_distance_distributions(
+            [
+                similarity_random,
+                pd.concat(similarity_subject_pair[2:]),  # only MELAS pairs
+                pd.concat(similarity_subject_pair[:2]),  # only KS pairs
+            ],
+            (4 * cm, 6 * cm),
+            [
+                "Random",
+                "MELAS pairs",
+                "KS pairs",
+            ],
+            xtick_labels_args={"rotation": 45, "ha": "right"},
+            y_min=None,
+            plot_statistical_test=[(0, 1), (0, 2)],
+            plot_stats_lims=(2, 4.3),
+        )
+        ax.set_position([0.35, 0.5, 0.6, 0.45])
+        fig.show()
+        savefig(
+            fig,
+            f"{dataset}_distances_{metric}_pairs_reduced",
+            file_format=["pdf", "svg"],
+        )
+
+        print("\nisogenic pairs melas")
         fig, ax = _plot_distance_distributions(
             [
                 similarity_between_group,
@@ -659,9 +693,46 @@ match dataset:
         fig.show()
         savefig(
             fig,
-            f"{dataset}_distances_{metric}_pairs_reduced",
+            f"{dataset}_distances_{metric}_pairs_MELAS",
             file_format=["pdf", "svg"],
         )
+    case "mossink_KS":
+        similarity_random = _select_distances(df_distance_matrix)
+        similarity_in_group = _select_distances(
+            df_distance_matrix,
+            column_separate_combo=["group"],
+        )
+        similarity_between_group = _select_distances(
+            df_distance_matrix,
+            column_comparison_combo=["group"],
+        )
+        similarity_in_subject = _select_distances(
+            df_distance_matrix,
+            column_separate_combo=["group", "subject_id"],
+        )
+        fig, ax = _plot_distance_distributions(
+            [
+                similarity_random,
+                similarity_in_group,
+                similarity_in_subject,
+            ],
+            (5 * cm, 6 * cm),
+            [
+                "Random",
+                "Group",
+                "Subject",
+            ],
+            xtick_labels_args={"rotation": 45, "ha": "right"},
+            y_min=None,
+            plot_statistical_test=[(0, 1), (1, 2)],
+            plot_stats_lims=(2.5, 4),
+        )
+        ax.set_position([0.4, 0.5, 0.65, 0.45])
+        fig.show()
+        savefig(
+            fig, f"{dataset}_distances_{metric}_reduced", file_format=["pdf", "svg"]
+        )
+
     case "hommersom_binary":
         df_cultures_metadata = load_df_cultures(burst_extraction_params)
         df_cultures_metadata = df_cultures_metadata[
