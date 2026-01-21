@@ -40,6 +40,8 @@ def make_target_label(
                 target_label = "group"
         case "hommersom" | "hommersom_binary":
             target_label = "group"
+        case "human_slice":
+            target_label = "label"
         case _:
             raise NotImplementedError(
                 f"Target label is not implemented for dataset {dataset}."

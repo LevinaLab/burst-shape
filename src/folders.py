@@ -10,6 +10,8 @@ _data_hommersom_folder = "data_hommersom"
 _data_hommersom_binary_folder = "data_hommersom_binary"
 _data_inhibblock_folder = "data_inhibblock"
 _data_mossink_folder = "data_mossink"
+_data_organoid_folder = "data_organoid"
+_data_human_slice = "data_human_slice"
 _fig_folder = "figures"
 _results_folder = "results"
 
@@ -76,6 +78,23 @@ def get_data_mossink_folder():
     """
     return os.path.join(get_data_folder(), _data_mossink_folder)
 
+
+def get_data_organoid_folder():
+    """Returns the path to the organoid data folder.
+
+    Returns:
+        str: path to the organoid data folder
+    """
+    return os.path.join(get_data_folder(), _data_organoid_folder)
+
+
+def get_data_human_slice_folder():
+    """Returns the path to the human slice data folder.
+
+    Returns:
+        str: path to the human slice data folder
+    """
+    return os.path.join(get_data_folder(), _data_human_slice)
 
 def get_fig_folder():
     """Returns the path to the figure folder.

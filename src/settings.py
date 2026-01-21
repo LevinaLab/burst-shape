@@ -21,6 +21,8 @@ def get_dataset_from_burst_extraction_params(burst_extraction_params):
             dataset = "mossink"
         elif "hommersom" in burst_extraction_params:
             dataset = "hommersom"
+        elif "human_slice" in burst_extraction_params:
+            dataset = "human_slice"
         else:
             assert (
                 "dataset" not in burst_extraction_params
