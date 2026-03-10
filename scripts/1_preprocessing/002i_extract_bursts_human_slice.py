@@ -34,7 +34,7 @@ params_burst_extraction = {
 
 def _construct_df_cultures():
     return pd.read_pickle(
-        os.path.join(get_data_human_slice_folder(), "df_package1.pkl")
+        os.path.join(get_data_human_slice_folder(), "df_human_slice.pkl")
     )
 
 
