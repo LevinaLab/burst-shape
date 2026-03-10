@@ -22,6 +22,7 @@ def get_spike_times_in_seconds(df_cultures, idx, dataset):
             | "hommersom_test"
             | "inhibblock"
             | "mossink"
+            | "human_slice"
         ):
             st = df_cultures.at[idx, "times"]
             gid = df_cultures.at[idx, "gid"]
