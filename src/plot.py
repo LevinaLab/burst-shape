@@ -114,6 +114,8 @@ def get_group_colors(dataset):
             return get_hommersom_colors()
         case "hommersom_binary":
             return get_hommersom_binary_colors()
+        case "human_slice":
+            return get_human_slice_colors()
         case _:
             return None
 
@@ -187,6 +189,25 @@ def get_hommersom_binary_colors():
     label_color_dict = {
         "Control": "#7f7f7f",  # "#0fff00",  # "#d62728",
         "CACNA1A": "#C87533",  # "#DAA520",  # "#1A75A1",
+    }
+    return label_color_dict
+
+
+def get_human_slice_colors():
+    label_color_dict = {
+        "Spont1": "grey",
+        "Spont2": "black",
+        "HighK_Spont1": "orange",
+        "HighK_Spont2": "red",
+        "HighK_Gabazine_Spont1": "lightblue",
+        "HighK_Gabazine_Spont2": "blue",
+        "Gabazine_Spont1": "lightgreen",
+        "test": "lightgrey",
+        "C602µM_Spont1": "purple",
+        "C60_2uM_Spont2": "darkviolet",
+        "LEV_100uM_Spont1": "pink",
+        "LEV_400uM_Spont1": "magenta",
+        "LEV_800uM_Spont1": "deeppink",
     }
     return label_color_dict
 

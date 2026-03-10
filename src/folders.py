@@ -96,6 +96,7 @@ def get_data_human_slice_folder():
     """
     return os.path.join(get_data_folder(), _data_human_slice)
 
+
 def get_fig_folder():
     """Returns the path to the figure folder.
 
