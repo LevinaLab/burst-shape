@@ -21,11 +21,19 @@ def get_dataset_from_burst_extraction_params(burst_extraction_params):
             dataset = "mossink"
         elif "hommersom" in burst_extraction_params:
             dataset = "hommersom"
-        else:
-            assert (
-                "dataset" not in burst_extraction_params
-            ), "Dataset is currently unknown. Please add it to this function."
+        elif "wagenaar" in burst_extraction_params:
             dataset = "wagenaar"
+        else:
+            if "dataset" in burst_extraction_params:
+                raise NotImplementedError(
+                    "Dataset is currently unknown. Please add it to this function. "
+                    f"Your params: {burst_extraction_params}"
+                )
+            else:
+                raise NotImplementedError(
+                    "Not specifying the dataset in burst_extraction_params "
+                    "is deprecated. Please specify it."
+                )
         return dataset
 
 

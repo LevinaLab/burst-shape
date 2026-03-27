@@ -17,7 +17,7 @@ from src.persistence.burst_extraction import _get_burst_folder
 
 
 def get_sequence_df():
-    burst_extraction_params = "burst_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
     agglomerating_clustering_params = (
         "agglomerating_clustering_linkage_complete_n_bursts_None"
     )

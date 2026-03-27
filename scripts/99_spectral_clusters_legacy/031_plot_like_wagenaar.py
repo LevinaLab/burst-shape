@@ -12,7 +12,7 @@ n_clusters = 8
 col_cluster = f"cluster_{n_clusters}"
 
 # parameters which clustering to plot
-burst_extraction_params = "burst_n_bins_50_normalization_integral"
+burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral"
 clustering_params = "spectral_affinity_precomputed_metric_wasserstein"
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
