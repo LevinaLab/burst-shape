@@ -1,0 +1,43 @@
+[project]
+name = "burst-shape"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dash~=2.18.2",
+    "dash-extensions~=1.0.20",
+    "flask==3.0.3",
+    "gunicorn==23.0.0",
+    "matplotlib>=3.10.8",
+    "met-brewer~=1.0.2",
+    "numba>=0.65.0",
+    "numpy>=2.4.4",
+    "pandas>=3.0.2",
+    "plotly-resampler~=0.10.0",
+    "ray>=2.54.1",
+    "scikit-learn>=1.8.0",
+    "scipy>=1.17.1",
+    "seaborn>=0.13.2",
+    "setuptools~=68.2.2",
+    "tqdm~=4.66.1",
+    "werkzeug==3.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "ruff>=0.15",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+# Enable Pyflakes (F), pycodestyle (E, W), isort (I), and bugbear (B)
+select = ["E", "F", "W", "I", "B"] # "UP"
+# ignore = ["E203"] # black compatibility
+
+[tool.ruff.format]
+quote-style = "double" # match black behavior
