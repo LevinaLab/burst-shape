@@ -19,7 +19,7 @@ from src.persistence import (
     load_df_cultures,
     load_spectral_embedding,
 )
-from src.plot import label_sig_diff, prepare_plotting, savefig
+from src.plot import label_sig_diff, prepare_plotting, savefig, get_group_colors
 from src.prediction.knn_clustering import get_recording_mask
 from src.settings import (
     get_chosen_spectral_clustering_params,
@@ -38,13 +38,13 @@ metric = (
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_KS"
+    # "burst_dataset_mossink_KS"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
@@ -177,6 +177,7 @@ def _select_distances(
     column_separate_combo: List[str] = None,
     column_comparison_combo: List[str] = None,
     column_day_to_day: str = None,
+    day_to_day_absolute: bool = True,
     special_function=None,
     special_columns: List[str] = None,
 ):
@@ -194,6 +195,7 @@ def _select_distances(
         should be selected from the distance matrix (between-group distances).
     :param column_day_to_day: column for which consecutive samples' distances should be considered.
         This column must have an order.
+    :param day_to_day_absolute: consider day before and day after, if True only day after
     :return: df_selected_distances: dataframe with subsampled distances.
         It has the same index as df_distance_matrix.
         It has a single column "distances" that contains all the selected distances as a list.
@@ -230,11 +232,13 @@ def _select_distances(
         unique_days = df_pairs[("i", column_day_to_day)].unique()
         unique_days.sort()
         day_map = {day: i for i, day in enumerate(unique_days)}
-        day_diff = (
-            df_pairs[("i", column_day_to_day)].map(day_map)
-            - df_pairs[("j", column_day_to_day)].map(day_map)
-        ).abs()
-        df_pairs[("filter", column_day_to_day)] = day_diff == 1
+        day_diff = df_pairs[("i", column_day_to_day)].map(day_map) - df_pairs[
+            ("j", column_day_to_day)
+        ].map(day_map)
+        if day_to_day_absolute is True:
+            df_pairs[("filter", column_day_to_day)] = day_diff.abs() == 1
+        else:
+            df_pairs[("filter", column_day_to_day)] = day_diff == 1
 
     if special_function:
         df_pairs[("filter", "special_function")] = special_function(
@@ -499,6 +503,124 @@ match dataset:
         ax.set_position([0.3, 0.5, 0.65, 0.45])
         fig.show()
         savefig(fig, f"{dataset}_distances_{metric}", file_format=["pdf", "svg"])
+
+        # supplementary/revision: plot day-to-day distances over time
+        fig, ax = plt.subplots(figsize=(8 * cm, 6 * cm), constrained_layout=True)
+        sns.despine()
+        # individual cultures
+        for batch, culture in (
+            similarity_day_to_day.reset_index()[["batch", "culture"]]
+            .drop_duplicates()
+            .values
+        ):
+            # similarity_day_to_day.loc[(2,4,slice(None))].sort_index()
+            data_plot = similarity_day_to_day.loc[
+                (batch, culture, slice(None))
+            ].sort_index()
+            ax.plot(
+                data_plot.index,
+                data_plot["distances_avg"],
+                color=get_group_colors(dataset)[batch],
+                linestyle="--",
+                linewidth=1,
+            )
+        # batches
+        for batch in similarity_day_to_day.index.get_level_values("batch").unique():
+            data_plot = (
+                similarity_day_to_day.loc[
+                    (batch, slice(None), slice(None)), "distances_avg"
+                ]
+                .groupby("day")
+                .mean()
+            )
+            ax.plot(
+                data_plot.index,
+                data_plot.values,
+                color=get_group_colors(dataset)[batch],
+                linestyle="-",
+                label=batch,
+            )
+        # overall
+        data_plot = similarity_day_to_day.groupby("day")["distances_avg"].median()
+        ax.errorbar(
+            data_plot.index,
+            data_plot.values,
+            yerr=similarity_day_to_day.groupby("day")["distances_avg"].sem().values,
+            color="k",
+        )
+        ax.axhline(y=data_plot.mean(), color="k", linestyle="--", label="overall mean")
+        ax.set_xlabel("DIV")
+        ax.set_ylabel("Day-over-day\nDistance")
+        fig.show()
+        savefig(
+            fig, f"{dataset}_distances_{metric}_development", file_format=["pdf", "svg"]
+        )
+
+        # supplementary/revision: plot day-to-day distances over time
+        # weekly data
+        df_tmp = df_cultures.reset_index()
+        df_tmp["week"] = (df_tmp["day"] // 7).astype(int)
+        index_week = df_tmp.set_index(["batch", "culture", "week", "day"]).index
+        del df_tmp
+        df_distance_matrix_week = pd.DataFrame(
+            df_distance_matrix.values,
+            index=index_week,
+            columns=index_week,
+        )
+        # average all values with same "batch", "culture", "week" combination
+        week_levels = ["batch", "culture", "week"]
+
+        df_distance_matrix_week = df_distance_matrix_week.groupby(
+            level=week_levels
+        ).mean()
+        df_distance_matrix_week = (
+            df_distance_matrix_week.T.groupby(level=week_levels).mean().T
+        )
+
+        similarity_week_to_week = _select_distances(
+            df_distance_matrix_week,
+            column_separate_combo=["batch", "culture"],
+            column_day_to_day="week",
+            day_to_day_absolute=False,
+        )
+
+        fig, ax = plt.subplots(figsize=(8 * cm, 6 * cm), constrained_layout=True)
+        sns.despine()
+        data_plot = similarity_week_to_week.groupby("week")["distances_avg"].median()
+        ax.errorbar(
+            data_plot.index - 0.5,
+            data_plot.values,
+            yerr=similarity_week_to_week.groupby("week")["distances_avg"].sem(),
+            color="k",
+        )
+        ax.set_xticks([1, 2, 3, 4])
+        ax.set_xlabel("Week")
+        ax.set_ylabel("Distance")
+        fig.show()
+        savefig(
+            fig,
+            f"{dataset}_distances_{metric}_development_week",
+            file_format=["pdf", "svg"],
+        )
+
+        """similarity_week_to_week = similarity_day_to_day.copy().reset_index()
+        similarity_week_to_week["week"] = similarity_week_to_week["day"].apply(lambda day: day // 7)
+        similarity_week_to_week.set_index(["batch", "culture", "week"], inplace=True)
+
+        fig, ax = plt.subplots(figsize=(8 * cm, 6 * cm), constrained_layout=True)
+        sns.despine()
+        data_plot = similarity_week_to_week.groupby("week")["distances_avg"].mean()
+        ax.errorbar(
+            data_plot.index,
+            data_plot.values,
+            yerr=similarity_week_to_week.groupby("week")["distances_avg"].sem().values,
+            color="k",
+        )
+        ax.axhline(y=data_plot.mean(), color="k", linestyle="--", label="overall mean")
+        ax.set_xticks([1,2,3,4])
+        ax.set_xlabel("Week")
+        ax.set_ylabel("Distance")
+        fig.show()"""
 
     case "mossink":
         # add additional info to the index to evaluate them in terms of distance/similarity
