@@ -6,6 +6,7 @@ It is no longer needed because the spectral embedding is implicitly
 calculated in spectral clustering.
 The one in spectral clustering is even better because it has more dimensions.
 """
+
 import warnings
 
 from matplotlib import pyplot as plt

@@ -5,6 +5,7 @@ There are several options for coloring the spectral embedding:
 - 'group' will color by group color (drug group, batches, ...)
 - 'cluster' will plot spectral clusters
 """
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

@@ -18,6 +18,7 @@ Plots:
 - confusion matrix of recording level prediction (often a lot better)
 - overview of predictions plotted as pie chart (fraction = fraction of votes)
 """
+
 import os
 import re
 import warnings
@@ -94,7 +95,14 @@ df_cultures, df_bursts, target_label = make_target_label(
 print("Target label", target_label)
 
 match dataset:
-    case "inhibblock" | "kapucu" | "wagenaar" | "hommersom" | "hommersom_binary" | "mossink_KS":
+    case (
+        "inhibblock"
+        | "kapucu"
+        | "wagenaar"
+        | "hommersom"
+        | "hommersom_binary"
+        | "mossink_KS"
+    ):
         figsize = (6 * cm, 6 * cm)
     case "mossink":
         if special_target is True:
@@ -177,7 +185,7 @@ fig.savefig(
 )
 
 print(
-    f'Accuracy: {np.mean(df_cultures["target_label"] == df_cultures["predicted_label"]):.2f}'
+    f"Accuracy: {np.mean(df_cultures['target_label'] == df_cultures['predicted_label']):.2f}"
 )
 print(f"Balanced accuracy: {matrix_confusion.diagonal().mean():.2f}")
 for i in range(1, min(len(class_labels) + 1, 5)):

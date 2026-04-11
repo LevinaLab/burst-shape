@@ -111,8 +111,8 @@ for i in range(ndims):
     for j in range(ndims):
         sns.scatterplot(
             df_bursts_test,
-            x=f"Spec.-Dim. {j+1}",
-            y=f"Spec.-Dim. {i+1}",
+            x=f"Spec.-Dim. {j + 1}",
+            y=f"Spec.-Dim. {i + 1}",
             s=0.3,
             alpha=0.5,
             ax=axs[i, j],

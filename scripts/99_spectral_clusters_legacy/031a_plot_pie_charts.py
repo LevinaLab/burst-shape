@@ -1,4 +1,5 @@
 """Visualize the burst cluster similar to the Figure 3 in Wagenaar et al. 2006."""
+
 import os
 
 import matplotlib.patches as patches

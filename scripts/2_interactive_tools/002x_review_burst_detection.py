@@ -6,6 +6,7 @@ It shows an overview of recordings indicating the number of detected bursts as a
 When clicking on a recording it shows the recording's spikes as raster plot and the firing rate.
 The detected bursts are highlighted with rectangles.
 """
+
 import os
 import warnings
 

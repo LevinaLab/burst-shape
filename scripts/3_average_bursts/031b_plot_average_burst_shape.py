@@ -7,6 +7,7 @@ Group average plot has several options for what to plot in the background:
 
 The overview of recording averages is plotted in the usual special layout.
 """
+
 import os
 
 import matplotlib.pyplot as plt

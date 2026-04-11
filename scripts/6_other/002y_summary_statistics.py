@@ -4,6 +4,7 @@ Print summary statistics for publication.
 Print summary statistics like number of recordings, bursts, ...
 Print it in a table that can be copy-pasted to latex.
 """
+
 import pandas as pd
 
 from src.persistence import load_df_bursts, load_df_cultures

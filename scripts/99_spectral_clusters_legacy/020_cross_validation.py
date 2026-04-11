@@ -116,14 +116,14 @@ match clustering_type:
                 else df_bursts.index[df_bursts[f"cv_{i_split}_train"]]
             )
             for n_clusters_ in n_clusters:
-                df_bursts.loc[
-                    idx_train, f"cluster_{n_clusters_}{cv_string}"
-                ] = get_agglomerative_labels(
-                    n_clusters_,
-                    burst_extraction_params,
-                    clustering_params,
-                    cv_params,
-                    i_split,
+                df_bursts.loc[idx_train, f"cluster_{n_clusters_}{cv_string}"] = (
+                    get_agglomerative_labels(
+                        n_clusters_,
+                        burst_extraction_params,
+                        clustering_params,
+                        cv_params,
+                        i_split,
+                    )
                 )
     case "spectral":
         for i_split in tqdm(

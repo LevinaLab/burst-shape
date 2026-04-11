@@ -44,7 +44,11 @@ match dataset:
         ax.axvline(np.log10(threshold), color="black", linestyle="--")
     case "hommersom_test":
         sns.histplot(
-            data=df_bursts, x="log_firing", bins=40, ax=ax, hue="clone"  # batch
+            data=df_bursts,
+            x="log_firing",
+            bins=40,
+            ax=ax,
+            hue="clone",  # batch
         )
         # threshold = 10 ** 3.2
         # ax.axvline(np.log10(threshold), color="black", linestyle="--")

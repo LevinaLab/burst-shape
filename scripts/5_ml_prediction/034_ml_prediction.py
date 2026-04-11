@@ -502,7 +502,7 @@ def _plot_ROC(select_data_column, pc_column_names):
             std_tpr,
             (balanced_accuracy, fpr_best, tpr_best),
         ) = _logistic_regression(train_column)
-        table_data[label] = f"{balanced_accuracy*100:.2f}"
+        table_data[label] = f"{balanced_accuracy * 100:.2f}"
         print(f"{label}:\t{balanced_accuracy:.4f}\t{fpr_best:.2f}\t{tpr_best:.2f}")
         ax.plot(
             mean_fpr, mean_tpr, color=color, lw=2, label=label, linestyle=linestyle
@@ -679,7 +679,7 @@ for i, (feature, accuracy) in enumerate(accuracies.items()):
     ax.set_yticks([])
     ax.set_xticklabels([])
     # ax.set_xlabel(f"{feature[:3]}\n{feature[4:]}\n{accuracy*100:.1f}%")
-    ax.set_title(_map_label(feature) + f"\n{accuracy*100:.1f}%", fontsize=10)
+    ax.set_title(_map_label(feature) + f"\n{accuracy * 100:.1f}%", fontsize=10)
     ax.set_xlabel("")
 
 axs[0].set_ylabel("Feature\nValue")

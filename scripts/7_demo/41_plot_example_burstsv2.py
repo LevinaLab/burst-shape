@@ -8,9 +8,7 @@ from scipy.cluster.hierarchy import fcluster
 from src.folders import get_results_folder
 from src.persistence import load_df_bursts
 
-burst_extraction_params = (
-    "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-)
+burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
 # load bursts df
 df_bursts = load_df_bursts(burst_extraction_params)
 # load labels

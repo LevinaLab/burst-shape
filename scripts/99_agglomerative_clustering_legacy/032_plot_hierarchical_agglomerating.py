@@ -1,4 +1,5 @@
 """Test hierarchical clustering with Wasserstein distance."""
+
 import os
 
 import matplotlib.pyplot as plt
@@ -50,7 +51,7 @@ palette = sns.color_palette(n_colors=n_clusters)  # "Set1", n_clusters)
 cluster_colors = [palette[i - 1] for i in range(1, n_clusters + 1)]
 # convert colors to string (hex format)
 cluster_colors = [
-    f"#{int(c[0]*255):02x}{int(c[1]*255):02x}{int(c[2]*255):02x}"
+    f"#{int(c[0] * 255):02x}{int(c[1] * 255):02x}{int(c[2] * 255):02x}"
     for c in cluster_colors
 ]
 

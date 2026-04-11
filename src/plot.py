@@ -50,7 +50,7 @@ def make_cluster_legend(n_clusters, n_cols, symbol):
     cluster_colors = get_cluster_colors(n_clusters)
 
     handles = []
-    labels = [f"{i+1}" for i in range(n_clusters)]
+    labels = [f"{i + 1}" for i in range(n_clusters)]
 
     for i in range(n_clusters):
         if symbol == "line":

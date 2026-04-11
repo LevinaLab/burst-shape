@@ -202,12 +202,12 @@ def _build_bursts_df(
                 end - start + extend_left + extend_right
             )
 
-    assert (
-        bin_size is not None or n_bins is not None
-    ), "Either bin_size or n_bins must be specified"
-    assert (
-        bin_size is None or n_bins is None
-    ), "Only one of bin_size and n_bins can be specified"
+    assert bin_size is not None or n_bins is not None, (
+        "Either bin_size or n_bins must be specified"
+    )
+    assert bin_size is None or n_bins is None, (
+        "Only one of bin_size and n_bins can be specified"
+    )
     for index in tqdm(df_cultures.index, desc="Extract bursts and bin them."):
         bursts_start_end = df_cultures.at[index, "burst_start_end"]
         if len(bursts_start_end) == 0:
@@ -278,9 +278,9 @@ def _build_bursts_df(
 
     # smooth bursts
     if smoothing_kernel is not None:
-        assert (
-            n_bins is not None
-        ), "n_bins must be specified if smoothing_kernel is not None"
+        assert n_bins is not None, (
+            "n_bins must be specified if smoothing_kernel is not None"
+        )
         print(f"Smooth bursts with kernel size {smoothing_kernel}")
         for index in tqdm(df_bursts.index, desc="Smooth bursts"):
             kernel_size_float = (

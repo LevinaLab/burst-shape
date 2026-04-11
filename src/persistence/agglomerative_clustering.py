@@ -16,9 +16,9 @@ def _agglomerative_clustering_params_to_str(agglomerative_clustering_params):
     if isinstance(agglomerative_clustering_params, dict):
         name = "agglomerating_clustering"
         for key, value in agglomerative_clustering_params.items():
-            assert (
-                key in _agglomerative_clustering_keys
-            ), f"key {key} not in {_agglomerative_clustering_keys}"
+            assert key in _agglomerative_clustering_keys, (
+                f"key {key} not in {_agglomerative_clustering_keys}"
+            )
             name += f"_{key}_{value}"
         return name
     elif isinstance(agglomerative_clustering_params, str):
