@@ -37,7 +37,7 @@ def get_dataset_from_burst_extraction_params(burst_extraction_params):
         return dataset
 
 
-def get_chosen_spectral_embedding_params(dataset):
+def get_chosen_spectral_embedding_params(dataset, **kwargs):
     match dataset:
         case "kapucu":
             clustering_params = (
@@ -77,10 +77,28 @@ def get_chosen_spectral_embedding_params(dataset):
             )
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented.")
+    if kwargs is not None:
+        for key, value in kwargs.items():
+            clustering_params = _replace_key_value_in_clustering_params(
+                clustering_params, key, value
+            )
     return clustering_params
 
 
-def get_chosen_spectral_clustering_params(dataset):
+def _replace_key_value_in_clustering_params(clustering_params, key, value):
+    spectral_clustering_params_split = clustering_params.split("_")
+    if key in spectral_clustering_params_split:
+        _position_key = spectral_clustering_params_split.index(key)
+        spectral_clustering_params_split[_position_key + 1] = value
+    else:
+        raise NotImplementedError("Adding key is not implemented.")
+        # must look up position in default dictionary and insert at that position
+
+    clustering_params = "_".join(spectral_clustering_params_split)
+    return clustering_params
+
+
+def get_chosen_spectral_clustering_params(dataset, **kwargs):
     match dataset:
         case "kapucu":
             n_clusters = 4
@@ -94,7 +112,7 @@ def get_chosen_spectral_clustering_params(dataset):
             n_clusters = 6
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented.")
-    clustering_params = get_chosen_spectral_embedding_params(dataset)
+    clustering_params = get_chosen_spectral_embedding_params(dataset, **kwargs)
     return clustering_params, n_clusters
 
 

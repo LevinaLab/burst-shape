@@ -17,35 +17,28 @@ def _wasserstein_distance(a, b):
 
 
 @ray.remote
-def _compute_connections_wasserstein(i, bursts, n_neighbors):
+def _compute_connections_rowwise(
+    i: int,
+    bursts: np.ndarray,
+    n_neighbors: int,
+    distance_metric: Callable[[np.ndarray, np.ndarray], float],
+):
+    """
+    Computes closest nodes for KNN graph rowwise.
+
+    Args:
+        i (int): index of row
+        bursts (np.ndarray): burst matrix
+        n_neighbors (int): number of neighbors K
+        distance_metric (Callable[[np.ndarray, np.ndarray], float]): distance metric
+
+    Returns:
+        i (int): index of row
+        connections (np.ndarray): indices of closest nodes
+    """
     distance_matrix_row = np.zeros(bursts.shape[0])
     for j in range(bursts.shape[0]):
-        distance_matrix_row[j] = _wasserstein_distance(bursts[i], bursts[j])
-    # get indices of the n_neighbors smallest distances
-    connections = np.argpartition(distance_matrix_row, n_neighbors + 1)[
-        : n_neighbors + 1
-    ]
-    return i, connections
-
-
-@ray.remote
-def _compute_connections_cosine(i, bursts, n_neighbors):
-    # TODO consider subtracting the mean, this would compute pearson correlation
-    distance_matrix_row = np.zeros(bursts.shape[0])
-    for j in range(bursts.shape[0]):
-        distance_matrix_row[j] = scipy.spatial.distance.cosine(bursts[i], bursts[j])
-    # get indices of the n_neighbors smallest distances
-    connections = np.argpartition(distance_matrix_row, n_neighbors + 1)[
-        : n_neighbors + 1
-    ]
-    return i, connections
-
-
-@ray.remote
-def _compute_connections_euclidean(i, bursts, n_neighbors):
-    distance_matrix_row = np.zeros(bursts.shape[0])
-    for j in range(bursts.shape[0]):
-        distance_matrix_row[j] = scipy.spatial.distance.euclidean(bursts[i], bursts[j])
+        distance_matrix_row[j] = distance_metric(bursts[j], bursts[i])
     # get indices of the n_neighbors smallest distances
     connections = np.argpartition(distance_matrix_row, n_neighbors + 1)[
         : n_neighbors + 1
@@ -58,15 +51,27 @@ def compute_affinity_matrix(bursts, n_jobs=1, metric="wasserstein", n_neighbors=
     # https://docs.ray.io/en/latest/ray-core/patterns/limit-pending-tasks.html
     match metric:
         case "wasserstein":
-            _compute_connections = _compute_connections_wasserstein
+            _distance_metric = _wasserstein_distance
         case "cosine":
-            _compute_connections = _compute_connections_cosine
+            _distance_metric = scipy.spatial.distance.cosine
         case "euclidean":
-            _compute_connections = _compute_connections_euclidean
+            _distance_metric = scipy.spatial.distance.euclidean
+        case "JensenShannon":
+            _distance_metric = scipy.spatial.distance.jensenshannon
+        case "Correlation":
+            _distance_metric = scipy.spatial.distance.correlation
+        case "KLDivergence":
+            _distance_metric = scipy.stats.entropy
+            warnings.warn(
+                "You chose 'KLDivergence' as a distance metric. "
+                "Note that KLDivergence is not a metric. "
+                "Please continue at your own discretion."
+            )
         case _:
             raise NotImplementedError(
-                f"Metric '{metric}' not implemented, "
-                f"options are 'wasserstein' and 'cosine' and 'euclidean'."
+                f"Your chosen metric '{metric}' is not implemented, "
+                f"options are 'wasserstein', 'cosine', 'euclidean', 'JensenShannon',"
+                f"'Correlation'."
             )
     max_tasks = 3 * n_jobs
     # initialize connectivity matrix as sparse matrix
@@ -80,7 +85,11 @@ def compute_affinity_matrix(bursts, n_jobs=1, metric="wasserstein", n_neighbors=
             ready_ids, result_refs = ray.wait(result_refs, num_returns=1)
             index, connections = ray.get(ready_ids)[0]
             connectivity[index, connections] = 1
-        result_refs.append(_compute_connections.remote(i, bursts, n_neighbors))
+        result_refs.append(
+            _compute_connections_rowwise.remote(
+                i, bursts, n_neighbors, _distance_metric
+            )
+        )
 
     for result_ref in result_refs:
         index, connections = ray.get(result_ref)

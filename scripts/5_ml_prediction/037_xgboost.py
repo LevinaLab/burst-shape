@@ -58,8 +58,6 @@ cv_type = (
 random_state = 1234567890
 n_splits = 100
 
-spectral_embedding_dims_list = np.arange(1, 21)
-
 burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
@@ -82,11 +80,41 @@ df_cultures, target_label = make_target_label(
 
 print(f"Dataset:\t\t{dataset}\nTarget label:\t{target_label}")
 
+# spectral embedding type
+spectral_embedding_dims_list = np.arange(1, 11)
+_distance_metric = (
+    None  # use default, usually 'wasserstein'
+    # "wasserstein"
+    # "euclidean"
+    # "Correlation"
+    # "JensenShannon"
+    # "KLDivergence"
+)
 # %% get embedding coordinates
 spectral_clustering_params = get_chosen_spectral_embedding_params(dataset)
+if _distance_metric is not None:
+    spectral_clustering_params_split = spectral_clustering_params.split("_")
+    if "metric" in spectral_clustering_params_split:
+        _position_metric = (
+            spectral_clustering_params_split.index("metric") + 1
+        )
+        if _position_metric < len(spectral_clustering_params_split):
+            spectral_clustering_params_split[_position_metric] = (
+                _distance_metric
+            )
+        else:
+            spectral_clustering_params_split.append(_distance_metric)
+    else:
+        spectral_clustering_params_split.extend(
+            ["metric", _distance_metric]
+        )
+
+    spectral_clustering_params = "_".join(spectral_clustering_params_split)
 n_spectral_dims_max = max(spectral_embedding_dims_list)
 spectral_embedding = load_spectral_embedding(
-    burst_extraction_params, spectral_clustering_params, n_dims=n_spectral_dims_max
+    burst_extraction_params,
+    spectral_clustering_params,
+    n_dims=n_spectral_dims_max,
 )
 for i_dim in range(n_spectral_dims_max):
     name_dim = f"shape_{i_dim + 1}"
@@ -132,7 +160,6 @@ df_cultures, classical_features = get_classical_features(
     df_cultures, df_bursts, dataset
 )
 
-
 # %% get manual shape features
 def _get_manual_shape_features(df_cultures, df_bursts):
     # get average burst_shapes
@@ -144,10 +171,11 @@ def _get_manual_shape_features(df_cultures, df_bursts):
     # compute features
     df_cultures["argmax_bin"] = df_cultures["avg_burst"].apply(np.argmax)
     df_cultures["rel_peak"] = (df_cultures["argmax_bin"] + 0.5) / 50
-    df_cultures["activity_80%"] = df_cultures["avg_burst"].apply(lambda x: x[39])
+    df_cultures["activity_80%"] = df_cultures["avg_burst"].apply(
+        lambda x: x[39]
+    )
     shape_manual_features = ["rel_peak", "activity_80%"]
     return df_cultures, shape_manual_features
-
 
 df_cultures, shape_manual_features = _get_manual_shape_features(
     df_cultures,
@@ -155,7 +183,9 @@ df_cultures, shape_manual_features = _get_manual_shape_features(
 )
 
 # %% define feature sets
-shape_features = [f"shape_{i_dim + 1}" for i_dim in range(n_spectral_dims_max)]
+shape_features = [
+    f"shape_{i_dim + 1}" for i_dim in range(n_spectral_dims_max)
+]
 # classical features
 all_features = shape_features[:2] + classical_features
 
@@ -166,7 +196,9 @@ feature_dict = {
     "shape_manual": shape_manual_features,
 }
 for n_spectral_dims in spectral_embedding_dims_list:
-    feature_dict[f"shape_{n_spectral_dims}D"] = shape_features[:n_spectral_dims]
+    feature_dict[f"shape_{n_spectral_dims}D"] = shape_features[
+        :n_spectral_dims
+    ]
 # %% prediction with xgboost
 for feature_set_name, features in feature_dict.items():
     # Encode target labels
@@ -180,27 +212,38 @@ for feature_set_name, features in feature_dict.items():
     y = df_cultures["encoded_label"]  # .values
 
     if not exist_xgboost_results(
-        burst_extraction_params, spectral_clustering_params, feature_set_name, cv_type
+        burst_extraction_params,
+        spectral_clustering_params,
+        feature_set_name,
+        cv_type,
     ):
         print(
             f"XGBoost results for feature set {feature_set_name} don't exists. Computing them."
         )
 
-        objective = "multi:softprob" if num_classes > 2 else "binary:logistic"
+        objective = (
+            "multi:softprob" if num_classes > 2 else "binary:logistic"
+        )
         eval_metric = "mlogloss" if num_classes > 2 else "logloss"
 
         match cv_type:
             case "StratifiedShuffleSplit":
                 outer_cv = StratifiedShuffleSplit(
-                    n_splits=n_splits, test_size=0.2, random_state=random_state
+                    n_splits=n_splits,
+                    test_size=0.2,
+                    random_state=random_state,
                 )
             case "RepeatedStratifiedKFold":
                 outer_cv = RepeatedStratifiedKFold(
-                    n_splits=5, n_repeats=n_splits // 5, random_state=random_state
+                    n_splits=5,
+                    n_repeats=n_splits // 5,
+                    random_state=random_state,
                 )
             case _:
                 raise NotImplementedError(f"Unknown cv type: {cv_type}")
-        inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+        inner_cv = StratifiedKFold(
+            n_splits=5, shuffle=True, random_state=random_state
+        )
 
         # XGBoost hyperparameters grid
         param_grid_xgb = {
@@ -255,7 +298,9 @@ for feature_set_name, features in feature_dict.items():
             random_search.fit(
                 X_train,
                 y_train,
-                sample_weight=compute_sample_weight(class_weight="balanced", y=y_train),
+                sample_weight=compute_sample_weight(
+                    class_weight="balanced", y=y_train
+                ),
             )
             best_model = random_search.best_estimator_
 
@@ -339,7 +384,10 @@ for feature_set_name, features in feature_dict.items():
             transparent=True,
         )
         shap.summary_plot(
-            mean_shap_values, features=X, feature_names=X.columns, show=False
+            mean_shap_values,
+            features=X,
+            feature_names=X.columns,
+            show=False,
         )
         fig = plt.gcf()
         fig.show()
@@ -359,7 +407,8 @@ for feature_set_name, features in feature_dict.items():
             class_inds="original",
             class_names=list(label_encoder.classes_),
             color=lambda i: [
-                get_group_colors(dataset)[j] for j in list(label_encoder.classes_)
+                get_group_colors(dataset)[j]
+                for j in list(label_encoder.classes_)
             ][i],
             show=False,
         )
@@ -399,7 +448,10 @@ for feature_set_name, features in feature_dict.items():
         for label_x, label_y, color in zip(
             ax.get_xticklabels(),
             ax.get_yticklabels(),
-            [get_group_colors(dataset)[j] for j in list(label_encoder.classes_)],
+            [
+                get_group_colors(dataset)[j]
+                for j in list(label_encoder.classes_)
+            ],
         ):
             label_x.set_color(color)
             label_y.set_color(color)

@@ -76,7 +76,7 @@ for burst_extraction_params in burst_extraction_params_list:
             )
     except FileNotFoundError:
         warnings.warn(
-            f"KNN Clustering not found for dataset={dataset}. " "Continuing without it."
+            f"KNN Clustering not found for dataset={dataset}. Continuing without it."
         )
         pass
 df_accuracies = pd.DataFrame(df_accuracies)
@@ -110,9 +110,7 @@ def _get_stats(normalize=False, baseline="traditional", groupby=None):
             ["mean", "std"]
         )
     else:
-        df_stats = df_accuracies.groupby(["dataset", "feature_set"])["score"].agg(
-            ["mean", "std"]
-        )
+        df_stats = df_accuracies.groupby(groupby)["score"].agg(["mean", "std"])
     df_stats["sem"] = df_stats["std"].apply(lambda x: _std2_corrected_std(x, 100, 4, 1))
     df_stats["Z"] = df_stats["mean"] / df_stats["sem"]
     return df_stats

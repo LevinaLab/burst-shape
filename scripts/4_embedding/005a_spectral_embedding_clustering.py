@@ -38,8 +38,17 @@ all_data = True  # set to False if you want to compute only cross-validation
 clustering_params = {
     "n_components_max": 30,
     "affinity": "precomputed",
-    "metric": "euclidean",  # "wasserstein",
-    "n_neighbors": None,  # 21,  # 55,  # 85,  # 6,  # 60,  # 150,
+    "metric": (
+        "wasserstein"
+        # "euclidean"
+        # "KLDivergence"
+        # "Correlation"
+        # "JensenShannon"
+    ),
+    "n_neighbors": (
+        None  # defaults to 1% of the number of bursts
+        # 150  # for wagenaar dataset
+    ),
     "random_state": 0,
 }
 

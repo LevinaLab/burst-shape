@@ -42,26 +42,43 @@ burst_extraction_params = (
     "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_KS"
+)
+
+distance_metric = (
+    None
+    # "wasserstein"
+    # "euclidean"
+    # "JensenShannon"
+    # "Correlation"
+    # "KLDivergence"
 )
 
 # -----------------------------------------------------------------------------
 # Load data
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
+kwargs_embedding = (
+    {}
+    if distance_metric is None
+    else {
+        "metric": distance_metric,
+    }
+)
 match color_by:
     case "cluster":
-        clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
+        clustering_params, n_clusters = get_chosen_spectral_clustering_params(
+            dataset, **kwargs_embedding
+        )
     case "group":
-        clustering_params = get_chosen_spectral_embedding_params(dataset)
+        clustering_params = get_chosen_spectral_embedding_params(
+            dataset, **kwargs_embedding
+        )
     case "relative_peak":
         burst_matrix = load_burst_matrix(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
-
-# manually selecting clustering_params
-# clustering_params = "spectral_affinity_precomputed_metric_euclidean_n_neighbors_85"
-# clustering_params = "spectral_affinity_precomputed_metric_euclidean_n_neighbors_21"
 
 labels_params = "labels"
 cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
@@ -121,7 +138,7 @@ match color_by:
                 for key, value in color_discrete_map_load.items():
                     palette["-".join(key)] = value
                 df_bursts.set_index(index_names, inplace=True)
-            case "mossink":
+            case "mossink" | "mossink_KS":
                 color = "group-subject"
                 df_bursts.reset_index(inplace=True)
                 df_bursts["group-subject"] = (
@@ -191,6 +208,6 @@ else:
 fig.show()
 savefig(
     fig,
-    f"{dataset}_spectral_embedding_{color_by}{'_density' if plot_density else ''}_dim_{dim1}_{dim2}.svg",
+    f"{dataset}_spectral_embedding_{color_by}{'_density' if plot_density else ''}_dim_{dim1}_{dim2}{f'_{distance_metric}' if distance_metric is not None else ''}",
     file_format=["pdf", "svg"],
 )
