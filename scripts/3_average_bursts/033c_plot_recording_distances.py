@@ -180,6 +180,7 @@ def _select_distances(
     day_to_day_absolute: bool = True,
     special_function=None,
     special_columns: List[str] = None,
+    include_diagonal: bool = False,
 ):
     """
     Selects the distances from the full distance matrix according to the constraints.
@@ -196,6 +197,9 @@ def _select_distances(
     :param column_day_to_day: column for which consecutive samples' distances should be considered.
         This column must have an order.
     :param day_to_day_absolute: consider day before and day after, if True only day after
+    :param special_function: function to apply to special columns.
+    :param special_columns: columns for special columns.
+    :param include_diagonal: whether to include diagonal distances (distance to itself)
     :return: df_selected_distances: dataframe with subsampled distances.
         It has the same index as df_distance_matrix.
         It has a single column "distances" that contains all the selected distances as a list.
@@ -203,8 +207,11 @@ def _select_distances(
     index = df_distance_matrix.index
     level_names = df_distance_matrix.index.names
 
-    # Prepare meshgrid of all combinations (i, j) where i ≠ j
-    row_idx, col_idx = zip(*[(i, j) for i in index for j in index if i != j])
+    # Prepare meshgrid of all combinations (i, j) (where i ≠ j if no diagonal)
+    if include_diagonal:
+        row_idx, col_idx = zip(*[(i, j) for i in index for j in index])
+    else:
+        row_idx, col_idx = zip(*[(i, j) for i in index for j in index if i != j])
     i_values = pd.DataFrame(
         row_idx, columns=pd.MultiIndex.from_product([["i"], level_names])
     )
@@ -603,24 +610,151 @@ match dataset:
             file_format=["pdf", "svg"],
         )
 
-        """similarity_week_to_week = similarity_day_to_day.copy().reset_index()
-        similarity_week_to_week["week"] = similarity_week_to_week["day"].apply(lambda day: day // 7)
-        similarity_week_to_week.set_index(["batch", "culture", "week"], inplace=True)
+        # %% plot distance from first recorded day (as reference day)
+        reference_day = None
 
+        # analyze whether this is a constant increase
+        def _function_day_to_baseline(
+            batch1,
+            culture1,
+            day1,
+            batch2,
+            culture2,
+            day2,
+        ):
+            # find first recording day per (batch, culture)
+            _min_day_per_culture = {}
+            for _batch, _culture in set(zip(batch1, culture1)):
+                days = day1[(batch1 == _batch) & (culture1 == _culture)].values
+                if reference_day is None:
+                    # minimum day
+                    _min_day_per_culture[(_batch, _culture)] = days.min()
+                else:
+                    # day closest to 24 (exists in most series)
+                    _min_day_per_culture[(_batch, _culture)] = days[
+                        np.argmin(np.abs(days - reference_day))
+                    ]
+            # determine if the comparison is to first day of the same culture
+            _is_distance_to_baseline = [
+                (_min_day_per_culture[(_batch2, _culture2)] == _day2)
+                & (_batch1 == _batch2)
+                & (_culture1 == _culture2)
+                # & (_day2 <= _day1)
+                for _batch1, _culture1, _day1, _batch2, _culture2, _day2 in zip(
+                    batch1, culture1, day1, batch2, culture2, day2
+                )
+            ]
+            return _is_distance_to_baseline
+
+        similarity_day_to_baseline = _select_distances(
+            df_distance_matrix,
+            # column_separate_combo=["batch", "culture"],
+            # column_day_to_day="day",
+            special_columns=["batch", "culture", "day"],
+            special_function=_function_day_to_baseline,
+            include_diagonal=True,
+        )
+        # plot per culture
         fig, ax = plt.subplots(figsize=(8 * cm, 6 * cm), constrained_layout=True)
         sns.despine()
-        data_plot = similarity_week_to_week.groupby("week")["distances_avg"].mean()
+        for batch, culture in (
+            similarity_day_to_baseline.reset_index()[["batch", "culture"]]
+            .drop_duplicates()
+            .values
+        ):
+            data_plot = similarity_day_to_baseline.loc[
+                (batch, culture, slice(None))
+            ].sort_index()
+            ax.plot(
+                data_plot.index,
+                data_plot["distances_avg"],
+                color=get_group_colors(dataset)[batch],
+                linestyle="--",
+                linewidth=0.5,
+            )
+        # batches
+        for batch in similarity_day_to_day.index.get_level_values("batch").unique():
+            data_plot = (
+                similarity_day_to_baseline.loc[
+                    (batch, slice(None), slice(None)), "distances_avg"
+                ]
+                .groupby("day")
+                .mean()
+            )
+            ax.plot(
+                data_plot.index,
+                data_plot.values,
+                color=get_group_colors(dataset)[batch],
+                linestyle="-",
+                label=batch,
+            )
+        data_plot = similarity_day_to_baseline.groupby("day")["distances_avg"].median()
         ax.errorbar(
             data_plot.index,
             data_plot.values,
-            yerr=similarity_week_to_week.groupby("week")["distances_avg"].sem().values,
+            yerr=similarity_day_to_baseline.groupby("day")["distances_avg"]
+            .sem()
+            .values,
             color="k",
         )
-        ax.axhline(y=data_plot.mean(), color="k", linestyle="--", label="overall mean")
-        ax.set_xticks([1,2,3,4])
-        ax.set_xlabel("Week")
+
+        ax.axhline(
+            similarity_day_to_day["distances_avg"].mean(),
+            linestyle="--",
+            color="k",
+            label="Mean consecutive days",
+        )
+        if reference_day is not None:
+            ax.axvline(
+                reference_day,
+                linestyle="--",
+                color="k",
+                label="Reference day",
+            )
+        ax.set_xlabel("DIV")
+        ax.set_ylabel("Distance\nto first recording")
+        ax.set_ylim((0, None))
+        fig.show()
+
+        # %% collect distance vs timespan
+        max_delta_t = 25
+        delta_t_list = np.arange(max_delta_t, dtype=np.int64)
+        distances_delta_t = np.zeros_like(delta_t_list + 1, dtype=float)
+        distances_delta_t_error = np.zeros_like(delta_t_list + 1, dtype=float)
+        for i, delta_t in enumerate(delta_t_list):
+            distances = []
+            for index_x in df_distance_matrix:
+                for index_y in df_distance_matrix:
+                    if (
+                        (index_x[0] == index_y[0])
+                        & (index_x[1] == index_y[1])
+                        & (np.abs(index_y[-1] - index_x[-1]) == delta_t)
+                    ):
+                        distances.append(df_distance_matrix[index_x][index_y])
+                    else:
+                        continue
+            distances_delta_t[i] = np.median(distances)
+            distances_delta_t_error[i] = np.std(distances) / np.sqrt(len(distances))
+
+        fig, ax = plt.subplots(figsize=(8 * cm, 6 * cm), constrained_layout=True)
+        sns.despine()
+        ax.errorbar(
+            delta_t_list,
+            distances_delta_t,
+            yerr=distances_delta_t_error,
+            color="k",
+        )
+        ax.axhline(
+            similarity_day_to_day["distances_avg"].mean(),
+            linestyle="--",
+            color="k",
+        )
+        ax.set_xlabel(r"$\Delta$ DIV")
         ax.set_ylabel("Distance")
-        fig.show()"""
+        ax.set_ylim((0, None))
+        fig.show()
+
+        # %%
 
     case "mossink":
         # add additional info to the index to evaluate them in terms of distance/similarity
