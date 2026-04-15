@@ -1,5 +1,6 @@
 from .agglomerative_clustering import linkage_exists, load_linkage, save_linkage
 from .burst_extraction import (
+    burst_params_from_str,
     load_burst_matrix,
     load_df_bursts,
     load_df_cultures,
@@ -33,6 +34,7 @@ __all__ = [
     "save_burst_matrix",
     "load_burst_matrix",
     "save_burst_extraction_params",
+    "burst_params_from_str",
     "save_cv_params",
     "load_cv_params",
     "save_clustering_params",

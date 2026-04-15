@@ -7,6 +7,7 @@ import pandas as pd
 from src.folders import get_results_folder
 
 from .cross_validation_string import _cv_params_to_string
+from .helper import parse_burst_params_string
 
 _burst_extraction_defaults: dict = {
     "dataset": None,
@@ -39,7 +40,14 @@ def _burst_params_to_str(burst_params):
     return name
 
 
-def _get_burst_folder(burst_params: str or dict):
+def burst_params_from_str(burst_params):
+    return parse_burst_params_string(
+        burst_params=burst_params,
+        defaults=_burst_extraction_defaults,
+    )
+
+
+def _get_burst_folder(burst_params: str | dict):
     if isinstance(burst_params, dict):
         burst_params = _burst_params_to_str(burst_params)
     return os.path.join(get_results_folder(), burst_params)
