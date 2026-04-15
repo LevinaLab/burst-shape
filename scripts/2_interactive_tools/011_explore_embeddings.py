@@ -44,35 +44,35 @@ else:
 if "DATASET" in os.environ:
     match os.environ["DATASET"]:
         case "wagenaar":
-            burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+            burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"  # noqa: E501
         case "kapucu":
-            burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+            burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
         case "hommersom_test":
-            burst_extraction_params = "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case "hommersom_binary":
-            burst_extraction_params = "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case "inhibblock":
-            burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case "mossink":
-            burst_extraction_params = "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case _:
             raise NotImplementedError(
                 f"Unknown environment variable DATASET: {os.environ['DATASET']}"
             )
 else:
     burst_extraction_params = (
-        # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
-        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
-        # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4" # noqa: E501
+        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4" # noqa: E501
+        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed" # noqa: E501
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4" # noqa: E501
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4" # noqa: E501
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30" # noqa: E501
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585" # noqa: E501
+        # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30" # noqa: E501
+        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30" # noqa: E501
+        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30" # noqa: E501
+        # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30" # noqa: E501
     )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 print(f"Detected dataset: {dataset}")
@@ -152,7 +152,9 @@ def _load_embedding(embedding_type_):
         return embedding
     except Exception as e:
         warnings.warn(
-            f"While trying to load embedding {embedding_type_} an exception occured: {e}"
+            f"While trying to load embedding {embedding_type_} "
+            f"an exception occurred: {e}",
+            stacklevel=1,
         )
         return None
 
@@ -170,7 +172,8 @@ for embedding_type in ["spectral", "pca", "tsne"]:
         print(f"Successfully loaded {embedding_type}.")
     else:
         warnings.warn(
-            f"No embedding found for {embedding_type}. Continuing without it."
+            f"No embedding found for {embedding_type}. Continuing without it.",
+            stacklevel=1,
         )
 embedding_type_options = [
     {"label": "Spectral", "value": "spectral"},
@@ -202,8 +205,11 @@ try:
     color_by_options.insert(0, {"label": target_label, "value": "target_label"})
 except NotImplementedError:
     warnings.warn(
-        f"make_target_label() not defined for dataset {dataset}. Continuing without it. "
-        "Define it if you want to color a certain target label like drug or genetic group."
+        f"make_target_label() not defined for dataset {dataset}. "
+        f"Continuing without it. "
+        "Define it if you want to color a certain "
+        "target label like drug or genetic group.",
+        stacklevel=1,
     )
 # add the index options
 for index_name in burst_index_names[:-1]:
@@ -226,13 +232,20 @@ print("Starting Dash app...")
 ###############################################################################
 # Dash App
 server = Flask(__name__)  # Create a Flask app
-app = Dash(__name__, server=server)  # Attach Dash to Flask
+app = Dash(
+    __name__,
+    server=server,  # Attach Dash to Flask
+    external_stylesheets=[
+        "data:text/css,body{margin-top:0;margin-bottom:0;overflow:hidden;}* "
+        "{box-sizing:border-box;}"
+    ],
+)
 
 # Create a color map based on cluster labels
 # color_map = cluster_colors  # px.colors.qualitative.Plotly[:n_clusters]
 
 
-ID_EMBEDDING = "tsne-plot"
+ID_EMBEDDING = "embedding-plot"
 ID_EMBEDDING_TYPE = "embedding-type"
 ID_EMBEDDING_DIM1 = "embedding-dim1"
 ID_EMBEDDING_DIM2 = "embedding-dim2"
@@ -245,9 +258,7 @@ ID_BURST_RASTER = "raster-plot"
 ID_FIRING_RATE = "firing-rate"
 
 # Create the initial t-SNE plot
-# fig_embedding = update_tsne_plot(df_bursts, n_clusters_init)
-# tsne_plot = dcc.Graph(id=ID_EMBEDDING, figure=fig_embedding, style={"flex": "1"})
-tsne_plot = dcc.Graph(id=ID_EMBEDDING, style={"flex": "1"})
+embedding_plot = dcc.Graph(id=ID_EMBEDDING, style={"flex": "1"})
 
 # Define layout of the Dash app
 _citation_text = html.P(
@@ -262,7 +273,8 @@ _citation_text = html.P(
             style={"textDecoration": "none", "color": "blue"},
         ),
         ".",
-    ]
+    ],
+    # style={"padding": "10px"}
 )
 # drop-down menu for selecting what to plot
 _embedding_type_dropdown = html.Div(
@@ -310,7 +322,7 @@ _embedding_dim_dropdown = html.Div(
 # drop-down menu for selecting which column to color by
 _color_by_dropdown = html.Div(
     [
-        html.Label("Color by:", style={"marginBottom": "4px"}),
+        html.Label("Color by:", style={"marginBottom": "3%"}),
         dcc.Dropdown(
             id=ID_COLOR_BY,
             options=color_by_options,
@@ -321,15 +333,32 @@ _color_by_dropdown = html.Div(
     ],
     style={"display": "flex", "flexDirection": "column", "alignItems": "flex-start"},
 )
-# slider for selecting the number of clusters with label "slide to select number of clusters"
-_number_of_clusters_slider = dcc.Slider(
-    id=ID_N_CLUSTERS,
-    min=n_clusters[0],
-    max=n_clusters[-1],
-    step=1,
-    value=n_clusters_init,
-    tooltip={"placement": "bottom", "always_visible": True},
-    vertical=True,
+# dropdown for selecting the number of clusters
+_number_of_clusters_dropdown = html.Div(
+    [
+        html.Label("# Clusters:", style={"marginBottom": "3%"}),
+        dcc.Dropdown(
+            id=ID_N_CLUSTERS,
+            options=n_clusters,
+            value=n_clusters_init,
+            clearable=False,
+            style={"width": "100%"},
+        ),
+    ],
+    style={"display": "flex", "flexDirection": "column", "alignItems": "flex-start"},
+)
+_marker_size_dropdown = html.Div(
+    [
+        html.Label("Marker size:", style={"marginBottom": "3%"}),
+        dcc.Dropdown(
+            id=ID_MARKER_SIZE,
+            options=[{"label": str(i), "value": i} for i in range(1, 11)],
+            value=marker_size_init,
+            clearable=False,
+            style={"width": "100%"},
+        ),
+    ],
+    style={"display": "flex", "flexDirection": "column", "alignItems": "flex-start"},
 )
 app.layout = html.Div(
     [
@@ -341,7 +370,8 @@ app.layout = html.Div(
                         _embedding_type_dropdown,
                         _embedding_dim_dropdown,
                         _color_by_dropdown,
-                        _number_of_clusters_slider,
+                        _number_of_clusters_dropdown,
+                        _marker_size_dropdown,
                         html.Button("Save to figures/", id="download-button"),
                         # dcc.Download(id="download-pdf"),
                         dcc.Dropdown(
@@ -361,16 +391,7 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     [
-                        # t-SNE plot
-                        tsne_plot,
-                        dcc.Slider(
-                            id=ID_MARKER_SIZE,
-                            min=1,
-                            max=10,
-                            step=1,
-                            value=marker_size_init,
-                            tooltip={"placement": "bottom", "always_visible": True},
-                        ),
+                        embedding_plot,
                     ],
                     style={"display": "flex", "flex-direction": "column", "flex": "1"},
                 ),
@@ -379,11 +400,11 @@ app.layout = html.Div(
                 # Raster plot of selected point
                 dcc.Graph(id=ID_BURST_RASTER, style={"flex": "1"}),
             ],
-            style={"display": "flex", "flex-direction": "row", "height": "50vh"},
+            style={"display": "flex", "flex-direction": "row", "flex": "1"},
         ),
         dcc.Graph(id=ID_FIRING_RATE, style={"flex": "1"}),
     ],
-    style={"display": "flex", "flex-direction": "column"},
+    style={"display": "flex", "flex-direction": "column", "height": "100vh"},
 )
 
 
@@ -480,7 +501,7 @@ def _update_embedding_plot(
             "start_orig": True,
             "time_orig": True,
         },
-        title="t-SNE plot",
+        title="Embedding",
         custom_data=[df_bursts.index.to_list()],
     )
     fig_embedding.update_traces(marker=dict(size=marker_size))
@@ -502,6 +523,8 @@ def _update_embedding_plot(
         legend_itemclick="toggle",
         legend_itemdoubleclick="toggleothers",
         plot_bgcolor="white",
+        xaxis=dict(showticklabels=False),
+        yaxis=dict(showticklabels=False),
     )
     return fig_embedding
 
@@ -582,19 +605,7 @@ def _update_burst_shape_plot(
 
     # Create time series plot and title
     _title_category_list = burst_index_names + ("start_orig", "time_orig")
-    title = (
-        "Burst shape for "
-        + ", ".join(
-            [f"{key}: {value}" for key, value in zip(burst_index_names, burst_idx)]
-        )
-        + ", "
-        + ", ".join(
-            [
-                f"{key}: {df_bursts.at[burst_idx, key]}"
-                for key in ["start_orig", "time_orig"]
-            ]
-        )
-    )
+    title = "Burst shape"
 
     timeseries_fig = px.line(
         df_bursts.at[burst_idx, "burst"],
@@ -642,7 +653,22 @@ def _update_raster_plot(
         return dash.no_update, dash.no_update
 
     df_plot = df_bursts.loc[(*burst_idx[:-1], slice(None))]
-    title_firing_rate = f"FIring rate for {burst_idx} {burst_index_names}"
+    title_firing_rate = (
+        "Selected burst: "  # for {burst_idx} {burst_index_names}"
+        + ", ".join(
+            [
+                f"{key}: {value}"
+                for key, value in zip(burst_index_names, burst_idx, strict=True)
+            ]
+        )
+        + ", "
+        + ", ".join(
+            [
+                f"{key}: {df_bursts.at[burst_idx, key]:.2f} ms"
+                for key in ["start_orig", "time_orig"]
+            ]
+        )
+    )
 
     st, gid = get_spike_times_in_milliseconds(df_cultures, burst_idx[:-1], dataset)
 
@@ -660,6 +686,10 @@ def _update_raster_plot(
     # if start_orig + duration > end:
     #     end = start_orig + duration + 500
     st, gid = st[(st >= start) & (st <= end)], gid[(st >= start) & (st <= end)]
+
+    # re-index gid to start from 0 for better visualization
+    if gid.dtype == int:
+        gid = gid - gid.min()
 
     # Create raster plot with '|' markers for spikes and no line connecting them
     fig_raster = go.Figure()
@@ -740,7 +770,7 @@ def _update_raster_plot(
 
     # Add vertical lines for all burst windows
     for start, end, color, index in zip(
-        burst_starts, burst_ends, burst_colors, burst_index
+        burst_starts, burst_ends, burst_colors, burst_index, strict=True
     ):
         fig_firing_rate.add_trace(
             go.Scatter(
@@ -782,7 +812,8 @@ def _update_raster_plot(
     )
     # update layout
     fig_firing_rate.update_layout(
-        title=title_firing_rate + f", {len(burst_starts)} bursts",
+        title=title_firing_rate
+        + f"<br>Firing rate: highlighted {len(burst_starts)} bursts",
         xaxis_title="Time [ms]",
         yaxis_title="Rate [Hz]",
         # xaxis=dict(range=[start, end], showgrid=False),
