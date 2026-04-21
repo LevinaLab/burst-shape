@@ -610,7 +610,7 @@ match dataset:
             file_format=["pdf", "svg"],
         )
 
-        # %% plot distance from first recorded day (as reference day)
+        # plot distance from first recorded day (as reference day)
         reference_day = None
 
         # analyze whether this is a constant increase
@@ -717,12 +717,16 @@ match dataset:
         fig.show()
 
         # %% collect distance vs timespan
-        max_delta_t = 25
-        delta_t_list = np.arange(max_delta_t, dtype=np.int64)
-        distances_delta_t = np.zeros_like(delta_t_list + 1, dtype=float)
-        distances_delta_t_error = np.zeros_like(delta_t_list + 1, dtype=float)
+        max_delta_t = 24
+        threshold_unique = 10
+        delta_t_list = np.arange(max_delta_t + 1, dtype=np.int64)
+        distances_delta_t = np.zeros_like(delta_t_list, dtype=float)
+        distances_delta_t_error = np.zeros_like(delta_t_list, dtype=float)
+        n_unique_batch_culture = np.zeros_like(delta_t_list, dtype=int)
+        n_unique_batch = np.zeros_like(delta_t_list, dtype=int)
         for i, delta_t in enumerate(delta_t_list):
             distances = []
+            _unique_batch_culture = []
             for index_x in df_distance_matrix:
                 for index_y in df_distance_matrix:
                     if (
@@ -731,17 +735,55 @@ match dataset:
                         & (np.abs(index_y[-1] - index_x[-1]) == delta_t)
                     ):
                         distances.append(df_distance_matrix[index_x][index_y])
+                        _unique_batch_culture.append(index_x[:2])
                     else:
                         continue
+            n_unique_batch_culture[i] = len(set(_unique_batch_culture))
+            n_unique_batch[i] = len({_batch for _batch, _ in _unique_batch_culture})
             distances_delta_t[i] = np.median(distances)
-            distances_delta_t_error[i] = np.std(distances) / np.sqrt(len(distances))
+            distances_delta_t_error[i] = np.std(distances) / np.sqrt(
+                n_unique_batch_culture[i]
+            )
+
+        # cutoff day should be the day right before the number of unique
+        # batch-culture combinations drops below the threshold (e.g. 10)
+        if threshold_unique is not None:
+            cutoff_day = delta_t_list[
+                np.where(n_unique_batch_culture < threshold_unique)[0][0] - 1
+            ]
+        else:
+            cutoff_day = max_delta_t
 
         fig, ax = plt.subplots(figsize=(8 * cm, 6 * cm), constrained_layout=True)
         sns.despine()
-        ax.errorbar(
+        ax.plot(
             delta_t_list,
-            distances_delta_t,
-            yerr=distances_delta_t_error,
+            n_unique_batch_culture,
+            color="grey",
+            linestyle="-",
+            label="#Cultures",
+        )
+        ax.plot(
+            delta_t_list,
+            n_unique_batch,
+            color="green",
+            linestyle="-",
+            label="#Batches",
+        )
+        ax.axvline(cutoff_day, linestyle="--", color="k")
+        ax.set_xlabel(r"$\Delta$ DIV")
+        ax.set_ylabel("# Samples")
+        ax.set_ylim((0, None))
+        ax.legend(frameon=False)
+        fig.show()
+
+        fig, ax = plt.subplots(figsize=(8 * cm, 6 * cm), constrained_layout=True)
+        sns.despine()
+        selection = delta_t_list <= cutoff_day
+        ax.errorbar(
+            delta_t_list[selection],
+            distances_delta_t[selection],
+            yerr=distances_delta_t_error[selection],
             color="k",
         )
         ax.axhline(
