@@ -16,10 +16,11 @@ from src.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )
+import statsmodels.stats.meta_analysis as meta
 
 cm = prepare_plotting()
 
-shape_dimensions = np.arange(1, 21)
+shape_dimensions = np.arange(1, 11)
 
 burst_extraction_params_list = [
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
@@ -36,11 +37,28 @@ cv_type = (
     "StratifiedShuffleSplit"
 )
 
+_distance_metric = (
+    None  # use default, usually 'wasserstein'
+    # "euclidean"
+    # "JensenShannon"
+    # "KLDivergence"
+)
+kwargs_spectral_clustering_params = (
+    {}
+    if _distance_metric is None
+    else {
+        "metric": _distance_metric,
+    }
+)
+save_string = "" if _distance_metric is None else f"_{_distance_metric}"
+
 n_classes = {}
 df_accuracies = []
 for burst_extraction_params in burst_extraction_params_list:
     dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
-    spectral_clustering_params = get_chosen_spectral_embedding_params(dataset)
+    spectral_clustering_params = get_chosen_spectral_embedding_params(
+        dataset, **kwargs_spectral_clustering_params
+    )
 
     for feature_set_name in ["combined", "traditional", "shape_manual"] + [
         f"shape_{i}D" for i in shape_dimensions
@@ -273,7 +291,7 @@ fig = g.figure
 fig.show()
 for filetype in ("svg", "pdf"):
     fig.savefig(
-        os.path.join(get_fig_folder(), f"accuracies_all_data.{filetype}"),
+        os.path.join(get_fig_folder(), f"accuracies_all_data{save_string}.{filetype}"),
         transparent=True,
     )
 # %% print accuracies
@@ -471,8 +489,6 @@ for first, second in [
     ]
     print(df_stats_reduced)
 
-    import statsmodels.stats.meta_analysis as meta
-
     res_REML = meta.combine_effects(
         df_stats_reduced["mean"].values,
         (df_stats_reduced["sem"].values ** 2),
@@ -596,7 +612,7 @@ for i, (first, second) in enumerate(
     if i > 0:
         axs[i].set_ylabel(axs[i].get_ylabel().split("\n")[1])
 fig.show()
-savefig(fig, f"accuracies_improvement", file_format=["pdf", "svg"])
+savefig(fig, f"accuracies_improvement{save_string}", file_format=["pdf", "svg"])
 
 fig, axs = plt.subplots(ncols=3, figsize=(9.5 * cm, 5 * cm), constrained_layout=True)
 sns.despine()
@@ -609,7 +625,7 @@ for i, (first, second) in enumerate(
 ):
     _plot_comparison(axs[i], first, second)
 fig.show()
-savefig(fig, f"accuracies_improvement_suppl", file_format=["pdf", "svg"])
+savefig(fig, f"accuracies_improvement_suppl{save_string}", file_format=["pdf", "svg"])
 
 # %% Bayesian comparison
 # https://jmlr.org/papers/volume18/16-305/16-305.pdf
@@ -676,7 +692,7 @@ for first, second in [
         fig.savefig(
             os.path.join(
                 get_fig_folder(),
-                f"accuracies_all_data_bayesian_test_{dataset}_{first}_vs_{second}.svg",
+                f"accuracies_all_data_bayesian_test_{dataset}_{first}_vs_{second}{save_string}.svg",
             ),
             transparent=True,
         )
@@ -809,7 +825,7 @@ for i, dataset_name in enumerate(dataset_order):
 
 
 fig.show()
-savefig(fig, f"accuracies_barplot", file_format=["pdf", "svg"])
+savefig(fig, f"accuracies_barplot{save_string}", file_format=["pdf", "svg"])
 
 fig_legend = plt.figure(constrained_layout=True, figsize=(8 * cm, 2 * cm))
 # --- Build manual legend patches ---
@@ -836,7 +852,9 @@ leg = fig_legend.legend(
     frameon=False,
 )
 fig_legend.show()
-savefig(fig_legend, f"accuracies_barplot_legend", file_format=["pdf", "svg"])
+savefig(
+    fig_legend, f"accuracies_barplot_legend{save_string}", file_format=["pdf", "svg"]
+)
 
 # %% plot accuracy over number of dimensions for summary shapes
 shades_for_error = False
@@ -932,4 +950,4 @@ if normalize is True:
 else:
     ax.set_ylabel("Accuracy")
 fig.show()
-savefig(fig, f"accuracies_shape_dimensions", file_format=["pdf", "svg"])
+savefig(fig, f"accuracies_shape_dimensions{save_string}", file_format=["pdf", "svg"])

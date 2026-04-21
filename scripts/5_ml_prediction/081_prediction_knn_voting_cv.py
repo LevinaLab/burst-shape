@@ -46,7 +46,7 @@ from src.settings import (
 )
 
 cm = prepare_plotting()
-special_target = True  # changes target in mossink from disease label to subject label
+special_target = False  # changes target in mossink from disease label to subject label
 cv_type = (
     # "RepeatedStratifiedKFold"
     "StratifiedShuffleSplit"
@@ -59,15 +59,23 @@ burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_KS"
     # "burst_dataset_mossink_MELAS"
 )
+_kwargs_clustering_params = {
+    # keep empty to use default
+    # "metric": "euclidean",
+    # "metric": "JensenShannon",
+    "metric": "KLDivergence",
+}
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
-clustering_params = get_chosen_spectral_embedding_params(dataset)
+clustering_params = get_chosen_spectral_embedding_params(
+    dataset, **_kwargs_clustering_params
+)
 match = re.search(r"(\d+)$", clustering_params)
 if match:
     kth = int(match.group(1))
