@@ -1,5 +1,14 @@
 import warnings
 
+from persistence.params_conversion_helper import (
+    replace_key_value_in_params,
+    params_string_to_dict,
+)
+from persistence.spectral_clustering import (
+    _spectral_clustering_defaults,
+    _spectral_clustering_params_to_str,
+)
+
 
 def get_dataset_from_burst_extraction_params(burst_extraction_params):
     if isinstance(burst_extraction_params, dict):
@@ -77,24 +86,16 @@ def get_chosen_spectral_embedding_params(dataset, **kwargs):
             )
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented.")
+    clustering_params = params_string_to_dict(
+        clustering_params, _spectral_clustering_defaults, startswith="spectral"
+    )
     if kwargs is not None:
         for key, value in kwargs.items():
-            clustering_params = _replace_key_value_in_clustering_params(
+            clustering_params = replace_key_value_in_params(
                 clustering_params, key, value
             )
-    return clustering_params
-
-
-def _replace_key_value_in_clustering_params(clustering_params, key, value):
-    spectral_clustering_params_split = clustering_params.split("_")
-    if key in spectral_clustering_params_split:
-        _position_key = spectral_clustering_params_split.index(key)
-        spectral_clustering_params_split[_position_key + 1] = value
-    else:
-        raise NotImplementedError("Adding key is not implemented.")
-        # must look up position in default dictionary and insert at that position
-
-    clustering_params = "_".join(spectral_clustering_params_split)
+    # back to string
+    clustering_params = _spectral_clustering_params_to_str(clustering_params)
     return clustering_params
 
 

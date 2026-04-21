@@ -1,4 +1,5 @@
 import ast
+from typing import Any
 
 
 def _parse_param_value(value_str: str):
@@ -8,14 +9,41 @@ def _parse_param_value(value_str: str):
         return value_str
 
 
-def parse_burst_params_string(burst_params: str, defaults: dict):
+def params_dict_to_string(params: dict, defaults: dict, startswith: str | None = None):
+    if not isinstance(params, dict):
+        raise TypeError("params must be a dict")
+
+    name = "" if startswith is None else startswith
+    for key, value in params.items():
+        if key in defaults and value != defaults[key]:
+            name += f"_{key}_{value}"
+    return name
+
+
+def replace_key_value_in_params(params: dict, key: str, value: Any):
+    if key not in params:
+        raise KeyError(f"Key {key} not found in parameters.")
+    new_params = dict(params)
+    new_params[key] = value
+    return new_params
+
+
+def params_string_to_dict(burst_params: str, defaults: dict, startswith=None):
     if not isinstance(burst_params, str):
         raise TypeError("burst_params must be a string")
-    if not burst_params.startswith("burst"):
-        raise ValueError("burst_params must start with 'burst'")
+
+    if startswith is not None:
+        if burst_params == startswith:
+            remainder = ""
+        elif burst_params.startswith(f"{startswith}_"):
+            remainder = burst_params[len(startswith) :]
+        else:
+            raise ValueError(f"burst_params must start with '{startswith}'")
+    else:
+        remainder = burst_params
 
     parsed_params = dict(defaults)
-    remainder = burst_params[len("burst") :]
+
     if not remainder:
         return parsed_params
 
@@ -23,9 +51,6 @@ def parse_burst_params_string(burst_params: str, defaults: dict):
     index = 0
 
     while index < len(remainder):
-        if remainder[index] != "_":
-            raise ValueError(f"Invalid burst parameter string: {burst_params}")
-
         matched_key = None
         for key in keys_by_length:
             marker = f"_{key}_"
@@ -35,7 +60,9 @@ def parse_burst_params_string(burst_params: str, defaults: dict):
                 break
 
         if matched_key is None:
-            raise ValueError(f"Unknown parameter key in: {burst_params}")
+            raise ValueError(
+                f"Unknown parameter key in: {burst_params} (remainder: {remainder})"
+            )
 
         next_key_index = None
         for key in keys_by_length:

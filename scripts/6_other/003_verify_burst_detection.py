@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from persistence import burst_params_from_str
+from persistence import burst_params_str_to_dict
 from persistence.spike_times import get_spike_times_in_milliseconds
 from preprocess.burst_detection import MI_bursts
 from settings import get_dataset_from_burst_extraction_params
@@ -21,17 +21,17 @@ from settings import get_dataset_from_burst_extraction_params
 from persistence import load_df_cultures
 
 burst_extraction_params = (
-    "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_KS"
-    # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
 
 # %% individual units
-burst_extraction_params_dict = burst_params_from_str(burst_extraction_params)
+burst_extraction_params_dict = burst_params_str_to_dict(burst_extraction_params)
 n_units = {
     "inhibblock": 12,
     "wagenaar": 59,

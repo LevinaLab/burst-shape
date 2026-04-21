@@ -1,6 +1,6 @@
 from .agglomerative_clustering import linkage_exists, load_linkage, save_linkage
 from .burst_extraction import (
-    burst_params_from_str,
+    burst_params_str_to_dict,
     load_burst_matrix,
     load_df_bursts,
     load_df_cultures,
@@ -23,6 +23,7 @@ from .spectral_clustering import (
     save_clustering_params,
     save_labels_params,
     save_spectral_embedding,
+    spectral_clustering_params_str_to_dict,
     spectral_embedding_exists,
 )
 
@@ -34,7 +35,7 @@ __all__ = [
     "save_burst_matrix",
     "load_burst_matrix",
     "save_burst_extraction_params",
-    "burst_params_from_str",
+    "burst_params_str_to_dict",
     "save_cv_params",
     "load_cv_params",
     "save_clustering_params",
@@ -60,4 +61,5 @@ __all__ = [
     "save_spectral_embedding",
     "load_spectral_embedding",
     "spectral_embedding_exists",
+    "spectral_clustering_params_str_to_dict",
 ]

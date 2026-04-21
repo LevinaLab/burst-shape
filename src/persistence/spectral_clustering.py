@@ -7,6 +7,7 @@ import scipy.sparse
 
 from .burst_extraction import _get_burst_folder
 from .cross_validation_string import _cv_params_to_string
+from .params_conversion_helper import params_dict_to_string, params_string_to_dict
 
 _spectral_clustering_defaults: dict = {
     "n_components_max": 30,
@@ -25,14 +26,19 @@ _labels_defaults: dict = {
 
 
 def _spectral_clustering_params_to_str(params):
-    name = "spectral"
-    for key, value in params.items():
-        if (
-            key in _spectral_clustering_defaults
-            and value != _spectral_clustering_defaults[key]
-        ):
-            name += f"_{key}_{value}"
-    return name
+    return params_dict_to_string(
+        params=params,
+        defaults=_spectral_clustering_defaults,
+        startswith="spectral",
+    )
+
+
+def spectral_clustering_params_str_to_dict(params: str):
+    return params_string_to_dict(
+        burst_params=params,
+        defaults=_spectral_clustering_defaults,
+        startswith="spectral",
+    )
 
 
 def _get_spectral_clustering_folder(

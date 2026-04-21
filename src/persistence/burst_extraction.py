@@ -7,7 +7,7 @@ import pandas as pd
 from src.folders import get_results_folder
 
 from .cross_validation_string import _cv_params_to_string
-from .helper import parse_burst_params_string
+from .params_conversion_helper import params_dict_to_string, params_string_to_dict
 
 _burst_extraction_defaults: dict = {
     "dataset": None,
@@ -30,20 +30,18 @@ _burst_extraction_defaults: dict = {
 
 
 def _burst_params_to_str(burst_params):
-    name = "burst"
-    for key, value in burst_params.items():
-        if (
-            key in _burst_extraction_defaults
-            and value != _burst_extraction_defaults[key]
-        ):
-            name += f"_{key}_{value}"
-    return name
+    return params_dict_to_string(
+        params=burst_params,
+        defaults=_burst_extraction_defaults,
+        startswith="burst",
+    )
 
 
-def burst_params_from_str(burst_params):
-    return parse_burst_params_string(
+def burst_params_str_to_dict(burst_params: str):
+    return params_string_to_dict(
         burst_params=burst_params,
         defaults=_burst_extraction_defaults,
+        startswith="burst",
     )
 
 
