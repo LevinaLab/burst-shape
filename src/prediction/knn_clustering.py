@@ -20,7 +20,7 @@ def get_burst_level_predictions(
     """
     n_bursts = len(df_bursts)
     class_frequencies = df_cultures[target_label].value_counts().sort_index()
-    class_labels = class_frequencies.index.values
+    class_labels = class_frequencies.index.to_numpy()
     weight_matrix = np.ones(n_bursts)
     for index in df_cultures.index:
         mask_recording = get_recording_mask(df_bursts, index)
@@ -31,7 +31,7 @@ def get_burst_level_predictions(
             df_cultures.at[index, target_label]
         ]
     # weight_matrix = np.ones(n_bursts)
-    true_labels = df_bursts[target_label].values
+    true_labels = df_bursts[target_label].to_numpy()
 
     votes = np.zeros((n_bursts, len(class_labels)))
     for index in df_cultures.index:
@@ -84,7 +84,7 @@ def get_burst_level_predictions_cv(
     class_frequencies = (
         df_cultures.iloc[train_idx][target_label].value_counts().sort_index()
     )
-    class_labels = class_frequencies.index.values
+    class_labels = class_frequencies.index.to_numpy()
     weight_matrix = np.ones(n_bursts)
     for index in df_cultures.iloc[train_idx].index:
         mask_recording = get_recording_mask(df_bursts, index)
@@ -95,8 +95,8 @@ def get_burst_level_predictions_cv(
             df_cultures.at[index, target_label]
         ]
     weight_matrix = weight_matrix[train_burst_mask]
-    true_labels_train = df_bursts[target_label][train_burst_mask].values
-    true_labels_test = df_bursts[target_label][test_burst_mask].values
+    true_labels_train = df_bursts[target_label][train_burst_mask].to_numpy()
+    true_labels_test = df_bursts[target_label][test_burst_mask].to_numpy()
 
     votes = np.zeros((len(true_labels_test), len(class_labels)))
     distances_recording = distance_matrix_square[test_burst_mask][:, train_burst_mask]
