@@ -1,10 +1,10 @@
 import warnings
 
-from persistence.params_conversion_helper import (
+from src.persistence.params_conversion_helper import (
     replace_key_value_in_params,
     params_string_to_dict,
 )
-from persistence.spectral_clustering import (
+from src.persistence.spectral_clustering import (
     _spectral_clustering_defaults,
     _spectral_clustering_params_to_str,
 )
