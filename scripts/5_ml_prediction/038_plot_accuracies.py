@@ -42,6 +42,7 @@ _distance_metric = (
     # "euclidean"
     # "JensenShannon"
     # "KLDivergence"
+    # "Correlation"
 )
 kwargs_spectral_clustering_params = (
     {}

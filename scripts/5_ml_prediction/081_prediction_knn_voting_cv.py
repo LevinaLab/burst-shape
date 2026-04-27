@@ -67,10 +67,11 @@ burst_extraction_params = (
     # "burst_dataset_mossink_MELAS"
 )
 _kwargs_clustering_params = {
-    # keep empty to use default
+    # keep empty to use default choice
     # "metric": "euclidean",
     # "metric": "JensenShannon",
-    "metric": "KLDivergence",
+    # "metric": "KLDivergence",
+    # "metric": "Correlation",
 }
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 clustering_params = get_chosen_spectral_embedding_params(

@@ -1,17 +1,13 @@
-import os
 import warnings
 
-import baycomp
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.folders import get_fig_folder
 from src.persistence.knn_clustering import load_knn_clustering_results_cv
 from src.persistence.xgboost import load_xgboost_results
-from src.plot import get_group_colors, prepare_plotting, savefig
+from src.plot import prepare_plotting, savefig
 from src.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
@@ -33,7 +29,7 @@ cv_type = "StratifiedShuffleSplit"
 distance_metrics_ = [
     "wasserstein",
     "KLDivergence",
-    "JensenShannon",
+    # "JensenShannon",
     "euclidean",
     "Correlation",
 ]
@@ -129,69 +125,69 @@ def _get_stats(baseline="traditional", groupby=None):
 # %% plot mean +- sem accuracy for each dataset, comparing distance metrics
 # take feature_set shape_2D
 df_stats = _get_stats()
-feature_set_ = "shape_2D"  # "combined"
-df_stats_feature_set = df_stats.loc[(slice(None), slice(None), feature_set_)]
-dataset_order = [
-    "inhibblock",
-    "hommersom_binary",
-    "mossink_KS",
-    "wagenaar",
-]
+for feature_set_ in ["shape_2D", "combined"]:
+    df_stats_feature_set = df_stats.loc[(slice(None), slice(None), feature_set_)]
+    dataset_order = [
+        "inhibblock",
+        "hommersom_binary",
+        "mossink_KS",
+        "wagenaar",
+    ]
 
-custom_label_mapping = {
-    "wasserstein": "Wasserstein",
-    "euclidean": "Euclidean",
-    "Correlation": "Correlation",
-    "JensenShannon": "Jensen-Shannon",
-    "KLDivergence": "KL Divergence",
-}
-color_map = sns.color_palette("Set2", n_colors=len(distance_metrics_))
+    custom_label_mapping = {
+        "wasserstein": "Wasserstein",
+        "euclidean": "Euclidean",
+        "Correlation": "Correlation",
+        "JensenShannon": "Jensen-Shannon",
+        "KLDivergence": "KL Divergence",
+    }
+    color_map = sns.color_palette("Set2", n_colors=len(distance_metrics_))
 
-fig, axs = plt.subplots(figsize=(8 * cm, 4 * cm), ncols=len(dataset_order))
+    fig, axs = plt.subplots(figsize=(8 * cm, 4 * cm), ncols=len(dataset_order))
 
-sns.despine()
-for i, dataset_name in enumerate(dataset_order):
-    ax = axs[i]
-    stats_dataset = df_stats_feature_set.loc[dataset_name]
-    ax.bar(
-        distance_metrics_,
-        stats_dataset.loc[distance_metrics_, "mean"],
-        yerr=stats_dataset.loc[distance_metrics_, "sem"],
-        capsize=1.5,
-        error_kw={"elinewidth": 1},
-        fill=True,
-        # alpha=alpha,
-        color=color_map,
-        # edgecolor=edgecolor,
-        # hatch=hatch,
-        # linewidth=linewidth,
-        label=[custom_label_mapping[fs] for fs in distance_metrics_]
-        if i == 0
-        else None,
-        width=0.6,
-        # rasterized=True,
+    sns.despine()
+    for i, dataset_name in enumerate(dataset_order):
+        ax = axs[i]
+        stats_dataset = df_stats_feature_set.loc[dataset_name]
+        ax.bar(
+            distance_metrics_,
+            stats_dataset.loc[distance_metrics_, "mean"],
+            yerr=stats_dataset.loc[distance_metrics_, "sem"],
+            capsize=1.5,
+            error_kw={"elinewidth": 1},
+            fill=True,
+            # alpha=alpha,
+            color=color_map,
+            # edgecolor=edgecolor,
+            # hatch=hatch,
+            # linewidth=linewidth,
+            label=[custom_label_mapping[fs] for fs in distance_metrics_]
+            if i == 0
+            else None,
+            width=0.6,
+            # rasterized=True,
+        )
+    for i, dataset_name in enumerate(dataset_order):
+        ax = axs[i]
+        ax.set_ylim(1 / n_classes[dataset_name], None)
+        if i == 3:
+            ax.set_yticks([0.125, 0.25, 0.375, 0.5, 0.625])
+        # ax.set_title(dataset_name)
+        # ax.set_xlabel("Feature set")
+        if i == 0:
+            ax.set_ylabel("Balanced accuracy")
+        ax.tick_params(bottom=True, labelbottom=False)
+
+    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.28)
+    fig.legend(
+        frameon=False,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.26),
+        ncol=3,
     )
-for i, dataset_name in enumerate(dataset_order):
-    ax = axs[i]
-    ax.set_ylim(1 / n_classes[dataset_name], None)
-    if i == 3:
-        ax.set_yticks([0.125, 0.25, 0.375, 0.5, 0.625])
-    # ax.set_title(dataset_name)
-    # ax.set_xlabel("Feature set")
-    if i == 0:
-        ax.set_ylabel("Balanced accuracy")
-    ax.tick_params(bottom=True, labelbottom=False)
-
-fig.tight_layout()
-fig.subplots_adjust(bottom=0.28)
-fig.legend(
-    frameon=False,
-    loc="upper center",
-    bbox_to_anchor=(0.5, 0.26),
-    ncol=3,
-)
-fig.show()
-savefig(fig, f"accuracies_supplementary_{feature_set_}", file_format=["pdf", "svg"])
+    fig.show()
+    savefig(fig, f"accuracies_supplementary_{feature_set_}", file_format=["pdf", "svg"])
 
 # %%plot saturation when using increasingly more dimensions
 shape_labels = [f"shape_{i}D" for i in shape_dimensions]
