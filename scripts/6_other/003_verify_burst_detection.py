@@ -13,19 +13,17 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from persistence import burst_params_str_to_dict
+from persistence import burst_params_str_to_dict, load_df_cultures
 from persistence.spike_times import get_spike_times_in_milliseconds
-from preprocess.burst_detection import MI_bursts
+from preprocess.burst_detection_alternative import network_bursts_from_unit_overlap
 from settings import get_dataset_from_burst_extraction_params
 
-from persistence import load_df_cultures
-
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_mossink_KS"
-    "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
@@ -45,29 +43,31 @@ minBdur_unit = burst_extraction_params_dict["minBdur"]
 minIBI_unit = burst_extraction_params_dict["minIBI"] / n_units
 minSburst_unit = burst_extraction_params_dict["minSburst"] / n_units
 
-df_cultures["burst_start_end_individual"] = pd.Series(dtype=object)
-for index in tqdm(df_cultures.index, "Detect unit bursts"):
-    st, gid = get_spike_times_in_milliseconds(df_cultures, index, dataset)
-    burst_start_end_individual = {}
-    for _unit in np.unique(gid):
-        _unit_filter = gid == _unit
-        st_unit = st[_unit_filter]
-        # detect bursts
-        bursts_unit = MI_bursts(
-            st_unit,
-            maxISIstart=maxISIstart_unit,
-            maxISIb=maxISIb_unit,
-            minBdur=minBdur_unit,
-            minIBI=minIBI_unit,
-            minSburst=minSburst_unit,
-        )
-        burst_start_end_individual[_unit] = bursts_unit
-    df_cultures.at[index, "burst_start_end_individual"] = burst_start_end_individual
-
 # %% determine network bursts from overlapping unit bursts
 percent_threshold = 0.2
-n_units_threshold = n_units * percent_threshold
 df_cultures["burst_start_end_network"] = pd.Series(dtype=object)
+
+# Reconstruct network bursts per culture using network_bursts_from_unit_overlap
+for index in tqdm(df_cultures.index, "Detect network bursts from unit overlap"):
+    st, gid = get_spike_times_in_milliseconds(df_cultures, index, dataset)
+
+    if not (isinstance(st, np.ndarray) and st.size > 0):
+        df_cultures.at[index, "burst_start_end_network"] = np.empty((0, 2), dtype=float)
+        continue
+
+    bursts_network = network_bursts_from_unit_overlap(
+        st,
+        gid,
+        maxISIstart=maxISIstart_unit,
+        maxISIb=maxISIb_unit,
+        minBdur=minBdur_unit,
+        minIBI=minIBI_unit,
+        minSburst=minSburst_unit,
+        threshold=percent_threshold,
+        n_units=n_units,
+    )
+
+    df_cultures.at[index, "burst_start_end_network"] = bursts_network
 
 
 def _to_intervals(intervals):
@@ -99,47 +99,6 @@ def _to_intervals(intervals):
         if np.isfinite(start) and np.isfinite(end) and end > start:
             normalized.append((float(start), float(end)))
     return normalized
-
-
-# Build reconstructed network bursts from unit-level overlap.
-for index in tqdm(df_cultures.index, "Detect network bursts from unit overlap"):
-    unit_bursts = df_cultures.at[index, "burst_start_end_individual"]
-    events = []
-
-    if isinstance(unit_bursts, dict):
-        for bursts in unit_bursts.values():
-            for start, end in _to_intervals(bursts):
-                # Use half-open intervals [start, end): ending units stop being active at end.
-                events.append((start, 1))
-                events.append((end, -1))
-
-    if not events:
-        df_cultures.at[index, "burst_start_end_network"] = np.empty((0, 2), dtype=float)
-        continue
-
-    # Sort end events before start events at identical timestamps for [start, end).
-    events.sort(key=lambda item: (item[0], 0 if item[1] == -1 else 1))
-
-    active_units = 0
-    network_start = None
-    network_bursts = []
-
-    for time, delta in events:
-        previous_active = active_units
-        active_units += delta
-
-        if previous_active <= n_units_threshold < active_units:
-            network_start = time
-        elif (
-            previous_active > n_units_threshold >= active_units
-            and network_start is not None
-        ):
-            network_bursts.append((network_start, time))
-            network_start = None
-
-    df_cultures.at[index, "burst_start_end_network"] = np.asarray(
-        network_bursts, dtype=float
-    )
 
 
 # %% 2x2 agreement matrix (time spent in each active/inactive combination)
