@@ -19,8 +19,8 @@ from preprocess.burst_detection_alternative import network_bursts_from_unit_over
 from settings import get_dataset_from_burst_extraction_params
 
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_mossink_KS"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
@@ -52,7 +52,7 @@ for index in tqdm(df_cultures.index, "Detect network bursts from unit overlap"):
     st, gid = get_spike_times_in_milliseconds(df_cultures, index, dataset)
 
     if not (isinstance(st, np.ndarray) and st.size > 0):
-        df_cultures.at[index, "burst_start_end_network"] = np.empty((0, 2), dtype=float)
+        df_cultures.at[index, "burst_start_end_network"] = []
         continue
 
     bursts_network = network_bursts_from_unit_overlap(

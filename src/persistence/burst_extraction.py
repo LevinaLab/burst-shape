@@ -26,6 +26,9 @@ _burst_extraction_defaults: dict = {
     "min_length": None,
     "min_firing_rate": None,
     "smoothing_kernel": None,
+    "algorithm": "default",
+    "unit_threshold": None,
+    "n_units_total": None,
 }
 
 

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from preprocess import burst_detection_alternative
 from src.persistence.spike_times import get_spike_times_in_milliseconds
 from src.preprocess import burst_detection
 
@@ -30,6 +31,9 @@ def extract_bursts(
     min_length=None,
     min_firing_rate=None,
     smoothing_kernel=None,
+    algorithm="default",
+    unit_threshold=None,
+    n_units_total=None,
 ):
     """Extract bursts from data files.
 
@@ -62,6 +66,16 @@ def extract_bursts(
         min_length (float, optional): Minimum length of burst. Defaults to None.
         min_firing_rate (float, optional): Minimum firing rate of burst. Defaults to None.
         smoothing_kernel (int, optional): Kernel size for smoothing burst. Defaults to None.
+        algorithm (str, optional): Defaults to "default".
+            Algorithm for burst detection.
+            "default" uses the MI_bursts method.
+            "overlap" uses the network_bursts_from_unit_overlap method,
+            which detects bursts based on overlapping bursts of individual units.
+        unit_threshold (float, optional): only needed if algorithm="overlap"
+            Threshold for share of units that must overlap to consider a network burst.
+        n_units_total (int, optional): only needed if algorithm="overlap"
+            Total number of units in the culture, used to compute the number of
+            overlapping units from the percentage threshold.
 
     Returns:
         df_cultures (pd.DataFrame): Dataframe with index as constructed, but sorted.
@@ -84,6 +98,9 @@ def extract_bursts(
         minBdur,
         minIBI,
         minSburst,
+        algorithm,
+        unit_threshold,
+        n_units_total,
     )
     df_bursts = _build_bursts_df(
         df_cultures,
@@ -121,6 +138,9 @@ def _bursts_from_df_culture(
     minBdur,
     minIBI,
     minSburst,
+    algorithm,
+    unit_threshold,
+    n_units_total,
 ):
     """Detect bursts in df_culture.
 
@@ -130,18 +150,38 @@ def _bursts_from_df_culture(
     df["n_bursts"] = pd.Series(dtype=object)
     df["burst_start_end"] = pd.Series(dtype=object)
     for index in tqdm(df.index, desc="Compute burst times for each culture"):
-        st, _ = get_spike_times_in_milliseconds(df, index, dataset)
+        st, gid = get_spike_times_in_milliseconds(df, index, dataset)
         if isinstance(st, np.ndarray):
-            bursts_start_end = burst_detection.MI_bursts(
-                st,
-                maxISIstart=maxISIstart,
-                maxISIb=maxISIb,
-                minBdur=minBdur,
-                minIBI=minIBI,
-                minSburst=minSburst,
-            )
-            df.at[index, "n_bursts"] = len(bursts_start_end)
-            df.at[index, "burst_start_end"] = bursts_start_end
+            match algorithm:
+                case "default":
+                    bursts_start_end = burst_detection.MI_bursts(
+                        st,
+                        maxISIstart=maxISIstart,
+                        maxISIb=maxISIb,
+                        minBdur=minBdur,
+                        minIBI=minIBI,
+                        minSburst=minSburst,
+                    )
+                    df.at[index, "n_bursts"] = len(bursts_start_end)
+                    df.at[index, "burst_start_end"] = bursts_start_end
+                case "overlap":
+                    bursts_start_end = (
+                        burst_detection_alternative.network_bursts_from_unit_overlap(
+                            st,
+                            gid,
+                            maxISIstart=maxISIstart,
+                            maxISIb=maxISIb,
+                            minBdur=minBdur,
+                            minIBI=minIBI,
+                            minSburst=minSburst,
+                            threshold=unit_threshold,
+                            n_units=n_units_total,
+                        )
+                    )
+                    df.at[index, "n_bursts"] = len(bursts_start_end)
+                    df.at[index, "burst_start_end"] = bursts_start_end
+                case _:
+                    raise NotImplementedError(f"Algorithm {algorithm} not implemented")
         else:
             warnings.warn(
                 f"The spike times of index {index} has type {type(st)}, but type ndarry was expected. "

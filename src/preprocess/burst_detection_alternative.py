@@ -6,10 +6,11 @@ the number of simultaneously active units.
 
 The main function `network_bursts_from_unit_overlap` accepts spike
 times and gids (unit ids) and uses the existing `MI_bursts` function
-for per-unit burst detection. It returns an array of (start, end)
-intervals for network bursts.
+for per-unit burst detection. It returns a list of `(start, end)`
+tuples for network bursts, matching the style of `MI_bursts`.
 """
 
+from itertools import groupby
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -57,7 +58,7 @@ def network_bursts_from_unit_overlap(
     minSburst: float = 50,
     threshold: float = 0.2,
     n_units: Optional[int] = None,
-) -> np.ndarray:
+) -> List[tuple[float, float]]:
     """Detect network bursts by overlapping unit-level bursts.
 
     For each unique unit id in `gid`, we detect bursts using `MI_bursts`
@@ -77,15 +78,14 @@ def network_bursts_from_unit_overlap(
             the number of unique ids in `gid`.
 
     Returns:
-        numpy array of shape (k,2) with dtype float for k detected
-        network bursts (start, end). If none detected, returns an
-        empty array with shape (0,2).
+        A list of `(start, end)` tuples for detected network bursts.
+        If none are detected, returns `[]`.
     """
     st_arr = np.asarray(st)
     gid_arr = np.asarray(gid)
 
     if st_arr.size == 0:
-        return np.empty((0, 2), dtype=float)
+        return []
 
     unique_units = np.unique(gid_arr)
     n_units_detected = int(n_units) if n_units is not None else len(unique_units)
@@ -118,17 +118,23 @@ def network_bursts_from_unit_overlap(
             events.append((end, -1))
 
     if not events:
-        return np.empty((0, 2), dtype=float)
+        return []
 
     # Sort events; end (-1) should be processed before start (+1) at same time
     events.sort(key=lambda item: (item[0], 0 if item[1] == -1 else 1))
+
+    # Merge events at the same timestamp: sum deltas for each time point
+    merged_events = [
+        (time, sum(delta for _, delta in group))
+        for time, group in groupby(events, key=lambda x: x[0])
+    ]
 
     active_units = 0
     prev_active = 0
     network_start: Optional[float] = None
     network_bursts: List[Tuple[float, float]] = []
 
-    for time, delta in events:
+    for time, delta in merged_events:
         prev_active = active_units
         active_units += delta
 
@@ -143,4 +149,4 @@ def network_bursts_from_unit_overlap(
             network_bursts.append((network_start, float(time)))
             network_start = None
 
-    return np.asarray(network_bursts, dtype=float)
+    return network_bursts
