@@ -44,9 +44,9 @@ def _gid_to_coordinates_vectorized(gids):
     for i, gid in enumerate(gids):
         _coordinates[i, :] = _gid_to_coordinates(gid)
     # assert that coordinates are >0 and <16
-    assert np.all(_coordinates >= 0) and np.all(
-        _coordinates < 16
-    ), f"Coordinates should be between 0 and 15, but got {_coordinates}"
+    assert np.all(_coordinates >= 0) and np.all(_coordinates < 16), (
+        f"Coordinates should be between 0 and 15, but got {_coordinates}"
+    )
     return _coordinates
 
 

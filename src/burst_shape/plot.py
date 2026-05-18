@@ -203,6 +203,8 @@ def get_human_slice_colors():
         "HighK_Gabazine_Spont2": "blue",
         "Gabazine_Spont1": "lightgreen",
         "test": "lightgrey",
+        "C60_Spont1": "purple",
+        "C60_Spont2": "darkviolet",
         "C602µM_Spont1": "purple",
         "C60_2uM_Spont2": "darkviolet",
         "LEV_100uM_Spont1": "pink",
