@@ -740,7 +740,7 @@ match dataset:
                         continue
             n_unique_batch_culture[i] = len(set(_unique_batch_culture))
             n_unique_batch[i] = len({_batch for _batch, _ in _unique_batch_culture})
-            distances_delta_t[i] = np.median(distances)
+            distances_delta_t[i] = np.mean(distances)
             distances_delta_t_error[i] = np.std(distances) / np.sqrt(
                 n_unique_batch_culture[i]
             )
@@ -795,8 +795,11 @@ match dataset:
         ax.set_ylabel("Distance")
         ax.set_ylim((0, None))
         fig.show()
-
-        # %%
+        savefig(
+            fig,
+            f"{dataset}_distances_{metric}_timespan",
+            file_format=["pdf", "svg"],
+        )
 
     case "mossink":
         # add additional info to the index to evaluate them in terms of distance/similarity
