@@ -6,9 +6,11 @@ REPO=eu.gcr.io
 
 DATASET?=inhibblock
 APPLICATION?=review
+# Cloud Run runs amd64 by default; override with PLATFORM= for a native arm64 build.
+PLATFORM?=linux/amd64
 
 docker-build:
-	docker build --build-arg DATASET=$(DATASET) --build-arg APPLICATION=$(APPLICATION) -t $(APPLICATION)-$(DATASET):$(TAG) .
+	docker build --platform $(PLATFORM) --build-arg DATASET=$(DATASET) --build-arg APPLICATION=$(APPLICATION) -t $(APPLICATION)-$(DATASET):$(TAG) .
 
 docker-run:
 	docker run -p 8080:8080 -t $(APPLICATION)-$(DATASET):$(TAG)

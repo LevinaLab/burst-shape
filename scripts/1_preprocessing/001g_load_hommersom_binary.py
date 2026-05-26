@@ -2,7 +2,10 @@ import os
 
 import pandas as pd
 
-from src.folders import get_data_hommersom_binary_folder, get_data_hommersom_folder
+from burst_shape.folders import (
+    get_data_hommersom_binary_folder,
+    get_data_hommersom_folder,
+)
 
 df_cultures = pd.read_pickle(
     os.path.join(get_data_hommersom_folder(), "df_hommersom.pkl")

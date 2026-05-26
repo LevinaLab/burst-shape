@@ -11,17 +11,17 @@ import scipy.stats
 import seaborn as sns
 from scipy.spatial.distance import pdist, squareform
 
-from src.folders import get_fig_folder
-from src.persistence import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
     load_burst_matrix,
     load_clustering_labels,
     load_df_bursts,
     load_df_cultures,
     load_spectral_embedding,
 )
-from src.plot import label_sig_diff, prepare_plotting, savefig, get_group_colors
-from src.prediction.knn_clustering import get_recording_mask
-from src.settings import (
+from burst_shape.plot import label_sig_diff, prepare_plotting, savefig, get_group_colors
+from burst_shape.prediction.knn_clustering import get_recording_mask
+from burst_shape.settings import (
     get_chosen_spectral_clustering_params,
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,

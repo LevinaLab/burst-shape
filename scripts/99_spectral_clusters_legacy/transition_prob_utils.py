@@ -13,8 +13,8 @@ import seaborn as sns
 from scipy.cluster.hierarchy import fcluster
 from tqdm import tqdm
 
-from src.persistence import load_df_bursts
-from src.persistence.burst_extraction import _get_burst_folder
+from burst_shape.persistence import load_df_bursts
+from burst_shape.persistence.burst_extraction import _get_burst_folder
 
 
 def get_sequence_df():

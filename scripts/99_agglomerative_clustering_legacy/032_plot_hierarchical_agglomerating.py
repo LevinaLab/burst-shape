@@ -7,10 +7,10 @@ import numpy as np
 import seaborn as sns
 from scipy.cluster.hierarchy import dendrogram, fcluster
 
-from src import folders
-from src.persistence import load_burst_matrix, load_df_bursts, load_linkage
-from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.burst_extraction import _get_burst_folder
+from burst_shape import folders
+from burst_shape.persistence import load_burst_matrix, load_df_bursts, load_linkage
+from burst_shape.persistence.agglomerative_clustering import get_agglomerative_labels
+from burst_shape.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"

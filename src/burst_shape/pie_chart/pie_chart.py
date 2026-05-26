@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.plot import get_group_colors
+from burst_shape.plot import get_group_colors
 
 
 class EmptyBurstStatus(Enum):

@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.manifold import spectral_embedding
 
-from src.spectral_clustering import SpectralClusteringModified
+from burst_shape.spectral_clustering import SpectralClusteringModified
 
 # Generate a random adjacency matrix (symmetric, non-negative)
 np.random.seed(42)

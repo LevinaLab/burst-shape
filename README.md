@@ -59,22 +59,17 @@ This is used for visualizing the spectral embedding (of individual burst shapes)
 # Setup
 
 ## Installation
-[Optional] Create a conda environment named `burst-shape` and `python=3.11` with
+The project uses [uv](https://docs.astral.sh/uv/) for dependency management. Install uv with
 ```bash
-conda create -n burst-shape python=3.11
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-Activate the environment with
-```bash
-conda activate burst-shape
-```
+or via Homebrew (`brew install uv`).
 
-Install `src` module with
+Then, from the repo root, run
 ```bash
-pip install -e .
+uv sync
 ```
-which will run `setup.py`, making the `src` module available.
+This creates a `.venv/` with Python 3.13, installs `burst_shape` editable, and pulls in every PEP 735 dependency group declared in `pyproject.toml` (`web`, `analysis`, `dev`). Activate the venv with `source .venv/bin/activate`, or prepend `uv run` to any command (e.g. `uv run pytest`, `uv run python scripts/...`).
 
-[Optional] If this fails to install the dependencies, you can install them manually with
-```bash
-pip install -r requirements.txt
-```
+## Deployment
+See [DEPLOY.md](DEPLOY.md) for how to build the Docker images and push the online tools to Google Cloud Run.

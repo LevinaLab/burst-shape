@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-from src.persistence.burst_extraction import _get_burst_folder
+from burst_shape.persistence.burst_extraction import _get_burst_folder
 
 _tsne_params_defaults = {
     "initialization": "pca",

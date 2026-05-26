@@ -7,7 +7,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from src.folders import get_data_folder, get_data_hommersom_folder
+from burst_shape.folders import get_data_folder, get_data_hommersom_folder
 
 df_batch_list = []
 for batch in tqdm([1, 2, 3, 4], desc="Load Batch data"):

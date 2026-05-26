@@ -3,7 +3,7 @@ import warnings
 
 import numpy as np
 
-from src.folders import get_data_folder
+from burst_shape.folders import get_data_folder
 
 
 def get_spike_times_in_seconds(df_cultures, idx, dataset):

@@ -1,52 +1,58 @@
 ARG DATASET=inhibblock
 ARG APPLICATION=review
 
-FROM python:3.10 AS base
+# uv-on-python image: smaller than python:3.x-slim + pip, and supports `uv sync`.
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS base
 
-# Set the working directory
+# Re-declare the global ARG inside the stage so it's available for ENV substitution.
+ARG DATASET
+
 WORKDIR /app
 
-# Copy files to the container
-# COPY . /app
+# Install only the `web` dependency group (and the project itself).
+# pyproject.toml + uv.lock first → cache layer; src copied after.
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
+
+COPY pyproject.toml uv.lock README.md /app/
 COPY src /app/src
-# COPY scripts/011_explore_embeddings.py /app/interactive_tsne.py
-COPY requirements.txt /app/requirements.txt
+RUN uv sync --frozen --no-default-groups --group web
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Put the venv on PATH so gunicorn/python resolve from it.
+ENV PATH="/app/.venv/bin:${PATH}"
 
-# Set environment variable for consistent paths (optional)
-ENV RESULTS_FOLDER=/app/results
-ENV DEBUG=False
-ENV RESAMPLE=True
-ENV DATASET=${DATASET}
+ENV RESULTS_FOLDER=/app/results \
+    DEBUG=False \
+    RESAMPLE=True \
+    DATASET=${DATASET}
 
-FROM base as inhibblock
+FROM base AS inhibblock
 ARG PATH_TO_DATA=results/burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30
 ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85
 ENV DATASET=inhibblock
 
-FROM base as kapucu
+FROM base AS kapucu
 ARG PATH_TO_DATA=results/burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4
 ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_150
 ENV DATASET=kapucu
 
-FROM base as hommersom_test
+FROM base AS hommersom_test
 ARG PATH_TO_DATA=results/burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30/
 ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_6
 ENV DATASET=hommersom_test
 
-FROM base as hommersom_binary
+FROM base AS hommersom_binary
 ARG PATH_TO_DATA=results/burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30/
 ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_21
 ENV DATASET=hommersom_binary
 
-FROM base as hommersom
+FROM base AS hommersom
 ARG PATH_TO_DATA=results/burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30/
 ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_55
 ENV DATASET=hommersom
 
-FROM base as mossink
+FROM base AS mossink
 ARG PATH_TO_DATA=results/burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30/
 ARG PATH_TO_EMBEDDING=${PATH_TO_DATA}/spectral_affinity_precomputed_metric_wasserstein_n_neighbors_85
 ENV DATASET=mossink

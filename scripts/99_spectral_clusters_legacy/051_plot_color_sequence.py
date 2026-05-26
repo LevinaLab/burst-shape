@@ -5,10 +5,14 @@ import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_data_folder
-from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
-from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.folders import get_data_folder
+from burst_shape.persistence import (
+    load_clustering_labels,
+    load_df_bursts,
+    load_df_cultures,
+)
+from burst_shape.persistence.agglomerative_clustering import get_agglomerative_labels
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
 
 burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from src.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
 
 
 def get_classical_features(df_cultures, df_bursts, dataset):

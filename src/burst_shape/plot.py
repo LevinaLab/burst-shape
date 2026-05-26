@@ -6,7 +6,7 @@ import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_fig_folder
+from burst_shape.folders import get_fig_folder
 
 
 def prepare_plotting():

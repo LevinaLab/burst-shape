@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from src.persistence import (
+from burst_shape.persistence import (
     load_burst_matrix,
     load_distance_matrix,
     load_spectral_embedding,
@@ -12,7 +12,7 @@ from src.persistence import (
     save_tsne,
     tsne_exists,
 )
-from src.persistence.agglomerative_clustering import get_agglomerative_labels
+from burst_shape.persistence.agglomerative_clustering import get_agglomerative_labels
 
 burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"

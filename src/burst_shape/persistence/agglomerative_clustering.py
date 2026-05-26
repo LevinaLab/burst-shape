@@ -4,8 +4,8 @@ from typing import Literal
 import numpy as np
 from scipy.cluster.hierarchy import fcluster
 
-from src.persistence.burst_extraction import _get_burst_folder
-from src.persistence.cross_validation_string import _cv_params_to_string
+from burst_shape.persistence.burst_extraction import _get_burst_folder
+from burst_shape.persistence.cross_validation_string import _cv_params_to_string
 
 _agglomerative_clustering_keys = [
     "linkage",

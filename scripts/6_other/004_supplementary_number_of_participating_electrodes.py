@@ -12,10 +12,10 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from persistence import load_df_bursts, load_df_cultures
-from persistence.spike_times import get_spike_times_in_milliseconds
-from plot import prepare_plotting, savefig
-from settings import get_dataset_from_burst_extraction_params
+from burst_shape.persistence import load_df_bursts, load_df_cultures
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.plot import prepare_plotting, savefig
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 

@@ -6,7 +6,7 @@ from scipy.cluster.hierarchy import linkage
 from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 
-from src.persistence import (
+from burst_shape.persistence import (
     distance_matrix_exists,
     linkage_exists,
     load_cv_params,
@@ -14,7 +14,7 @@ from src.persistence import (
     save_distance_matrix,
     save_linkage,
 )
-from src.persistence.burst_extraction import load_burst_matrix, load_df_bursts
+from burst_shape.persistence.burst_extraction import load_burst_matrix, load_df_bursts
 
 burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"

@@ -23,20 +23,23 @@ import re
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import balanced_accuracy_score
-from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedShuffleSplit
-from tqdm import tqdm
 
-from src.persistence import load_df_bursts, load_df_cultures, load_distance_matrix
-from src.persistence.knn_clustering import save_knn_clustering_results_cv
-from src.pie_chart.pie_chart import plot_df_culture_layout, prepare_df_cultures_layout
-from src.plot import get_group_colors, prepare_plotting
-from src.prediction.define_target import make_target_label
-from src.prediction.knn_clustering import (
+from burst_shape.persistence import (
+    load_df_bursts,
+    load_df_cultures,
+    load_distance_matrix,
+)
+from burst_shape.pie_chart.pie_chart import (
+    plot_df_culture_layout,
+    prepare_df_cultures_layout,
+)
+from burst_shape.plot import get_group_colors, prepare_plotting
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.prediction.knn_clustering import (
     get_burst_level_predictions_cv,
     get_culture_level_predictions_cv,
 )
-from src.settings import (
+from burst_shape.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )

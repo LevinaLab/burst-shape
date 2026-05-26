@@ -12,15 +12,19 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier
 
-from src.persistence import load_df_bursts, load_df_cultures, load_spectral_embedding
-from src.plot import get_group_colors, prepare_plotting
-from src.prediction.define_target import make_target_label
-from src.prediction.knn_clustering import get_recording_mask
-from src.settings import (
+from burst_shape.persistence import (
+    load_df_bursts,
+    load_df_cultures,
+    load_spectral_embedding,
+)
+from burst_shape.plot import get_group_colors, prepare_plotting
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.prediction.knn_clustering import get_recording_mask
+from burst_shape.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )
-from src.utils.classical_features import get_classical_features
+from burst_shape.utils.classical_features import get_classical_features
 
 warnings.warn(
     "This script is deprecated. It does not include cross-validation for hyperparameter tuning."

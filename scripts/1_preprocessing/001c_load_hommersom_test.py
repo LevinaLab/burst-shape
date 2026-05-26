@@ -6,7 +6,7 @@ import scipy.io as sio
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_data_hommersom_test_folder
+from burst_shape.folders import get_data_hommersom_test_folder
 
 # file = os.path.join(get_data_hommersom_folder(), "Batch1", "CACN_clone1", "APS_CACN_Clone1_C1.mat")
 

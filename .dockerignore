@@ -1,9 +1,26 @@
-data
-burst_clustering.egg-info
+.git
+.idea
+.venv
+.DS_Store
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+
+# Heavy data/figures dirs — never needed by the image.
 data
 data_old
 figures
-# results
-# scripts
-.git
-.idea
+
+# Stale build artifact from the old setup.py-based layout.
+burst_clustering.egg-info
+
+# Results: send only the .pkl/.npy artifacts the Dockerfile actually COPYs in.
+# Everything else under results/ (often many GB of intermediate files) is excluded.
+results/**
+!results/burst_dataset_*/df_cultures.pkl
+!results/burst_dataset_*/df_bursts.pkl
+!results/burst_dataset_*/pca.npy
+!results/burst_dataset_*/tsne.npy
+!results/burst_dataset_*/spectral_affinity_precomputed_*/clustering_labels.pkl
+!results/burst_dataset_*/spectral_affinity_precomputed_*/spectral_embedding.npy

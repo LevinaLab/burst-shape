@@ -20,9 +20,12 @@ from dash import Dash, Input, Output, State, dcc, html, no_update
 from flask import Flask
 from plotly.subplots import make_subplots
 
-from src.persistence import load_df_cultures
-from src.persistence.spike_times import get_spike_times_in_seconds
-from src.settings import get_citation_doi_link, get_dataset_from_burst_extraction_params
+from burst_shape.persistence import load_df_cultures
+from burst_shape.persistence.spike_times import get_spike_times_in_seconds
+from burst_shape.settings import (
+    get_citation_doi_link,
+    get_dataset_from_burst_extraction_params,
+)
 
 # -----------------------------------------------------------------------------
 # Get RESAMPLE and DEBUG from environment

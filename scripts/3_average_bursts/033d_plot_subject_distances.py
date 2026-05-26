@@ -4,11 +4,11 @@ import pandas as pd
 import seaborn as sns
 from scipy.spatial.distance import pdist, squareform
 
-from src.persistence import load_burst_matrix, load_df_bursts, load_df_cultures
-from src.plot import get_group_colors, prepare_plotting, savefig
-from src.prediction.define_target import make_target_label
-from src.prediction.knn_clustering import get_recording_mask
-from src.settings import get_dataset_from_burst_extraction_params
+from burst_shape.persistence import load_burst_matrix, load_df_bursts, load_df_cultures
+from burst_shape.plot import get_group_colors, prepare_plotting, savefig
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.prediction.knn_clustering import get_recording_mask
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 

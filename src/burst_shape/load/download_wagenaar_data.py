@@ -4,7 +4,7 @@ import subprocess
 import numpy as np
 from tqdm import tqdm
 
-from src.folders import get_data_folder
+from burst_shape.folders import get_data_folder
 
 
 def download(

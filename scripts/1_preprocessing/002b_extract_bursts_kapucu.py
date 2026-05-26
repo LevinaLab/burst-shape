@@ -5,14 +5,14 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from src.folders import get_data_kapucu_folder
-from src.persistence import (
+from burst_shape.folders import get_data_kapucu_folder
+from burst_shape.persistence import (
     save_burst_extraction_params,
     save_burst_matrix,
     save_df_bursts,
     save_df_cultures,
 )
-from src.preprocess import burst_extraction
+from burst_shape.preprocess import burst_extraction
 
 na = np.array
 

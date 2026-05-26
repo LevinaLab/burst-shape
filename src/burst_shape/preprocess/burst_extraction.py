@@ -6,9 +6,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from preprocess import burst_detection_alternative
-from src.persistence.spike_times import get_spike_times_in_milliseconds
-from src.preprocess import burst_detection
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.preprocess import burst_detection, burst_detection_alternative
 
 
 def extract_bursts(

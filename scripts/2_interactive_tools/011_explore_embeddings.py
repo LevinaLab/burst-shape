@@ -11,8 +11,8 @@ from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 from flask import Flask
 
-from src.folders import get_fig_folder
-from src.persistence import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
     load_clustering_labels,
     load_df_bursts,
     load_df_cultures,
@@ -20,11 +20,11 @@ from src.persistence import (
     load_spectral_embedding,
     load_tsne,
 )
-from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.spike_times import get_spike_times_in_milliseconds
-from src.plot import get_cluster_colors, get_group_colors
-from src.prediction.define_target import make_target_label
-from src.settings import (
+from burst_shape.persistence.agglomerative_clustering import get_agglomerative_labels
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.plot import get_cluster_colors, get_group_colors
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.settings import (
     get_chosen_spectral_embedding_params,
     get_citation_doi_link,
     get_dataset_from_burst_extraction_params,

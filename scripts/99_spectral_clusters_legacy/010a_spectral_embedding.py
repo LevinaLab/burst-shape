@@ -12,7 +12,7 @@ import warnings
 from matplotlib import pyplot as plt
 from sklearn.manifold import SpectralEmbedding
 
-from src.persistence import (
+from burst_shape.persistence import (
     load_affinity_matrix,
     load_burst_matrix,
     load_spectral_embedding,

@@ -11,15 +11,20 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.persistence import (
+from burst_shape.persistence import (
     load_burst_matrix,
     load_clustering_labels,
     load_df_bursts,
     load_df_cultures,
     load_spectral_embedding,
 )
-from src.plot import get_cluster_colors, get_group_colors, prepare_plotting, savefig
-from src.settings import (
+from burst_shape.plot import (
+    get_cluster_colors,
+    get_group_colors,
+    prepare_plotting,
+    savefig,
+)
+from burst_shape.settings import (
     get_chosen_spectral_clustering_params,
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,

@@ -8,11 +8,11 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.folders import get_fig_folder
-from src.persistence.knn_clustering import load_knn_clustering_results_cv
-from src.persistence.xgboost import load_xgboost_results
-from src.plot import get_group_colors, prepare_plotting, savefig
-from src.settings import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence.knn_clustering import load_knn_clustering_results_cv
+from burst_shape.persistence.xgboost import load_xgboost_results
+from burst_shape.plot import get_group_colors, prepare_plotting, savefig
+from burst_shape.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )

@@ -6,11 +6,11 @@ from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
 from tqdm import tqdm
 
-from src.persistence import load_df_bursts, load_df_cultures
-from src.plot import prepare_plotting
-from src.prediction.define_target import make_target_label
-from src.settings import get_dataset_from_burst_extraction_params
-from src.utils.classical_features import get_classical_features
+from burst_shape.persistence import load_df_bursts, load_df_cultures
+from burst_shape.plot import prepare_plotting
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.settings import get_dataset_from_burst_extraction_params
+from burst_shape.utils.classical_features import get_classical_features
 
 cm = prepare_plotting()
 special_target = True

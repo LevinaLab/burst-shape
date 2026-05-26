@@ -5,9 +5,9 @@ from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import fcluster
 from scipy.spatial.distance import squareform
 
-from src import folders
-from src.persistence import save_burst_matrix, save_df_bursts
-from src.persistence.burst_extraction import (
+from burst_shape import folders
+from burst_shape.persistence import save_burst_matrix, save_df_bursts
+from burst_shape.persistence.burst_extraction import (
     _get_burst_folder,
     load_burst_matrix,
     load_df_bursts,

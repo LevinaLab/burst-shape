@@ -4,11 +4,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import LineCollection
 
-from src.folders import get_fig_folder
-from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
-from src.persistence.spike_times import get_spike_times_in_milliseconds
-from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
-from src.settings import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
+    load_clustering_labels,
+    load_df_bursts,
+    load_df_cultures,
+)
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.plot import get_cluster_colors, get_group_colors, prepare_plotting
+from burst_shape.settings import (
     get_chosen_spectral_clustering_params,
     get_dataset_from_burst_extraction_params,
 )

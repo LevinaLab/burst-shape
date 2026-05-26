@@ -7,8 +7,8 @@ Print it in a table that can be copy-pasted to latex.
 
 import pandas as pd
 
-from src.persistence import load_df_bursts, load_df_cultures
-from src.settings import get_dataset_from_burst_extraction_params
+from burst_shape.persistence import load_df_bursts, load_df_cultures
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 burst_extraction_params_list = [
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",

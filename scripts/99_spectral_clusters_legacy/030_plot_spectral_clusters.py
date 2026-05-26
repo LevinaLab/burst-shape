@@ -4,9 +4,9 @@ import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_fig_folder
-from src.persistence import load_clustering_labels, load_df_bursts
-from src.plot import get_cluster_colors, make_cluster_legend, prepare_plotting
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import load_clustering_labels, load_df_bursts
+from burst_shape.plot import get_cluster_colors, make_cluster_legend, prepare_plotting
 
 cm = prepare_plotting()
 

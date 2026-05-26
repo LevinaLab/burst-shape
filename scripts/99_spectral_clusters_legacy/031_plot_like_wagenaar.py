@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.persistence import load_clustering_labels, load_df_bursts
+from burst_shape.persistence import load_clustering_labels, load_df_bursts
 
 # which clustering to plot
 n_clusters = 8

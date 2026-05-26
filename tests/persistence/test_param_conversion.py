@@ -1,12 +1,12 @@
 import pytest
 
-from src.persistence.burst_extraction import (
+from burst_shape.persistence.burst_extraction import (
     _burst_extraction_defaults,
     _burst_params_to_str,
     burst_params_str_to_dict,
 )
-from src.persistence.params_conversion_helper import params_dict_to_string
-from src.persistence.spectral_clustering import (
+from burst_shape.persistence.params_conversion_helper import params_dict_to_string
+from burst_shape.persistence.spectral_clustering import (
     _spectral_clustering_defaults,
     _spectral_clustering_params_to_str,
     spectral_clustering_params_str_to_dict,

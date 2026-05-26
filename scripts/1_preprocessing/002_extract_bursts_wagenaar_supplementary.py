@@ -3,14 +3,14 @@ import os
 import numpy as np
 import pandas as pd
 
-from src.folders import get_data_folder
-from src.persistence import (
+from burst_shape.folders import get_data_folder
+from burst_shape.persistence import (
     save_burst_extraction_params,
     save_burst_matrix,
     save_df_bursts,
     save_df_cultures,
 )
-from src.preprocess import burst_extraction
+from burst_shape.preprocess import burst_extraction
 
 # parameters
 n_units_total = 59

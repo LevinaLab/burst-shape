@@ -3,7 +3,7 @@ from typing import Literal
 
 import numpy as np
 
-from src.persistence.spectral_clustering import _get_spectral_clustering_folder
+from burst_shape.persistence.spectral_clustering import _get_spectral_clustering_folder
 
 
 def _get_xgboost_file_name(

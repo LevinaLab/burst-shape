@@ -31,21 +31,25 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 from tqdm import tqdm
 
-from src.folders import get_fig_folder
-from src.persistence import load_df_bursts, load_df_cultures, load_distance_matrix
-from src.persistence.knn_clustering import save_knn_clustering_results
-from src.pie_chart.pie_chart import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
+    load_df_bursts,
+    load_df_cultures,
+    load_distance_matrix,
+)
+from burst_shape.persistence.knn_clustering import save_knn_clustering_results
+from burst_shape.pie_chart.pie_chart import (
     get_df_cultures_subset,
     plot_df_culture_layout,
     prepare_df_cultures_layout,
 )
-from src.plot import get_group_colors, prepare_plotting
-from src.prediction.define_target import make_target_label
-from src.prediction.knn_clustering import (
+from burst_shape.plot import get_group_colors, prepare_plotting
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.prediction.knn_clustering import (
     get_burst_level_predictions,
     get_culture_level_predictions,
 )
-from src.settings import (
+from burst_shape.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )

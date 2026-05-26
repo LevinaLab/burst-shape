@@ -1,5 +1,5 @@
-from src.cross_validation.split import split_training_and_validation_data
-from src.persistence import load_df_bursts, save_cv_params, save_df_bursts
+from burst_shape.cross_validation.split import split_training_and_validation_data
+from burst_shape.persistence import load_df_bursts, save_cv_params, save_df_bursts
 
 # parameters
 burst_extraction_params = (

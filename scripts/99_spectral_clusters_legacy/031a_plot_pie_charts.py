@@ -7,15 +7,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from src.folders import get_fig_folder
-from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
-from src.pie_chart.pie_chart import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
+    load_clustering_labels,
+    load_df_bursts,
+    load_df_cultures,
+)
+from burst_shape.pie_chart.pie_chart import (
     get_df_cultures_subset,
     plot_df_culture_layout,
     prepare_df_cultures_layout,
 )
-from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
-from src.settings import (
+from burst_shape.plot import get_cluster_colors, get_group_colors, prepare_plotting
+from burst_shape.settings import (
     get_chosen_spectral_clustering_params,
     get_dataset_from_burst_extraction_params,
 )

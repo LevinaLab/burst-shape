@@ -6,12 +6,12 @@ import pandas as pd
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
 
-from src.folders import get_fig_folder
-from src.persistence import load_df_cultures
-from src.persistence.xgboost import load_xgboost_results
-from src.plot import get_group_colors, prepare_plotting
-from src.prediction.define_target import make_target_label
-from src.settings import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import load_df_cultures
+from burst_shape.persistence.xgboost import load_xgboost_results
+from burst_shape.plot import get_group_colors, prepare_plotting
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )

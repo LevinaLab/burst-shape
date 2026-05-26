@@ -6,9 +6,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src import folders
-from src.persistence import load_burst_matrix, load_clustering_labels, load_df_bursts
-from src.plot import get_cluster_colors
+from burst_shape import folders
+from burst_shape.persistence import (
+    load_burst_matrix,
+    load_clustering_labels,
+    load_df_bursts,
+)
+from burst_shape.plot import get_cluster_colors
 
 apply_smoothing = False
 

@@ -5,14 +5,14 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_results_folder
-from src.persistence import (
+from burst_shape.folders import get_results_folder
+from burst_shape.persistence import (
     load_clustering_labels,
     load_clustering_maps,
     load_df_bursts,
     load_spectral_embedding,
 )
-from src.plot import get_cluster_colors
+from burst_shape.plot import get_cluster_colors
 
 burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"

@@ -13,10 +13,12 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from persistence import burst_params_str_to_dict, load_df_cultures
-from persistence.spike_times import get_spike_times_in_milliseconds
-from preprocess.burst_detection_alternative import network_bursts_from_unit_overlap
-from settings import get_dataset_from_burst_extraction_params
+from burst_shape.persistence import burst_params_str_to_dict, load_df_cultures
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.preprocess.burst_detection_alternative import (
+    network_bursts_from_unit_overlap,
+)
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 burst_extraction_params = (
     "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501

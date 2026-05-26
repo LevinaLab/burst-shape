@@ -5,7 +5,7 @@ Create two new datasets.
 One with "KS" and "Control", and one with "MELAS" and "Control".
 """
 
-from src.persistence import (
+from burst_shape.persistence import (
     load_burst_matrix,
     load_df_bursts,
     load_df_cultures,

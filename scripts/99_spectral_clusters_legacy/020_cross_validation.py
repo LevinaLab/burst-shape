@@ -11,18 +11,18 @@ from sklearn import metrics
 from sklearn.metrics import davies_bouldin_score
 from tqdm import tqdm
 
-from src import folders
-from src.folders import get_fig_folder
-from src.persistence import (
+from burst_shape import folders
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
     load_burst_matrix,
     load_clustering_labels,
     load_cv_params,
     load_df_bursts,
     load_distance_matrix,
 )
-from src.persistence.agglomerative_clustering import get_agglomerative_labels
-from src.persistence.burst_extraction import _get_burst_folder
-from src.plot import prepare_plotting
+from burst_shape.persistence.agglomerative_clustering import get_agglomerative_labels
+from burst_shape.persistence.burst_extraction import _get_burst_folder
+from burst_shape.plot import prepare_plotting
 
 # parameters which clustering to plot
 burst_extraction_params = (

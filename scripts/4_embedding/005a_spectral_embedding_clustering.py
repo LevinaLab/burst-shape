@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 
-from src.persistence import (
+from burst_shape.persistence import (
     load_affinity_matrix,
     load_burst_matrix,
     load_clustering_maps,
@@ -14,7 +14,10 @@ from src.persistence import (
     save_clustering_params,
     save_labels_params,
 )
-from src.spectral_clustering import SpectralClusteringModified, compute_affinity_matrix
+from burst_shape.spectral_clustering import (
+    SpectralClusteringModified,
+    compute_affinity_matrix,
+)
 
 # choose parameters for clustering
 n_jobs = 12

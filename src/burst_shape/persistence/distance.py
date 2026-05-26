@@ -4,7 +4,7 @@ from typing import Literal
 import numpy as np
 from scipy.spatial.distance import squareform
 
-from src.persistence.burst_extraction import _get_burst_folder
+from burst_shape.persistence.burst_extraction import _get_burst_folder
 
 
 def _get_distance_matrix_filename(

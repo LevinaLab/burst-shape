@@ -11,7 +11,7 @@ import pandas as pd
 from scipy.io import loadmat
 from tqdm import tqdm
 
-from src.folders import get_data_mossink_folder
+from burst_shape.folders import get_data_mossink_folder
 
 na = np.array
 

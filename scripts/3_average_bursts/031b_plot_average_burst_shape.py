@@ -18,22 +18,22 @@ import scipy.stats as stats
 import seaborn as sns
 from matplotlib import ticker
 
-from src.folders import get_fig_folder
-from src.persistence import load_df_bursts, load_df_cultures
-from src.pie_chart.pie_chart import (
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import load_df_bursts, load_df_cultures
+from burst_shape.pie_chart.pie_chart import (
     get_df_cultures_subset,
     plot_df_culture_layout,
     prepare_df_cultures_layout,
 )
-from src.plot import (
+from burst_shape.plot import (
     get_group_colors,
     get_group_labels,
     label_sig_diff,
     prepare_plotting,
     savefig,
 )
-from src.prediction.define_target import make_target_label
-from src.settings import get_dataset_from_burst_extraction_params
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 

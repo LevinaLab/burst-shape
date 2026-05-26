@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from src.folders import get_fig_folder
-from src.persistence import load_df_bursts, load_df_cultures
-from src.persistence.spike_times import get_spike_times_in_milliseconds
-from src.plot import prepare_plotting
-from src.settings import get_dataset_from_burst_extraction_params
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import load_df_bursts, load_df_cultures
+from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.plot import prepare_plotting
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 

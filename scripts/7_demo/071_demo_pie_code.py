@@ -4,10 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from src.folders import get_fig_folder
-from src.persistence import load_clustering_labels, load_df_bursts, load_df_cultures
-from src.persistence.spike_times import get_spike_times_in_seconds
-from src.plot import get_cluster_colors, prepare_plotting
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
+    load_clustering_labels,
+    load_df_bursts,
+    load_df_cultures,
+)
+from burst_shape.persistence.spike_times import get_spike_times_in_seconds
+from burst_shape.plot import get_cluster_colors, prepare_plotting
 
 cm = prepare_plotting()
 

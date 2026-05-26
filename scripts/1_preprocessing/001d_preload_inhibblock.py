@@ -7,7 +7,7 @@ import scipy.io as sio
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from src.folders import get_data_inhibblock_folder
+from burst_shape.folders import get_data_inhibblock_folder
 
 bic_label = ["A2", "A3", "A4", "A5", "A6", "B2", "B3", "B4", "B5", "B6"]
 

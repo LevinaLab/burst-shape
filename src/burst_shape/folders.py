@@ -1,7 +1,10 @@
 import os
 
-# Set the project folder dynamically based on the location of this file
-_project_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Project root is three levels above this file:
+# src/burst_shape/folders.py → repo root
+_project_folder = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 _data_folder = "data"
 _data_kapucu_folder = "data_kapucu"

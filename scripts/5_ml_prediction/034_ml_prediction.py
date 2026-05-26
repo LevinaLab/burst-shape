@@ -10,17 +10,17 @@ from sklearn.metrics import auc, roc_curve
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder, StandardScaler
 
-from src import folders
-from src.folders import get_fig_folder
-from src.persistence import (
+from burst_shape import folders
+from burst_shape.folders import get_fig_folder
+from burst_shape.persistence import (
     load_burst_matrix,
     load_clustering_labels,
     load_df_bursts,
     load_df_cultures,
 )
-from src.plot import get_cluster_colors, get_group_colors, prepare_plotting
-from src.settings import get_dataset_from_burst_extraction_params
-from src.utils.classical_features import get_classical_features
+from burst_shape.plot import get_cluster_colors, get_group_colors, prepare_plotting
+from burst_shape.settings import get_dataset_from_burst_extraction_params
+from burst_shape.utils.classical_features import get_classical_features
 
 cm = prepare_plotting()
 

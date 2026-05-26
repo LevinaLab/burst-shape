@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from src.persistence import load_df_cultures
-from src.persistence.spike_times import get_spike_times_in_seconds
-from src.plot import prepare_plotting, savefig
-from src.settings import get_dataset_from_burst_extraction_params
+from burst_shape.persistence import load_df_cultures
+from burst_shape.persistence.spike_times import get_spike_times_in_seconds
+from burst_shape.plot import prepare_plotting, savefig
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 

@@ -2,10 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from src.persistence import load_df_bursts, load_df_cultures
-from src.plot import get_group_colors, prepare_plotting, savefig
-from src.prediction.define_target import make_target_label
-from src.settings import get_dataset_from_burst_extraction_params
+from burst_shape.persistence import load_df_bursts, load_df_cultures
+from burst_shape.plot import get_group_colors, prepare_plotting, savefig
+from burst_shape.prediction.define_target import make_target_label
+from burst_shape.settings import get_dataset_from_burst_extraction_params
 
 cm = prepare_plotting()
 

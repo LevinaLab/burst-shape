@@ -4,7 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from src.folders import get_results_folder
+from burst_shape.folders import get_results_folder
 
 from .cross_validation_string import _cv_params_to_string
 from .params_conversion_helper import params_dict_to_string, params_string_to_dict

@@ -4,8 +4,8 @@ import matplotlib.patches as mpatches
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
-from src.folders import get_fig_folder
-from src.plot import get_group_colors, make_cluster_legend, prepare_plotting
+from burst_shape.folders import get_fig_folder
+from burst_shape.plot import get_group_colors, make_cluster_legend, prepare_plotting
 
 # %% wagenaar
 cm = prepare_plotting()
