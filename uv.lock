@@ -4,7 +4,8 @@ requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
     "sys_platform == 'emscripten'",
-    "sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(platform_machine != 'x86_64' and sys_platform == 'darwin') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32')",
 ]
 
 [[package]]
@@ -67,9 +68,12 @@ dependencies = [
     { name = "scipy" },
     { name = "seaborn" },
     { name = "setuptools" },
+    { name = "shap", version = "0.50.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "shap", version = "0.51.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
     { name = "statsmodels" },
     { name = "tqdm" },
     { name = "werkzeug" },
+    { name = "xgboost" },
 ]
 
 [package.dev-dependencies]
@@ -98,9 +102,11 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "setuptools", specifier = "~=68.2.2" },
+    { name = "shap", specifier = ">=0.50.0" },
     { name = "statsmodels", specifier = ">=0.14.6" },
     { name = "tqdm", specifier = "~=4.66.1" },
     { name = "werkzeug", specifier = "==3.0.3" },
+    { name = "xgboost", specifier = ">=3.2.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -172,6 +178,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/57/75/31212c6bf2503fdf920d87fee5d7a86a2e3bcf444984126f13d8e4016804/click-8.3.2.tar.gz", hash = "sha256:14162b8b3b3550a7d479eafa77dfd3c38d9dc8951f6f69c78913a8f9a7540fd5", size = 302856, upload-time = "2026-04-03T19:14:45.118Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/20/71885d8b97d4f3dde17b1fdb92dbd4908b00541c5a3379787137285f602e/click-8.3.2-py3-none-any.whl", hash = "sha256:1924d2c27c5653561cd2cae4548d1406039cb79b858b747cfea24924bbc1616d", size = 108379, upload-time = "2026-04-03T19:14:43.505Z" },
+]
+
+[[package]]
+name = "cloudpickle"
+version = "3.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/fb/576f067976d320f5f0114a8d9fa1215425441bb35627b1993e5afd8111e5/cloudpickle-3.1.2.tar.gz", hash = "sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414", size = 22330, upload-time = "2025-11-03T09:25:26.604Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl", hash = "sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a", size = 22228, upload-time = "2025-11-03T09:25:25.534Z" },
 ]
 
 [[package]]
@@ -716,6 +731,15 @@ wheels = [
 ]
 
 [[package]]
+name = "nvidia-nccl-cu12"
+version = "2.30.4"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/2b/1757b6b74ee241de5efee3f35487dcb33e09c07605254809c6ce36aeb783/nvidia_nccl_cu12-2.30.4-py3-none-manylinux_2_18_aarch64.whl", hash = "sha256:606fa9aa9215c00367d060188eb1a5bbd28396aff5e11b9200d99d1a6ab79a71", size = 300091935, upload-time = "2026-04-23T03:22:58.024Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/c3/0e45ff4dce8401f6ea7c25d80d75738813a47f5ae2691e2478f2fd1e5e93/nvidia_nccl_cu12-2.30.4-py3-none-manylinux_2_18_x86_64.whl", hash = "sha256:040974b261edec4b8b793e59e92ab7176fe4ab4bc61b800f9f3bfaeec2d436f3", size = 300164158, upload-time = "2026-04-23T03:23:19.589Z" },
+]
+
+[[package]]
 name = "orjson"
 version = "3.11.8"
 source = { registry = "https://pypi.org/simple" }
@@ -1216,12 +1240,78 @@ wheels = [
 ]
 
 [[package]]
+name = "shap"
+version = "0.50.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'darwin'",
+]
+dependencies = [
+    { name = "cloudpickle", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "numba", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "numpy", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "packaging", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "pandas", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "scikit-learn", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "scipy", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "slicer", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "tqdm", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "typing-extensions", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2b/2c/9ccbfbdf5ceeb914317f9691ef1fca3118d4a997eb5e79bcd8992f56c938/shap-0.50.0.tar.gz", hash = "sha256:bdc559acf7f647bc3bb22c6a1fea9f50716ed357ad595bc357b43082ae4dc6b9", size = 4087800, upload-time = "2025-11-11T18:36:53.363Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/de/40120047779e2b6da8838bbf94c58e15c345aa5b7f805418da558a588d73/shap-0.50.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:0249b10142c1205e7de994c6135178faaaabb6b12528382db1f8e1f2b902d207", size = 558175, upload-time = "2025-11-11T18:36:20.001Z" },
+]
+
+[[package]]
+name = "shap"
+version = "0.51.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "sys_platform == 'win32'",
+    "sys_platform == 'emscripten'",
+    "(platform_machine != 'x86_64' and sys_platform == 'darwin') or (sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32')",
+]
+dependencies = [
+    { name = "cloudpickle", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "llvmlite", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "numba", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "numpy", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "packaging", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "pandas", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "scikit-learn", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "scipy", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "slicer", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "tqdm", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "typing-extensions", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/0a/4a3ee4b1a3654f2a9ae038a64bb3e91a42af3da07577d69b65241f010970/shap-0.51.0.tar.gz", hash = "sha256:cfa17ff213657c9d50285aa923d79b0037a62e2ee1a31bc3eec7e196b00bdb59", size = 4108336, upload-time = "2026-03-04T09:18:19.985Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/36/4a/77f8dc2c6874d8a27123afffcb79f540a80ed3ccfd640604e4d8beb9cc5e/shap-0.51.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:f3efeef8a76e2ee735fad50f82e5a8e56ba8639f42e2fa50dc1997caed77c488", size = 564931, upload-time = "2026-03-04T09:17:51.022Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/5e/5c6d37992e93b3fa44509d8544281cd5ae357c8946bc0e756e78139b4baf/shap-0.51.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:724cdd8298450ae22b08ca40e07136c73e4e75dbdf8e3f07d741a291bf636dad", size = 561686, upload-time = "2026-03-04T09:17:52.462Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/b7/76dbca9c4b83602841c016fec7201e4146c5e6347a8b0428e7c0617ba424/shap-0.51.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:13eb21626ea671604769c847ac0604871a03df0842522087ffc00181683780a4", size = 1050719, upload-time = "2026-03-04T09:17:54.252Z" },
+    { url = "https://files.pythonhosted.org/packages/64/b1/472ca0adf25215dfdbca9f398d853536413091fe47dd69bb3f67dbd445f4/shap-0.51.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f32d006680708513efff07f67dcbe44a531b242ae042dee99b7024e210391ac2", size = 1063794, upload-time = "2026-03-04T09:17:56.154Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/8e/9072acfcbe6abc79fbfe87360c7dcfe16d7498cdb13dc560820912eb5dd5/shap-0.51.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:33540a7e3c70bd1a742a4d0576c19b5e000165038de953d3ebf31a7bb53d01f4", size = 2012838, upload-time = "2026-03-04T09:17:57.835Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/65/b95588a1f48eb9e98aa61e6db31cf63a388970e4c11341d40ddece3b54f8/shap-0.51.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:f461e5a1d6b0cae3fd9c6bd00c95111ed95b9e0020ec71f14291429ed17d49f4", size = 2090245, upload-time = "2026-03-04T09:17:59.501Z" },
+    { url = "https://files.pythonhosted.org/packages/79/d5/1ec3120f461f31a03d1d2f1d339f5058f12c7a542d22bfcc350511eccc8a/shap-0.51.0-cp313-cp313-win_amd64.whl", hash = "sha256:5f51ca55bda10b3fa2125f2b8e08e9d6a6edcbb0e752c67050e87a6d3ca7d53b", size = 555927, upload-time = "2026-03-04T09:18:01.274Z" },
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "slicer"
+version = "0.0.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/f9/b4bce2825b39b57760b361e6131a3dacee3d8951c58cb97ad120abb90317/slicer-0.0.8.tar.gz", hash = "sha256:2e7553af73f0c0c2d355f4afcc3ecf97c6f2156fcf4593955c3f56cf6c4d6eb7", size = 14894, upload-time = "2024-03-09T23:35:26.826Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/81/9ef641ff4e12cbcca30e54e72fb0951a2ba195d0cda0ba4100e532d929db/slicer-0.0.8-py3-none-any.whl", hash = "sha256:6c206258543aecd010d497dc2eca9d2805860a0b3758673903456b7df7934dc3", size = 15251, upload-time = "2024-03-09T07:03:07.708Z" },
 ]
 
 [[package]]
@@ -1362,6 +1452,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/02/51/2e0fc149e7a810d300422ab543f87f2bcf64d985eb6f1228c4efd6e4f8d4/werkzeug-3.0.3.tar.gz", hash = "sha256:097e5bfda9f0aba8da6b8545146def481d06aa7d3266e7448e2cccf67dd8bd18", size = 803342, upload-time = "2024-05-05T23:10:31.999Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9d/6e/e792999e816d19d7fcbfa94c730936750036d65656a76a5a688b57a656c4/werkzeug-3.0.3-py3-none-any.whl", hash = "sha256:fc9645dc43e03e4d630d23143a04a7f947a9a3b5727cd535fdfe155a17cc48c8", size = 227274, upload-time = "2024-05-05T23:10:29.567Z" },
+]
+
+[[package]]
+name = "xgboost"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "nvidia-nccl-cu12", marker = "sys_platform == 'linux'" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/bb/1eb0242409d22db725d7a88088e6cfd6556829fb0736f9ff69aa9f1e9455/xgboost-3.2.0.tar.gz", hash = "sha256:99b0e9a2a64896cdaf509c5e46372d336c692406646d20f2af505003c0c5d70d", size = 1263936, upload-time = "2026-02-10T11:03:05.542Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/49/6e4cdd877c24adf56cb3586bc96d93d4dcd780b5ea1efb32e1ee0de08bae/xgboost-3.2.0-py3-none-macosx_10_15_x86_64.whl", hash = "sha256:2f661966d3e322536d9c448090a870fcba1e32ee5760c10b7c46bac7a342079a", size = 2507014, upload-time = "2026-02-10T10:50:57.44Z" },
+    { url = "https://files.pythonhosted.org/packages/93/f1/c09ef1add609453aa3ba5bafcd0d1c1a805c1263c0b60138ec968f8ec296/xgboost-3.2.0-py3-none-macosx_12_0_arm64.whl", hash = "sha256:eabbd40d474b8dbf6cb3536325f9150b9e6f0db32d18de9914fb3227d0bef5b7", size = 2328527, upload-time = "2026-02-10T10:51:17.502Z" },
+    { url = "https://files.pythonhosted.org/packages/96/9f/d9914a7b8df842832850b1a18e5f47aaa071c217cdd1da2ae9deb291018b/xgboost-3.2.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:852eabc6d3b3702a59bf78dbfdcd1cb9c4d3a3b6e5ed1f8781d8b9512354fdd2", size = 131100954, upload-time = "2026-02-10T11:02:42.704Z" },
+    { url = "https://files.pythonhosted.org/packages/79/98/679de17c2caa4fd3b0b4386ecf7377301702cb0afb22930a07c142fcb1d8/xgboost-3.2.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:99b4a6bbcb47212fec5cf5fbe12347215f073c08967431b0122cfbd1ee70312c", size = 131748579, upload-time = "2026-02-10T10:54:40.424Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/3d/1661dd114a914a67e3f7ab66fa1382e7599c2a8c340f314ad30a3e2b4d08/xgboost-3.2.0-py3-none-win_amd64.whl", hash = "sha256:0d169736fd836fc13646c7ab787167b3a8110351c2c6bc770c755ee1618f0442", size = 101681668, upload-time = "2026-02-10T10:59:31.202Z" },
 ]
 
 [[package]]
