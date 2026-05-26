@@ -58,7 +58,8 @@ def network_bursts_from_unit_overlap(
     minSburst: float = 50,
     threshold: float = 0.2,
     n_units: Optional[int] = None,
-) -> List[tuple[float, float]]:
+    return_unit_bursts: bool = False,
+):
     """Detect network bursts by overlapping unit-level bursts.
 
     For each unique unit id in `gid`, we detect bursts using `MI_bursts`
@@ -76,16 +77,25 @@ def network_bursts_from_unit_overlap(
             an absolute number of units.
         n_units: optional override for number of units; if None we use
             the number of unique ids in `gid`.
+        return_unit_bursts: if True, also return the per-unit burst
+            intervals as a dict mapping unit id to a list of
+            (start, end) tuples.
 
     Returns:
         A list of `(start, end)` tuples for detected network bursts.
         If none are detected, returns `[]`.
+        If `return_unit_bursts=True`, returns a tuple
+        `(network_bursts, unit_bursts)` where `unit_bursts` is a dict
+        mapping unit id to its list of `(start, end)` tuples.
     """
     st_arr = np.asarray(st)
     gid_arr = np.asarray(gid)
 
     if st_arr.size == 0:
-        return []
+        if return_unit_bursts:
+            return [], {}
+        else:
+            return []
 
     unique_units = np.unique(gid_arr)
     n_units_detected = int(n_units) if n_units is not None else len(unique_units)
@@ -99,6 +109,7 @@ def network_bursts_from_unit_overlap(
 
     # Collect per-unit bursts
     events: List[Tuple[float, int]] = []
+    unit_bursts: dict = {}
     for unit in unique_units:
         mask = gid_arr == unit
         st_unit = st_arr[mask]
@@ -112,13 +123,19 @@ def network_bursts_from_unit_overlap(
             minIBI=minIBI,
             minSburst=minSburst,
         )
-        for start, end in _to_intervals(bursts_unit):
+        intervals = _to_intervals(bursts_unit)
+        if intervals:
+            unit_bursts[unit] = intervals
+        for start, end in intervals:
             # half-open interval [start, end): start adds, end removes
             events.append((start, 1))
             events.append((end, -1))
 
     if not events:
-        return []
+        if return_unit_bursts:
+            return [], unit_bursts
+        else:
+            return []
 
     # Sort events; end (-1) should be processed before start (+1) at same time
     events.sort(key=lambda item: (item[0], 0 if item[1] == -1 else 1))
@@ -149,4 +166,7 @@ def network_bursts_from_unit_overlap(
             network_bursts.append((network_start, float(time)))
             network_start = None
 
-    return network_bursts
+    if return_unit_bursts:
+        return network_bursts, unit_bursts
+    else:
+        return network_bursts

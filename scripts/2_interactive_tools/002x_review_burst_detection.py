@@ -2,8 +2,10 @@
 Interactive tool for reviewing detected bursts.
 
 This starts a plotly application that displays detected bursts.
-It shows an overview of recordings indicating the number of detected bursts as a heatmap.
-When clicking on a recording it shows the recording's spikes as raster plot and the firing rate.
+It shows an overview of recordings indicating the number of detected bursts as
+a heatmap.
+When clicking on a recording it shows the recording's spikes as raster plot
+and the firing rate.
 The detected bursts are highlighted with rectangles.
 """
 
@@ -51,45 +53,50 @@ else:
 if "DATASET" in os.environ:
     match os.environ["DATASET"]:
         case "wagenaar":
-            burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+            burst_extraction_params = "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"  # noqa: E501
         case "kapucu":
-            burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+            burst_extraction_params = "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
         case "hommersom":
-            burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case "hommersom_test":
-            burst_extraction_params = "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case "inhibblock":
-            burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case "mossink":
-            burst_extraction_params = "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+            burst_extraction_params = "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
         case _:
             raise NotImplementedError(
                 f"Unknown environment variable DATASET: {os.environ['DATASET']}"
             )
 else:
     burst_extraction_params = (
-        # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
-        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
-        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"
-        # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_mossink_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_mossink_maxISIstart_100_maxISIb_100_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-        # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+        # "burst_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"  # noqa: E501
+        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+        # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"  # noqa: E501
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"  # noqa: E501
+        # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_hommersom_test_minIBI_50_n_bins_50_normalization_integral_min_length_30_min_firing_rate_1585"  # noqa: E501
+        # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_mossink_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_mossink_maxISIstart_100_maxISIb_100_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+        # "burst_dataset_wagenaar_maxISIstart_38.40572873934304_maxISIb_38.40572873934304_minIBI_0.6779661016949152_minSburst_0.847457627118644_n_bins_50_normalization_integral_algorithm_overlap_unit_threshold_0.2_n_units_total_59"  # noqa: E501
+        # "burst_dataset_wagenaar_maxISIstart_38.40572873934304_maxISIb_38.40572873934304_minSburst_0.847457627118644_n_bins_50_normalization_integral_algorithm_overlap_unit_threshold_0.2_n_units_total_59"  # noqa: E501
+        "burst_dataset_wagenaar_maxISIstart_38.40572873934304_maxISIb_38.40572873934304_minSburst_0.847457627118644_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59"  # noqa: E501
     )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 citation, doi_link = get_citation_doi_link(dataset)
 print(f"Detected dataset: {dataset}")
 
 df_cultures = load_df_cultures(burst_extraction_params)
+
+HAS_PER_UNIT_BURSTS = "burst_start_end_per_unit" in df_cultures.columns
 
 # -----------------------------------------------------------------------------
 # DATASET specific settings
@@ -135,7 +142,9 @@ match dataset:
         columns_title = index_cultures[-1]
         warnings.warn(
             f"No layout for the recordings overview defined for dataset={dataset}. "
-            f"Defaulting now to pivot_index={pivot_index} and pivot_columns={pivot_columns}."
+            f"Defaulting now to pivot_index={pivot_index} and "
+            f"pivot_columns={pivot_columns}.",
+            stacklevel=1,
         )
 
 
@@ -205,8 +214,9 @@ colors_bursts = ["red", "blue", "green"]  # Define three alternating colors
 server = Flask(__name__)
 
 if RESAMPLE:
-    # NOTE: Remark how the assets folder is passed to the Dash(proxy) application and how
-    #       the lodash script is included as an external script.
+    # NOTE: Remark how the assets folder is passed to the Dash(proxy)
+    #       application and how the lodash script is included as an external
+    #       script.
     app = DashProxy(
         __name__,
         server=server,
@@ -224,6 +234,7 @@ RECORDING_OVERVIEW_ID = "matrix-plot"
 GRAPH_ID = "whole-recording"
 OVERVIEW_GRAPH_ID = "whole-recording-overview"
 N_BURSTS_SELECT_ID = "n_bursts_selection"
+BURST_TOGGLES_ID = "burst_toggles"
 
 app.layout = html.Div(
     [
@@ -259,6 +270,20 @@ app.layout = html.Div(
                     style={"width": "fit-content"},
                     clearable=False,
                 ),
+                dcc.Checklist(
+                    id=BURST_TOGGLES_ID,
+                    options=[
+                        {"label": "Show network bursts", "value": "network"},
+                        {"label": "Show per-unit bursts", "value": "per_unit"},
+                    ],
+                    value=["network"],
+                    inline=True,
+                    style=(
+                        {"marginLeft": "16px"}
+                        if HAS_PER_UNIT_BURSTS
+                        else {"display": "none"}
+                    ),
+                ),
             ],
             style={"display": "flex", "alignItems": "center"},
         ),
@@ -292,9 +317,13 @@ app.layout = html.Div(
     [
         Input(RECORDING_OVERVIEW_ID, "clickData"),
         Input(N_BURSTS_SELECT_ID, "value"),
+        Input(BURST_TOGGLES_ID, "value"),
     ],
 )
-def update_plot(click_data, n_burst_colors):
+def update_plot(click_data, n_burst_colors, burst_toggles_value):
+    burst_toggles_value = burst_toggles_value or []
+    show_network_bursts = "network" in burst_toggles_value
+    show_per_unit_bursts = "per_unit" in burst_toggles_value
     # Create the heatmap
     fig = go.Figure(
         data=go.Heatmap(
@@ -345,7 +374,13 @@ def update_plot(click_data, n_burst_colors):
         )
 
         fig_whole, fig_whole_overview = _create_fig_whole_timeseries(
-            df_cultures, index_select, div_day, selected_text, n_burst_colors
+            df_cultures,
+            index_select,
+            div_day,
+            selected_text,
+            n_burst_colors,
+            show_network_bursts,
+            show_per_unit_bursts,
         )
     else:
         selected_text = "Click on a cell to see details."
@@ -363,7 +398,13 @@ def update_plot(click_data, n_burst_colors):
 
 
 def _create_fig_whole_timeseries(
-    df_cultures, index_select, div_day, selected_text, n_burst_colors
+    df_cultures,
+    index_select,
+    div_day,
+    selected_text,
+    n_burst_colors,
+    show_network_bursts=True,
+    show_per_unit_bursts=False,
 ):
     index_df_cultures = (*index_select, div_day)
     st, gid = get_spike_times_in_seconds(df_cultures, index_df_cultures, dataset)
@@ -417,13 +458,15 @@ def _create_fig_whole_timeseries(
         col=1,
     )
 
-    for row, y_min, y_max in zip([1, 2], [0, min(gid)], [max(firing_rate), max(gid)]):
-        for i, ((start, end), _) in enumerate(
-            zip(
-                df_cultures.at[index_df_cultures, "burst_start_end"],
-                range(df_cultures.at[index_df_cultures, "n_bursts"]),
-            )
-        ):
+    network_bursts = (
+        df_cultures.at[index_df_cultures, "burst_start_end"]
+        if show_network_bursts
+        else []
+    )
+    for row, y_min, y_max in zip(
+        [1, 2], [0, min(gid)], [max(firing_rate), max(gid)], strict=True
+    ):
+        for i, (start, end) in enumerate(network_bursts):
             color = colors_bursts[:n_burst_colors][
                 i % n_burst_colors
             ]  # Cycle through the three colors
@@ -489,6 +532,44 @@ def _create_fig_whole_timeseries(
         row=2,
         col=1,
     )
+
+    if show_per_unit_bursts and HAS_PER_UNIT_BURSTS:
+        unit_bursts = df_cultures.at[index_df_cultures, "burst_start_end_per_unit"]
+        if isinstance(unit_bursts, dict) and len(unit_bursts) > 0:
+            xs: list = []
+            ys: list = []
+            for unit, intervals in unit_bursts.items():
+                for start, end in intervals:
+                    xs.extend([start / 1000, end / 1000, np.nan])
+                    ys.extend([unit, unit, np.nan])
+            xs_arr = np.array(xs, dtype=float)
+            ys_arr = np.array(ys, dtype=float)
+            fig_whole.add_trace(
+                go.Scattergl(
+                    mode="lines",
+                    line=dict(color="orange", width=4),
+                    opacity=0.6,
+                    name="Per-unit bursts",
+                    **(
+                        {}
+                        if RESAMPLE
+                        else {
+                            "x": xs_arr,
+                            "y": ys_arr,
+                        }
+                    ),
+                ),
+                **(
+                    {}
+                    if not RESAMPLE
+                    else {
+                        "hf_x": xs_arr,
+                        "hf_y": ys_arr,
+                    }
+                ),
+                row=2,
+                col=1,
+            )
     # update layout
     fig_whole.update_layout(
         title=selected_text,
@@ -520,7 +601,8 @@ def _create_fig_whole_timeseries(
 
 
 if RESAMPLE:
-    # --- Clientside callbacks used to bidirectionally link the overview and main graph ---
+    # --- Clientside callbacks used to bidirectionally link the overview and ---
+    # --- main graph ---
     app.clientside_callback(
         dash.ClientsideFunction(namespace="clientside", function_name="main_to_coarse"),
         dash.Output(
@@ -540,7 +622,8 @@ if RESAMPLE:
 
     # --- FigureResampler update callback ---
 
-    # The plotly-resampler callback to update the graph after a relayout event (= zoom/pan)
+    # The plotly-resampler callback to update the graph after a relayout
+    # event (= zoom/pan)
     # As we use the figure again as output, we need to set: allow_duplicate=True
     @app.callback(
         Output(GRAPH_ID, "figure", allow_duplicate=True),

@@ -40,50 +40,64 @@ def extract_bursts(
     All times in milliseconds.
 
     Args:
-        dataset (Literal["kapucu", "wagenaar", "hommersom", "hommersom_test", "inhibblock", "mossink"]):
-            Dataset to extract bursts from.
-        construct_df_cultures (Callable[[], pd.DataFrame]): A function that constructs the initial df_cultures.
-            It must contain the index, likely a multi-index. This index will be used both for df_cultures and df_bursts.
-            It is recommended that it has a columns 'times' (in seconds) and 'gid' where the spike times can be loaded from.
+        dataset: Dataset to extract bursts from. One of "kapucu", "wagenaar",
+            "hommersom", "hommersom_test", "inhibblock", "mossink".
+        construct_df_cultures (Callable[[], pd.DataFrame]): A function that
+            constructs the initial df_cultures.
+            It must contain the index, likely a multi-index. This index will
+            be used both for df_cultures and df_bursts.
+            It is recommended that it has a columns 'times' (in seconds) and
+            'gid' where the spike times can be loaded from.
             If you choose a different format for storing the spike times,
             you must modify the function get_spike_times_in_seconds() elsewhere.
-        maxISIstart (int, optional): Maximum inter-spike interval (ISI) for start of burst.
-            Defaults to 5.
+        maxISIstart (int, optional): Maximum inter-spike interval (ISI) for
+            start of burst. Defaults to 5.
         maxISIb (int, optional): Maximum ISI for burst. Defaults to 5.
         minBdur (int, optional): Minimum burst duration. Defaults to 40.
         minIBI (int, optional): Minimum inter-burst interval (IBI). Defaults to 40.
-        minSburst (int, optional): Minimum number of spikes in a burst. Defaults to 50.
+        minSburst (int, optional): Minimum number of spikes in a burst.
+            Defaults to 50.
         bin_size (float, optional): Size of bins for binning spike times.
             Either bin_size or n_bins must be specified. Defaults to None.
         n_bins (int, optional): Number of bins for binning spike times.
             Either bin_size or n_bins must be specified. Defaults to None.
-        extend_left (float, optional): Extend burst start time by this amount. Defaults to 0.0.
-        extend_right (float, optional): Extend burst end time by this amount. Defaults to 0.0.
-        burst_length_threshold (int, optional): Threshold for maximum burst length. Defaults to None.
-        pad_right (bool, optional): Pad bursts to the right with zeros. Defaults to False.
+        extend_left (float, optional): Extend burst start time by this amount.
+            Defaults to 0.0.
+        extend_right (float, optional): Extend burst end time by this amount.
+            Defaults to 0.0.
+        burst_length_threshold (int, optional): Threshold for maximum burst
+            length. Defaults to None.
+        pad_right (bool, optional): Pad bursts to the right with zeros.
+            Defaults to False.
         normalization (str, optional): Normalization to apply to bursts.
             Can be None, 'zscore', 'peak', 'integral'. Defaults to None.
         min_length (float, optional): Minimum length of burst. Defaults to None.
-        min_firing_rate (float, optional): Minimum firing rate of burst. Defaults to None.
-        smoothing_kernel (int, optional): Kernel size for smoothing burst. Defaults to None.
+        min_firing_rate (float, optional): Minimum firing rate of burst.
+            Defaults to None.
+        smoothing_kernel (int, optional): Kernel size for smoothing burst.
+            Defaults to None.
         algorithm (str, optional): Defaults to "default".
             Algorithm for burst detection.
             "default" uses the MI_bursts method.
             "overlap" uses the network_bursts_from_unit_overlap method,
             which detects bursts based on overlapping bursts of individual units.
         unit_threshold (float, optional): only needed if algorithm="overlap"
-            Threshold for share of units that must overlap to consider a network burst.
+            Threshold for share of units that must overlap to consider a
+            network burst.
         n_units_total (int, optional): only needed if algorithm="overlap"
             Total number of units in the culture, used to compute the number of
             overlapping units from the percentage threshold.
 
     Returns:
-        df_cultures (pd.DataFrame): Dataframe with index as constructed, but sorted.
-            It will contain additional columns 'n_bursts' and 'burst_start_end'.
+        df_cultures (pd.DataFrame): Dataframe with index as constructed, but
+            sorted. It will contain additional columns 'n_bursts' and
+            'burst_start_end'.
         df_bursts (pd.DataFrame):
-            Dataframe with index same as df_cultures but one additional index level 'i_burst'.
-            It contains columns 'start_orig', 'end_orig', 'start_extend', 'end_extend',
-            'time_orig', 'time_extend', 'burst', 'peak_height', 'integral'.
+            Dataframe with index same as df_cultures but one additional index
+            level 'i_burst'.
+            It contains columns 'start_orig', 'end_orig', 'start_extend',
+            'end_extend', 'time_orig', 'time_extend', 'burst', 'peak_height',
+            'integral'.
         burst_matrix (np.ndarray):
             Matrix of bursts. Shape (n_bursts, n_bins).
             It has the same order as df_bursts.
@@ -149,6 +163,8 @@ def _bursts_from_df_culture(
     """
     df["n_bursts"] = pd.Series(dtype=object)
     df["burst_start_end"] = pd.Series(dtype=object)
+    if algorithm == "overlap":
+        df["burst_start_end_per_unit"] = pd.Series(dtype=object)
     for index in tqdm(df.index, desc="Compute burst times for each culture"):
         st, gid = get_spike_times_in_milliseconds(df, index, dataset)
         if isinstance(st, np.ndarray):
@@ -165,7 +181,7 @@ def _bursts_from_df_culture(
                     df.at[index, "n_bursts"] = len(bursts_start_end)
                     df.at[index, "burst_start_end"] = bursts_start_end
                 case "overlap":
-                    bursts_start_end = (
+                    bursts_start_end, unit_bursts = (
                         burst_detection_alternative.network_bursts_from_unit_overlap(
                             st,
                             gid,
@@ -176,20 +192,27 @@ def _bursts_from_df_culture(
                             minSburst=minSburst,
                             threshold=unit_threshold,
                             n_units=n_units_total,
+                            return_unit_bursts=True,
                         )
                     )
                     df.at[index, "n_bursts"] = len(bursts_start_end)
                     df.at[index, "burst_start_end"] = bursts_start_end
+                    df.at[index, "burst_start_end_per_unit"] = unit_bursts
                 case _:
                     raise NotImplementedError(f"Algorithm {algorithm} not implemented")
         else:
             warnings.warn(
-                f"The spike times of index {index} has type {type(st)}, but type ndarry was expected. "
-                "Possible reason are either wrong format or that there are 0 (NaN) or only 1 spike (float)."
-                "Continuing by setting n_bursts to 0."
+                f"The spike times of index {index} has type {type(st)}, "
+                "but type ndarry was expected. "
+                "Possible reason are either wrong format or that there are 0 "
+                "(NaN) or only 1 spike (float)."
+                "Continuing by setting n_bursts to 0.",
+                stacklevel=1,
             )
             df.at[index, "n_bursts"] = 0
             df.at[index, "burst_start_end"] = []
+            if algorithm == "overlap":
+                df.at[index, "burst_start_end_per_unit"] = {}
     assert df["n_bursts"].sum() > 0, "No bursts found"
     return df
 
@@ -272,7 +295,8 @@ def _build_bursts_df(
                     for i_burst in range(1, len(bursts_start_end))
                 ]
             ):
-                # if all starts are bigger than previous ends, then we can bin simultaneously
+                # if all starts are bigger than previous ends, then we can
+                # bin simultaneously
                 bins = np.concatenate(
                     [
                         np.linspace(
@@ -349,21 +373,26 @@ def _build_bursts_df(
 
 
 def _remove_bursts(df_cultures, df_bursts, index_to_remove):
-    for index_burst in df_bursts.index[index_to_remove]:
-        index_culture = index_burst[:-1]
-        df_cultures.at[index_culture, "n_bursts"] = (
-            df_cultures.at[index_culture, "n_bursts"] - 1
+    df_bursts = df_bursts[~index_to_remove].sort_index()
+    culture_levels = list(range(df_bursts.index.nlevels - 1))
+
+    # Surviving (start, end) pairs per culture, ordered by original i_burst.
+    pairs_by_culture = df_bursts.groupby(level=culture_levels, sort=False).apply(
+        lambda _culture_bursts: list(
+            zip(
+                _culture_bursts["start_orig"],
+                _culture_bursts["end_orig"],
+                strict=True,
+            )
         )
-        start_orig = df_bursts.at[index_burst, "start_orig"]
-        df_cultures.at[index_culture, "burst_start_end"] = [
-            start_end
-            for start_end in df_cultures.at[index_culture, "burst_start_end"]
-            if not np.isclose(start_orig, start_end[0])
-        ]
-        assert df_cultures.at[index_culture, "n_bursts"] == len(
-            df_cultures.at[index_culture, "burst_start_end"]
-        )
-    df_bursts = df_bursts[~index_to_remove]
+    )
+
+    df_cultures["n_bursts"] = 0
+    df_cultures["burst_start_end"] = [[] for _ in range(len(df_cultures))]
+    for culture_idx, pairs in pairs_by_culture.items():
+        df_cultures.at[culture_idx, "n_bursts"] = len(pairs)
+        df_cultures.at[culture_idx, "burst_start_end"] = pairs
+
     assert df_cultures["n_bursts"].sum() == len(df_bursts)
     return df_cultures, df_bursts
 
@@ -384,7 +413,8 @@ def _filter_bursts(
         df_cultures, df_bursts = _remove_bursts(df_cultures, df_bursts, index_to_remove)
         len_after = len(df_bursts)
         print(
-            f"Removed {len_before - len_after} bursts above threshold ({burst_length_threshold} ms)"
+            f"Removed {len_before - len_after} bursts above threshold "
+            f"({burst_length_threshold} ms)"
         )
     else:
         burst_length_threshold = np.max(df_bursts["time_extend"])
@@ -402,7 +432,8 @@ def _filter_bursts(
         df_cultures, df_bursts = _remove_bursts(df_cultures, df_bursts, index_to_remove)
         len_after = len(df_bursts)
         print(
-            f"Removed {len_before - len_after} bursts below threshold ({min_firing_rate} Hz)"
+            f"Removed {len_before - len_after} bursts below threshold "
+            f"({min_firing_rate} Hz)"
         )
     if pad_right:
         assert bin_size is not None, "bin_size must be specified if pad_right is True"
