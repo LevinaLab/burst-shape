@@ -29,6 +29,11 @@ _burst_extraction_defaults: dict = {
     "algorithm": "default",
     "unit_threshold": None,
     "n_units_total": None,
+    "isi_cap_ms": None,
+    # SIMMUX-algorithm -aligned defaults
+    "entourage_maxISI": 1 / 3,
+    "entourage_cap_ms": 200,
+    "network_rule": "chain",
 }
 
 

@@ -14,6 +14,7 @@ Plots:
 """
 
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -64,6 +65,8 @@ n_splits = 100
 
 burst_extraction_params = (
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # Revision: per-unit overlap + simultaneity (wagenaar)
+    # "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None"  # noqa: E501
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
@@ -82,6 +85,14 @@ df_cultures, target_label = make_target_label(
     dataset, df_cultures, None, special_target=special_target
 )
 
+# StratifiedShuffleSplit needs >=2 samples per class; drop classes that don't
+# have that many cultures (can happen on heavily filtered burst extractions).
+_target_counts = df_cultures["target_label"].value_counts()
+_small_classes = _target_counts[_target_counts < 2].index.tolist()
+if _small_classes:
+    warnings.warn(f"Dropping classes with <2 cultures: {_small_classes}")
+    df_cultures = df_cultures[~df_cultures["target_label"].isin(_small_classes)]
+
 print(f"Dataset:\t\t{dataset}\nTarget label:\t{target_label}")
 
 # spectral embedding type
@@ -96,6 +107,11 @@ _distance_metric = (
 )
 # %% get embedding coordinates
 spectral_clustering_params = get_chosen_spectral_embedding_params(dataset)
+# Override for the per-unit-overlap+simultaneity Wagenaar revision dataset
+# (13 234 bursts → 1% = 132 nearest neighbors). Uncomment when running on it.
+# spectral_clustering_params = (
+#     "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_132"
+# )
 if _distance_metric is not None:
     spectral_clustering_params_split = spectral_clustering_params.split("_")
     if "metric" in spectral_clustering_params_split:
@@ -354,6 +370,10 @@ for feature_set_name, features in feature_dict.items():
     # extract_corr_and_impact(X, list(X.columns), mean_shap_values, mean_abs_shap_values
 
     # Plot aggregated SHAP values
+    # Close any prior figures so shap's internal tight_layout doesn't clash
+    # with a previously-set constrained_layout engine (matplotlib raises
+    # 'Colorbar layout of new layout engine not compatible' otherwise).
+    plt.close("all")
     if mean_shap_values.ndim == 2:
         shap.summary_plot(
             mean_shap_values,

@@ -17,6 +17,11 @@ _fig_folder = "figures"
 _results_folder = "results"
 
 
+def get_project_folder():
+    """Returns the path to the project root (where pyproject.toml lives)."""
+    return _project_folder
+
+
 def get_data_folder():
     """Returns the path to the data folder.
 

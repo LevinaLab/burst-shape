@@ -9,6 +9,7 @@ from sklearn.manifold import spectral_embedding
 from sklearn.metrics.pairwise import pairwise_kernels
 from sklearn.neighbors import NearestNeighbors, kneighbors_graph
 from sklearn.utils import check_random_state
+from sklearn.utils.validation import validate_data
 
 
 class SpectralClusteringModified(SpectralClustering):
@@ -67,7 +68,8 @@ class SpectralClusteringModified(SpectralClustering):
         return self
 
     def compute_maps(self, X):
-        X = self._validate_data(
+        X = validate_data(
+            self,
             X,
             accept_sparse=["csr", "csc", "coo"],
             dtype=np.float64,

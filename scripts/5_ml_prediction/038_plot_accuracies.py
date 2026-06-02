@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import statsmodels.stats.meta_analysis as meta
 
 from burst_shape.folders import get_fig_folder
 from burst_shape.persistence.knn_clustering import load_knn_clustering_results_cv
@@ -16,7 +17,6 @@ from burst_shape.settings import (
     get_chosen_spectral_embedding_params,
     get_dataset_from_burst_extraction_params,
 )
-import statsmodels.stats.meta_analysis as meta
 
 cm = prepare_plotting()
 
@@ -64,12 +64,19 @@ for burst_extraction_params in burst_extraction_params_list:
     for feature_set_name in ["combined", "traditional", "shape_manual"] + [
         f"shape_{i}D" for i in shape_dimensions
     ]:
-        _, nested_scores, _, _, all_y_test = load_xgboost_results(
-            burst_extraction_params,
-            spectral_clustering_params,
-            feature_set_name,
-            cv_type,
-        )
+        try:
+            _, nested_scores, _, _, all_y_test = load_xgboost_results(
+                burst_extraction_params,
+                spectral_clustering_params,
+                feature_set_name,
+                cv_type,
+            )
+        except FileNotFoundError:
+            warnings.warn(
+                f"XGBoost results not found for dataset={dataset}, "
+                f"feature_set={feature_set_name}. Skipping."
+            )
+            continue
         n_classes[dataset] = len(np.unique(all_y_test))
         for i_score, score in enumerate(nested_scores):
             df_accuracies.append(
@@ -100,6 +107,27 @@ for burst_extraction_params in burst_extraction_params_list:
         pass
 df_accuracies = pd.DataFrame(df_accuracies)
 df_accuracies["cv_fold"] = df_accuracies["cv_fold"].astype(int)
+
+# Fill in NaN placeholder rows for missing (dataset, feature_set) combos so that
+# downstream `.loc[(dataset, feature_set)]` lookups don't raise KeyError. This
+# matters when e.g. knn_clustering is unavailable.
+_all_datasets = df_accuracies["dataset"].unique()
+_all_feature_sets = df_accuracies["feature_set"].unique()
+_existing = set(
+    map(tuple, df_accuracies[["dataset", "feature_set"]].drop_duplicates().values)
+)
+_n_folds = df_accuracies.groupby(["dataset", "feature_set"]).size().max()
+_missing_rows = [
+    {"dataset": d, "feature_set": fs, "cv_fold": i, "score": np.nan}
+    for d in _all_datasets
+    for fs in _all_feature_sets
+    if (d, fs) not in _existing
+    for i in range(_n_folds)
+]
+if _missing_rows:
+    df_accuracies = pd.concat(
+        [df_accuracies, pd.DataFrame(_missing_rows)], ignore_index=True
+    )
 
 
 def _get_stats(normalize=False, baseline="traditional", groupby=None):
@@ -391,7 +419,9 @@ for dataset, df_dataset in df_accuracies[
     # Pivot the table to have feature_set as columns, cv_fold as rows
     pivot = df_dataset.pivot(index="cv_fold", columns="feature_set", values="score")
 
-    # Only compare models with complete score vectors (i.e., drop NaNs)
+    # Drop feature_sets that have no data for this dataset (e.g. knn_clustering
+    # when no distance matrix has been computed), then drop incomplete folds.
+    pivot = pivot.dropna(axis=1, how="all")
     pivot = pivot.dropna(axis=0)  # drop cv_folds with missing scores
 
     # Get all pairs of feature sets

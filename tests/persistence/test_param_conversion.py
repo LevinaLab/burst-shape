@@ -30,6 +30,7 @@ RESULTS_BURST_FOLDER_NAMES = [
     "burst_dataset_mossink_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30",
     "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30",
     "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4",
+    "burst_dataset_wagenaar_maxISIstart_0.25_maxISIb_0.25_minBdur_0_minIBI_0_minSburst_3_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_algorithm_overlap_unit_threshold_4_n_units_total_59_isi_cap_ms_100",
 ]
 
 
@@ -170,6 +171,37 @@ SCRIPT_BURST_PARAMS_TO_EXPECTED_STRING = [
             "min_length": 30,
         },
         "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
+    ),
+    (
+        # Wagenaar 2006 (SIMMUX) reproduction with adaptive per-unit ISI
+        # threshold (maxISIstart < 1 = fraction of inverse mean rate) and
+        # 100 ms cap. See scripts/1_preprocessing/
+        # 002_extract_bursts_wagenaar_supplementary2.py.
+        {
+            "dataset": "wagenaar",
+            "maxISIstart": 0.25,
+            "maxISIb": 0.25,
+            "minBdur": 0,
+            "minIBI": 0,
+            "minSburst": 3,
+            "bin_size": None,
+            "n_bins": 50,
+            "extend_left": 0,
+            "extend_right": 0,
+            "burst_length_threshold": None,
+            "pad_right": False,
+            "normalization": "integral",
+            "min_length": 30,
+            "smoothing_kernel": 4,
+            "algorithm": "overlap",
+            "unit_threshold": 4,
+            "n_units_total": 59,
+            "isi_cap_ms": 100,
+            "entourage_maxISI": 1 / 3,
+            "entourage_cap_ms": 200,
+            "network_rule": "chain",
+        },
+        "burst_dataset_wagenaar_maxISIstart_0.25_maxISIb_0.25_minBdur_0_minIBI_0_minSburst_3_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_algorithm_overlap_unit_threshold_4_n_units_total_59_isi_cap_ms_100",
     ),
 ]
 

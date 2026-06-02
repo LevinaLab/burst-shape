@@ -1,3 +1,7 @@
+"""
+Alternative burst detection for revision (simultaneously active electrodes).
+"""
+
 import os
 
 import numpy as np
@@ -16,11 +20,14 @@ from burst_shape.preprocess import burst_extraction
 n_units_total = 59
 params_burst_extraction = {
     "dataset": "wagenaar",
-    "maxISIstart": 5 * np.sqrt(n_units_total),
-    "maxISIb": 5 * np.sqrt(n_units_total),
+    # values rounded vs 5*sqrt(59)=38.41 and 50/59=0.847 to keep the
+    # folder name under the 255-byte OS limit once the pinned old-behavior
+    # kwargs below are appended. Algorithmic drift is sub-percent.
+    "maxISIstart": round(5 * np.sqrt(n_units_total)),  # 38
+    "maxISIb": round(5 * np.sqrt(n_units_total)),  # 38
     "minBdur": 40,
     "minIBI": 40,  # / n_units_total,
-    "minSburst": 50 / n_units_total,
+    "minSburst": round(50 / n_units_total, 2),  # 0.85
     "bin_size": None,
     "n_bins": 50,
     "extend_left": 0,
@@ -34,6 +41,10 @@ params_burst_extraction = {
     "algorithm": "overlap",
     "unit_threshold": 0.2,
     "n_units_total": n_units_total,
+    # Explicitly pin the simultaneity rule and disable entourage extension
+    # (both differ from the package defaults).
+    "network_rule": "simultaneity",
+    "entourage_maxISI": None,
 }
 
 

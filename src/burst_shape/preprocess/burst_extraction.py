@@ -33,6 +33,10 @@ def extract_bursts(
     algorithm="default",
     unit_threshold=None,
     n_units_total=None,
+    isi_cap_ms=None,
+    entourage_maxISI=1 / 3,
+    entourage_cap_ms=200,
+    network_rule="chain",
 ):
     """Extract bursts from data files.
 
@@ -80,12 +84,32 @@ def extract_bursts(
             "default" uses the MI_bursts method.
             "overlap" uses the network_bursts_from_unit_overlap method,
             which detects bursts based on overlapping bursts of individual units.
+            With algorithm="overlap", passing maxISIstart/maxISIb < 1 plus
+            isi_cap_ms=100 (and minSburst=3, minBdur=0, minIBI=0) reproduces
+            the SIMMUX algorithm from Wagenaar et al. 2006.
         unit_threshold (float, optional): only needed if algorithm="overlap"
             Threshold for share of units that must overlap to consider a
-            network burst.
+            network burst. Values in (0, 1] are interpreted as a fraction of
+            units; values > 1 are interpreted as an absolute count.
         n_units_total (int, optional): only needed if algorithm="overlap"
             Total number of units in the culture, used to compute the number of
             overlapping units from the percentage threshold.
+        isi_cap_ms (float, optional): only used if algorithm="overlap" and
+            maxISIstart/maxISIb < 1. Caps the per-unit adaptive ISI threshold.
+            Wagenaar et al. 2006 uses 100 ms.
+        entourage_maxISI (float, optional): only used if algorithm="overlap".
+            Enables the SIMMUX entourage extension: each per-unit core
+            burstlet is extended in both directions by spikes with ISI <
+            min(entourage_maxISI * mean_isi, entourage_cap_ms) (or
+            interpreted as absolute ms if >= 1). Wagenaar et al. uses 1/3.
+        entourage_cap_ms (float, optional): cap on the per-unit entourage
+            ISI threshold when fractional. Wagenaar et al. uses 200 ms.
+        network_rule (str, optional): only used if algorithm="overlap".
+            "simultaneity" (default) emits a network burst while the
+            number of simultaneously active units exceeds `unit_threshold`.
+            "chain" forms a network burst from each connected component
+            on the per-unit burstlet overlap graph (SIMMUX rule) and
+            drops components with at most `unit_threshold` distinct units.
 
     Returns:
         df_cultures (pd.DataFrame): Dataframe with index as constructed, but
@@ -114,6 +138,10 @@ def extract_bursts(
         algorithm,
         unit_threshold,
         n_units_total,
+        isi_cap_ms,
+        entourage_maxISI=entourage_maxISI,
+        entourage_cap_ms=entourage_cap_ms,
+        network_rule=network_rule,
     )
     df_bursts = _build_bursts_df(
         df_cultures,
@@ -154,6 +182,10 @@ def _bursts_from_df_culture(
     algorithm,
     unit_threshold,
     n_units_total,
+    isi_cap_ms=None,
+    entourage_maxISI=1 / 3,
+    entourage_cap_ms=200,
+    network_rule="chain",
 ):
     """Detect bursts in df_culture.
 
@@ -191,6 +223,10 @@ def _bursts_from_df_culture(
                             minSburst=minSburst,
                             threshold=unit_threshold,
                             n_units=n_units_total,
+                            isi_cap_ms=isi_cap_ms,
+                            entourage_maxISI=entourage_maxISI,
+                            entourage_cap_ms=entourage_cap_ms,
+                            network_rule=network_rule,
                             return_unit_bursts=True,
                         )
                     )

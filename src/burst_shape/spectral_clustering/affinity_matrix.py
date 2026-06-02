@@ -7,6 +7,8 @@ import scipy.sparse
 import scipy.stats
 from tqdm import tqdm
 
+from burst_shape.folders import get_project_folder
+
 
 def _wasserstein_distance(a, b):
     a_cumsum = np.cumsum(a)
@@ -75,7 +77,14 @@ def compute_affinity_matrix(bursts, n_jobs=1, metric="wasserstein", n_neighbors=
             )
     max_tasks = 3 * n_jobs
     # initialize connectivity matrix as sparse matrix
-    ray.init(num_cpus=n_jobs, ignore_reinit_error=True)
+    # Pass the project root as working_dir so Ray's uv hook can locate
+    # pyproject.toml regardless of where the script was launched from
+    # (e.g. PyCharm sets cwd to the script's folder).
+    ray.init(
+        num_cpus=n_jobs,
+        ignore_reinit_error=True,
+        runtime_env={"working_dir": get_project_folder()},
+    )
     connectivity = scipy.sparse.lil_matrix((bursts.shape[0], bursts.shape[0]))
     result_refs = []
     for i in tqdm(
