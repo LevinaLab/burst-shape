@@ -141,7 +141,23 @@ if dataset != "wagenaar":
     for line, text in zip(leg.get_lines(), leg.get_texts()):
         if text.get_text() == "CACNA1A":
             text.set_fontstyle("italic")
-# plot vertical line indicating peaks, decay measurement location
+else:
+    fig_legend, ax_legend = plt.subplots(figsize=(5 * cm, 2 * cm))
+    ax_legend.axis("off")
+    handles, labels = ax.get_legend_handles_labels()
+    legend_kwargs = dict(
+        frameon=False,
+        loc="center",
+        ncol=3,
+        handlelength=0.5,
+        handletextpad=0.3,
+        columnspacing=0.4,
+    )
+    legend = fig_legend.legend(handles, labels, **legend_kwargs)
+    for line in legend.get_lines():
+        line.set_linewidth(1.3)
+    fig_legend.show()
+    savefig(fig_legend, f"{dataset}_legend", file_format=["svg", "pdf"])
 match dataset:
     case "inhibblock":
         kwargs = {"linestyle": "--", "linewidth": 1}
