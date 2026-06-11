@@ -44,7 +44,7 @@ burst_extraction_params = (
     # "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None"  # noqa: E501
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    #"burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
@@ -58,6 +58,29 @@ print(f"Detected dataset: {dataset}")
 df_bursts = load_df_bursts(burst_extraction_params)
 df_cultures = load_df_cultures(burst_extraction_params)
 
+# filter bursts
+df_cultures = df_cultures[
+    df_cultures.index.get_level_values(level="condition").isin(
+        [
+            "Spont1",
+            "HighK_Spont1",
+            "HighK_Gabazine_Spont1",
+            "Spont2",
+            "HighK_Spont2",
+            "HighK_Gabazine_Spont2",
+            # "C60_Spont2",
+        ]
+    )
+]
+df_cultures = df_cultures.rename(
+    index=lambda x: x.replace("Spont2", "Spont1"), level="condition"
+)
+df_bursts = df_bursts.rename(
+    index=lambda x: x.replace("Spont2", "Spont1"), level="condition"
+)
+df_cultures = df_cultures[df_cultures["n_bursts"] >= 10]
+print(df_cultures.index.get_level_values(level="condition").value_counts())
+
 # get average burst_shapes
 index_names = df_cultures.index.names
 df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
@@ -69,8 +92,8 @@ df_cultures, df_bursts, target_label = make_target_label(
 )
 
 # %% plot average burst shape per group
-background = [None, "recordings", "bursts"][2]
-element = ["lines", "std", "3sem"][2]
+background = [None, "recordings", "bursts"][1]
+element = ["lines", "std", "3sem", "1sem"][3]
 x_values = np.arange(50) + 0.5  # 50 bins for the burst shape
 fig, ax = plt.subplots(figsize=(8 * cm, 3.5 * cm), constrained_layout=True)
 ax.set_position([0.25, 0.35, 0.4, 0.6])
@@ -102,13 +125,14 @@ for i, group in enumerate(df_cultures["target_label"].unique()):
                         color=color,
                         alpha=0.2,
                     )
-                case "3sem":
+                case "3sem" | "1sem":
+                    factor = {"3sem": 3, "1sem": 1}[element]
                     ax.fill_between(
                         x_values,
                         df_group.mean()
-                        - 3 * scipy.stats.sem(np.vstack(df_group), axis=0),
+                        - factor * scipy.stats.sem(np.vstack(df_group), axis=0),
                         df_group.mean()
-                        + 3 * scipy.stats.sem(np.vstack(df_group), axis=0),
+                        + factor * scipy.stats.sem(np.vstack(df_group), axis=0),
                         color=color,
                         alpha=0.5,
                         edgecolor=None,
@@ -183,6 +207,17 @@ match dataset:
             x=0.5 + 13.845614, color=get_group_colors(dataset)["Control"], **kwargs
         )
         ax.axvline(x=0.5 + 7.310345, color=get_group_colors(dataset)["KS"], **kwargs)
+    case "human_slice":
+        kwargs = {"linestyle": "--", "linewidth": 1}
+        peaks_dict = {
+            "HighK_Gabazine_Spont1": 14.117647,
+            "HighK_Spont1": 11.969697,
+            "Spont1": 14.000000,
+        }
+        for condition_, peak in peaks_dict.items():
+            ax.axvline(
+                x=0.5 + peak, color=get_group_colors(dataset)[condition_], **kwargs
+            )
     case _:
         pass
 
@@ -262,7 +297,7 @@ def _run_group_comparison(df_cultures, compare_column, plot_significance=True):
 
 print("Run statistical tests on average burst shapes.")
 match dataset:
-    case "hommersom_binary" | "inhibblock" | "mossink_KS":
+    case "hommersom_binary" | "inhibblock" | "mossink_KS" | "human_slice":
         df_cultures["argmax_bin"] = df_cultures["avg_burst"].apply(np.argmax)
         df_cultures["rel_peak"] = (df_cultures["argmax_bin"] + 0.5) / 50
         df_cultures["value_45th_bin"] = df_cultures["avg_burst"].apply(lambda x: x[44])

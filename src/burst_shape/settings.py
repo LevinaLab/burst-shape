@@ -86,6 +86,10 @@ def get_chosen_spectral_embedding_params(dataset, **kwargs):
             clustering_params = (
                 "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_55"
             )
+        case "human_slice":
+            clustering_params = (
+                "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_77"
+            )
         case _:
             raise NotImplementedError(f"Dataset {dataset} not implemented.")
     clustering_params = params_string_to_dict(

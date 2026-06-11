@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from src.folders import get_data_human_slice_folder
+from burst_shape.folders import get_data_human_slice_folder
 
 path_data = get_data_human_slice_folder()
 path_raw = os.path.join(path_data, "2026_04_14_Package")
