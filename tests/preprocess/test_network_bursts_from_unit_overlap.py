@@ -103,7 +103,7 @@ def test_overlap_no_burstlet_when_isi_above_threshold():
 
 def test_overlap_detects_simultaneous_burstlets_absolute_threshold():
     st, gid = _three_unit_overlap_spikes()
-    # threshold=2 -> strictly more than 2 active units, i.e. all 3.
+    # threshold=3 -> at least 3 active units (inclusive ">="), i.e. all 3.
     # All 3 units are simultaneously bursting in the window [1004, 1009].
     bursts = network_bursts_from_unit_overlap(
         st,
@@ -113,16 +113,16 @@ def test_overlap_detects_simultaneous_burstlets_absolute_threshold():
         minBdur=0,
         minIBI=0,
         minSburst=3,
-        threshold=2,
+        threshold=3,
         n_units=3,
         **_SIM_KWARGS,
     )
     assert bursts == [(1004.0, 1009.0)]
 
 
-def test_overlap_threshold_strict_greater_than_off_by_one():
-    # Documented quirk: absolute threshold=3 with n_units=3 never triggers,
-    # because the condition is `active > threshold`, requiring >= 4 active.
+def test_overlap_threshold_above_unit_count_never_triggers():
+    # With inclusive ">=" semantics, absolute threshold=4 with n_units=3
+    # never triggers, because at most 3 units are ever active at once.
     st, gid = _three_unit_overlap_spikes()
     bursts = network_bursts_from_unit_overlap(
         st,
@@ -132,7 +132,7 @@ def test_overlap_threshold_strict_greater_than_off_by_one():
         minBdur=0,
         minIBI=0,
         minSburst=3,
-        threshold=3,
+        threshold=4,
         n_units=3,
         **_SIM_KWARGS,
     )
@@ -171,7 +171,7 @@ def test_overlap_no_network_burst_when_units_do_not_overlap():
 
 
 def test_overlap_fractional_threshold_equivalent_to_absolute():
-    # n_units=3 with threshold=0.5 -> n_units_threshold=1.5 -> active > 1.5
+    # n_units=3 with threshold=0.5 -> n_units_threshold=1.5 -> active >= 1.5
     # i.e. >= 2 active units. The same as absolute threshold=1.5.
     st, gid = _three_unit_overlap_spikes()
     bursts = network_bursts_from_unit_overlap(
@@ -201,7 +201,7 @@ def test_overlap_returns_per_unit_bursts_when_requested():
         minBdur=0,
         minIBI=0,
         minSburst=3,
-        threshold=2,
+        threshold=3,
         n_units=3,
         return_unit_bursts=True,
         **_SIM_KWARGS,
@@ -235,7 +235,7 @@ def test_overlap_wagenaar_mode_uses_adaptive_per_unit_threshold():
         minBdur=0,
         minIBI=0,
         minSburst=3,  # >= 4 spikes per burstlet
-        threshold=2,
+        threshold=3,
         n_units=3,
         isi_cap_ms=100,
         **_SIM_KWARGS,

@@ -1,9 +1,10 @@
 """Regression tests for the SIMMUX `network_rule="chain"` combination rule.
 
 A network burst is the union of any maximal chain of per-unit
-burstlets connected by pairwise temporal overlap. Components with at
-most `threshold` distinct units are dropped (the "tiny burst"
-exclusion: threshold=4 keeps only bursts spanning >=5 units).
+burstlets connected by pairwise temporal overlap. Components with
+fewer than `threshold` distinct units are dropped (the "tiny burst"
+exclusion, inclusive ">=" semantics: threshold=5 keeps only bursts
+spanning >=5 units).
 """
 
 import numpy as np
@@ -19,12 +20,12 @@ def test_chain_empty_input_returns_empty():
 
 
 def test_chain_single_unit_below_threshold_dropped():
-    # one unit, threshold=0 would keep it; threshold=1 would drop it
-    # (chain uses strict ">" so distinct_units must be > threshold).
-    assert _network_bursts_chain({0: [(0.0, 10.0)]}, n_units_threshold=0) == [
+    # one unit; threshold<=1 keeps it, threshold>=2 drops it
+    # (chain uses inclusive ">=" so distinct_units must be >= threshold).
+    assert _network_bursts_chain({0: [(0.0, 10.0)]}, n_units_threshold=1) == [
         (0.0, 10.0)
     ]
-    assert _network_bursts_chain({0: [(0.0, 10.0)]}, n_units_threshold=1) == []
+    assert _network_bursts_chain({0: [(0.0, 10.0)]}, n_units_threshold=2) == []
 
 
 def test_chain_daisy_chain_forms_single_burst():
@@ -60,25 +61,26 @@ def test_chain_filters_tiny_bursts_below_threshold():
 
 def test_chain_touching_endpoints_do_not_merge():
     # A.end == B.start -> strict ">" overlap check: NOT overlapping.
-    # so threshold=1 splits into 2 singletons, both dropped.
+    # so this stays 2 singletons (1 unit each). With threshold=2 both are
+    # dropped; had they merged, the 2-unit component would survive.
     unit_bursts = {0: [(0.0, 10.0)], 1: [(10.0, 20.0)]}
-    out = _network_bursts_chain(unit_bursts, n_units_threshold=1)
+    out = _network_bursts_chain(unit_bursts, n_units_threshold=2)
     assert out == []
 
 
 def test_chain_burstlet_with_multiple_intervals_each_contributes():
     # one unit with two intervals; the first overlaps a second unit,
     # the second overlaps a third. Two separate components, each with
-    # 2 units, both dropped at threshold=2.
+    # 2 units, both dropped at threshold=3 (inclusive ">=").
     unit_bursts = {
         0: [(0.0, 10.0), (100.0, 110.0)],
         1: [(5.0, 15.0)],
         2: [(105.0, 115.0)],
     }
-    out = _network_bursts_chain(unit_bursts, n_units_threshold=2)
+    out = _network_bursts_chain(unit_bursts, n_units_threshold=3)
     assert out == []
-    # threshold=1 keeps both (each component spans 2 distinct units).
-    out = _network_bursts_chain(unit_bursts, n_units_threshold=1)
+    # threshold=2 keeps both (each component spans 2 distinct units).
+    out = _network_bursts_chain(unit_bursts, n_units_threshold=2)
     assert out == [(0.0, 15.0), (100.0, 115.0)]
 
 
@@ -210,9 +212,9 @@ def test_threshold_none_raises_clear_error():
 
 def test_chain_fractional_threshold_uses_n_units():
     # Chain rule should accept fractional threshold just like simultaneity:
-    # threshold=0.5 with n_units=10 -> drop components with <=5 units.
+    # threshold=0.5 with n_units=10 -> drop components with <5 units.
     unit_bursts = {u: [(0.0, 10.0)] for u in range(6)}  # 6 overlapping units
-    # threshold=0.5, n_units=10 -> n_units_threshold=5 -> keep (6 > 5)
+    # threshold=0.5, n_units=10 -> n_units_threshold=5 -> keep (6 >= 5)
     bursts = network_bursts_from_unit_overlap(
         # craft tiny spike train just so the function reaches the rule:
         st=np.array([0.0]),
@@ -227,8 +229,8 @@ def test_chain_fractional_threshold_uses_n_units():
         _network_bursts_chain,
     )
 
-    assert _network_bursts_chain(unit_bursts, n_units_threshold=5.0) == [(0.0, 10.0)]
-    assert _network_bursts_chain(unit_bursts, n_units_threshold=6.0) == []
+    assert _network_bursts_chain(unit_bursts, n_units_threshold=6.0) == [(0.0, 10.0)]
+    assert _network_bursts_chain(unit_bursts, n_units_threshold=7.0) == []
     # bursts is whatever the synthetic call produced (probably []) -- this
     # subtest just ensures no exception is raised for the fractional case.
     assert isinstance(bursts, list)
