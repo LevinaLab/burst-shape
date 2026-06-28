@@ -7,9 +7,11 @@ Algorithm:
 3) accumulate 'votes' of these K-nearest neighbours based on their classes.
     Weight for:
     - divide by number of bursts per recording
-      (Motivation: correct for a single recording with a large number of bursts having a disproportionate influence.)
+      (Motivation: correct for a single recording with a large number of bursts
+      having a disproportionate influence.)
     - divide by number of recordings per class
-      (Motivation: correct for a single class with a large number of recordings having a disproportionate influence.)
+      (Motivation: correct for a single class with a large number of recordings
+      having a disproportionate influence.)
 4) accumulate votes
 5) assign predicted label based on largest share of votes
 
@@ -60,13 +62,13 @@ n_splits = 100
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_mossink_KS"
     # "burst_dataset_mossink_MELAS"
 )
@@ -95,7 +97,7 @@ if exist_knn_clustering_results_cv(
     burst_extraction_params, clustering_params, cv_type, special_target
 ):
     print(
-        "KNN clustering results for these parameters already exist. Loading results from disk."
+        "KNN clustering results for these parameters already exist. Loading results from disk."  # noqa: E501
     )
     (
         nested_scores,
@@ -186,7 +188,7 @@ sns.heatmap(
         all_y_pred.flatten(), all_y_test.flatten(), normalize="true", labels=labels
     ),
     vmin=0,
-    vmax=None if dataset == "mossink" and special_target == True else 1,
+    vmax=None if dataset == "mossink" and special_target else 1,
     annot=False,
     xticklabels=labels,
     yticklabels=labels,
@@ -197,6 +199,7 @@ if get_group_colors(dataset) is not None:
         ax.get_xticklabels(),
         ax.get_yticklabels(),
         [get_group_colors(dataset)[j] for j in list(labels)],
+        strict=False,
     ):
         label_x.set_color(color)
         label_y.set_color(color)
@@ -205,12 +208,12 @@ ax.set_ylabel("True label")
 fig.show()
 savefig(
     fig,
-    f"{dataset}_knn_clustering_confusion_matrix{'_special_target' if special_target is True else ''}",
+    f"{dataset}_knn_clustering_confusion_matrix{'_special_target' if special_target is True else ''}",  # noqa: E501
     file_format=["pdf", "svg"],
 )
 
 # highlight isogenic pairs in mossink dataset with special target
-if dataset == "mossink" and special_target == True:
+if dataset == "mossink" and special_target:
     _isogenic_map = {
         ("KS", 3): ("Control", 9),
         ("KS", 4): ("Control", 10),
@@ -236,6 +239,6 @@ if dataset == "mossink" and special_target == True:
     fig.show()
     savefig(
         fig,
-        f"{dataset}_knn_clustering_confusion_matrix{'_special_target' if special_target is True else ''}_isogenic_highlighted",
+        f"{dataset}_knn_clustering_confusion_matrix{'_special_target' if special_target is True else ''}_isogenic_highlighted",  # noqa: E501
         file_format=["pdf", "svg"],
     )

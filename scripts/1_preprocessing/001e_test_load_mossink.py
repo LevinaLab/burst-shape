@@ -172,7 +172,7 @@ else:
                     uid = channel.split("_")[1]
                     uid = int(uid.split(".")[0])
                     channel_path = internal_path + "/" + channel
-                    # channel_path = '/home/ovinogradov/Projects/ReducedBursting/data/Moss/Peak_Trains/Control 2/3_WellA6/WellA6_PeakDetectionMAT_PLP2ms_RP1ms/WellA6_ptrain_/ptrain_43.mat'
+                    # channel_path = '/home/ovinogradov/Projects/ReducedBursting/data/Moss/Peak_Trains/Control 2/3_WellA6/WellA6_PeakDetectionMAT_PLP2ms_RP1ms/WellA6_ptrain_/ptrain_43.mat'  # noqa: E501
                     mat = loadmat(channel_path)
                     peaks = na(mat["peak_train"].todense())
                     spikes = peaks[:, 0]

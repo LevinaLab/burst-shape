@@ -33,7 +33,7 @@ for n_clusters_ in clustering.n_clusters:
 # index of df_bursts is ('batch', 'culture', 'day', 'i_burst')
 df_bursts.reset_index(inplace=True)
 
-# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')  # noqa: E501
 df_cultures = df_bursts.groupby(["batch", "culture", "day"]).agg(
     n_bursts=pd.NamedAgg(column="i_burst", aggfunc="count")
 )
@@ -62,7 +62,7 @@ for i_cluster in range(n_clusters):
     col_cluster = f"cluster_{n_clusters}"
     df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(
         ["batch", "culture", "day"]
-    )[col_cluster].agg(lambda x: np.sum(x == i_cluster))
+    )[col_cluster].agg(lambda x, i_cluster=i_cluster: np.sum(x == i_cluster))
     df_cultures[f"cluster_rel_{i_cluster}"] = (
         df_cultures[f"cluster_abs_{i_cluster}"] / df_cultures["n_bursts"]
     )
@@ -102,7 +102,7 @@ for i_day in np.arange(ncols)[::2]:
 
 # write batches on the left
 batch_label_pos = np.linspace(0.04, 0.97, nrows, endpoint=True)[::-1]
-for (batch, culture), row in unique_batch_culture.iterrows():
+for (batch, _culture), row in unique_batch_culture.iterrows():
     i_culture = row["i_culture"]
     fig.text(
         0.05, batch_label_pos[i_culture], fontsize=12, va="center", s=f"Batch {batch}"

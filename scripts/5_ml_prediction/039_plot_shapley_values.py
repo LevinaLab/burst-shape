@@ -61,8 +61,8 @@ for burst_extraction_params in burst_extraction_params_list:
         # Aggregate SHAP values across folds
         mean_shap_values = np.mean(all_shap_values, axis=0)
         mean_abs_shap_values = np.mean(np.abs(mean_shap_values), axis=0)
-        # sorted_importances = pd.Series(mean_abs_shap_values, index=X.columns).sort_values(ascending=False)
-        # extract_corr_and_impact(X, list(X.columns), mean_shap_values, mean_abs_shap_values
+        # sorted_importances = pd.Series(mean_abs_shap_values, index=X.columns).sort_values(ascending=False)  # noqa: E501
+        # extract_corr_and_impact(X, list(X.columns), mean_shap_values, mean_abs_shap_values  # noqa: E501
 
         # Plot aggregated SHAP values
         if mean_shap_values.ndim == 2:

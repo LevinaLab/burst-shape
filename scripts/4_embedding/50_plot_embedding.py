@@ -35,8 +35,13 @@ from burst_shape.settings import (
 cm = prepare_plotting()
 plot_density = False
 color_by = ["cluster", "group", "relative_peak"][1]
+
+
 # s = lambda dataset: 1 if dataset == "mossink" else 5
-s = lambda dataset: 1
+def s(dataset):
+    return 1
+
+
 dim1 = 1  # usually should be 1
 dim2 = 2  # usually should be 2
 figsize = (4 * cm, 4 * cm)
@@ -45,11 +50,11 @@ figsize = (4 * cm, 4 * cm)
 # Parameters which data to plot
 burst_extraction_params = (
     "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_mossink_KS"
 )
 
@@ -213,6 +218,6 @@ else:
 fig.show()
 savefig(
     fig,
-    f"{dataset}_spectral_embedding_{color_by}{'_density' if plot_density else ''}_dim_{dim1}_{dim2}{f'_{distance_metric}' if distance_metric is not None else ''}",
+    f"{dataset}_spectral_embedding_{color_by}{'_density' if plot_density else ''}_dim_{dim1}_{dim2}{f'_{distance_metric}' if distance_metric is not None else ''}",  # noqa: E501
     file_format=["pdf", "svg"],
 )

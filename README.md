@@ -71,5 +71,11 @@ uv sync
 ```
 This creates a `.venv/` with Python 3.13, installs `burst_shape` editable, and pulls in every PEP 735 dependency group declared in `pyproject.toml` (`web`, `analysis`, `dev`). Activate the venv with `source .venv/bin/activate`, or prepend `uv run` to any command (e.g. `uv run pytest`, `uv run python scripts/...`).
 
+## Pre-commit hooks
+To enable the ruff format/lint hooks, run once after `uv sync`:
+```bash
+uv run pre-commit install
+```
+
 ## Deployment
 See [DEPLOY.md](DEPLOY.md) for how to build the Docker images and push the online tools to Google Cloud Run.

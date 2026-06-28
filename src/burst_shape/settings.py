@@ -1,8 +1,8 @@
 import warnings
 
 from burst_shape.persistence.params_conversion_helper import (
-    replace_key_value_in_params,
     params_string_to_dict,
+    replace_key_value_in_params,
 )
 from burst_shape.persistence.spectral_clustering import (
     _spectral_clustering_defaults,
@@ -137,5 +137,8 @@ def get_citation_doi_link(dataset):
         case _:
             citation = "the relevant literature"
             doi_link = None
-            warnings.warn(f"Citation and doi link not defined for dataset {dataset}.")
+            warnings.warn(
+                f"Citation and doi link not defined for dataset {dataset}.",
+                stacklevel=2,
+            )
     return citation, doi_link

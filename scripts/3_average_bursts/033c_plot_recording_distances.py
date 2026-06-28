@@ -19,7 +19,7 @@ from burst_shape.persistence import (
     load_df_cultures,
     load_spectral_embedding,
 )
-from burst_shape.plot import label_sig_diff, prepare_plotting, savefig, get_group_colors
+from burst_shape.plot import get_group_colors, label_sig_diff, prepare_plotting, savefig
 from burst_shape.prediction.knn_clustering import get_recording_mask
 from burst_shape.settings import (
     get_chosen_spectral_clustering_params,
@@ -39,11 +39,11 @@ metric = (
 # parameters which clustering to plot
 burst_extraction_params = (
     "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_mossink_KS"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
@@ -58,7 +58,7 @@ match metric:
         col_cluster = f"cluster_{n_clusters}"
         labels_params = "labels"
         cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
-        cv_split = None  # set to None for plotting the whole clustering, set to int for specific split
+        cv_split = None  # set to None for plotting the whole clustering, set to int for specific split  # noqa: E501
 
         # load bursts
         df_bursts = load_df_bursts(burst_extraction_params)
@@ -75,7 +75,7 @@ match metric:
         df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
 
         #  build new dataframe df_cultures
-        # with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+        # with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')  # noqa: E501
         print("Building df_cultures...")
         df_bursts_reset = df_bursts.reset_index(
             drop=False
@@ -89,7 +89,7 @@ match metric:
             col_cluster = "cluster"
             df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(index_names)[
                 col_cluster
-            ].agg(lambda x: np.sum(x == i_cluster))
+            ].agg(lambda x, i_cluster=i_cluster: np.sum(x == i_cluster))
             df_cultures[f"cluster_rel_{i_cluster}"] = (
                 df_cultures[f"cluster_abs_{i_cluster}"] / df_cultures["n_bursts"]
             )
@@ -194,24 +194,28 @@ def _select_distances(
         should be selected from the distance matrix (within-group distances).
     :param column_comparison_combo: columns for which only disagreeing combinations
         should be selected from the distance matrix (between-group distances).
-    :param column_day_to_day: column for which consecutive samples' distances should be considered.
-        This column must have an order.
-    :param day_to_day_absolute: consider day before and day after, if True only day after
+    :param column_day_to_day: column for which consecutive samples' distances
+        should be considered. This column must have an order.
+    :param day_to_day_absolute: consider day before and day after, if True only
+        day after
     :param special_function: function to apply to special columns.
     :param special_columns: columns for special columns.
     :param include_diagonal: whether to include diagonal distances (distance to itself)
     :return: df_selected_distances: dataframe with subsampled distances.
         It has the same index as df_distance_matrix.
-        It has a single column "distances" that contains all the selected distances as a list.
+        It has a single column "distances" that contains all the selected
+        distances as a list.
     """
     index = df_distance_matrix.index
     level_names = df_distance_matrix.index.names
 
     # Prepare meshgrid of all combinations (i, j) (where i ≠ j if no diagonal)
     if include_diagonal:
-        row_idx, col_idx = zip(*[(i, j) for i in index for j in index])
+        row_idx, col_idx = zip(*[(i, j) for i in index for j in index], strict=False)
     else:
-        row_idx, col_idx = zip(*[(i, j) for i in index for j in index if i != j])
+        row_idx, col_idx = zip(
+            *[(i, j) for i in index for j in index if i != j], strict=False
+        )
     i_values = pd.DataFrame(
         row_idx, columns=pd.MultiIndex.from_product([["i"], level_names])
     )
@@ -261,12 +265,12 @@ def _select_distances(
 
     # Group distances by i
     df_pairs[("i", "tuple")] = list(
-        zip(*[df_pairs[("i", name)] for name in level_names])
+        zip(*[df_pairs[("i", name)] for name in level_names], strict=False)
     )
     df_selected = df_pairs.groupby(("i", "tuple"))["distance"].apply(list)
 
     # Ensure all original rows are present
-    # df_selected_distances = df_selected.reindex(df_distance_matrix.index, fill_value=[])
+    # df_selected_distances = df_selected.reindex(df_distance_matrix.index, fill_value=[])  # noqa: E501
     df_selected_distances = df_selected.reindex(df_distance_matrix.index)
     df_selected_distances = df_selected_distances.apply(
         lambda x: [] if not isinstance(x, list) else x
@@ -397,13 +401,17 @@ def _set_yaxis(ax, y_min=0):
             ax.set_ylabel("Wasserstein\ndistance")
             ax.set_ylim(y_min, None)
         case "Wasserstein-individual-bursts":
-            warnings.warn(f"Undefined function _set_yaxis() for metric {metric}.")
+            warnings.warn(
+                f"Undefined function _set_yaxis() for metric {metric}.", stacklevel=2
+            )
         case "Embedding":
             ax.set_ylabel("Embedding\ndistance")
             ax.set_ylim(y_min, None)
         case _:
             ax.set_ylabel("Distance")
-            warnings.warn(f"Undefined function _set_yaxis() for metric {metric}.")
+            warnings.warn(
+                f"Undefined function _set_yaxis() for metric {metric}.", stacklevel=2
+            )
 
 
 # %%
@@ -624,7 +632,7 @@ match dataset:
         ):
             # find first recording day per (batch, culture)
             _min_day_per_culture = {}
-            for _batch, _culture in set(zip(batch1, culture1)):
+            for _batch, _culture in set(zip(batch1, culture1, strict=False)):
                 days = day1[(batch1 == _batch) & (culture1 == _culture)].values
                 if reference_day is None:
                     # minimum day
@@ -641,7 +649,7 @@ match dataset:
                 & (_culture1 == _culture2)
                 # & (_day2 <= _day1)
                 for _batch1, _culture1, _day1, _batch2, _culture2, _day2 in zip(
-                    batch1, culture1, day1, batch2, culture2, day2
+                    batch1, culture1, day1, batch2, culture2, day2, strict=False
                 )
             ]
             return _is_distance_to_baseline
@@ -802,7 +810,7 @@ match dataset:
         )
 
     case "mossink":
-        # add additional info to the index to evaluate them in terms of distance/similarity
+        # add additional info to the index to evaluate them in terms of distance/similarity  # noqa: E501
         df_cultures_metadata = load_df_cultures(burst_extraction_params)
         df_cultures_metadata = df_cultures_metadata[
             df_cultures_metadata["n_bursts"] > 0
@@ -819,7 +827,7 @@ match dataset:
         df_distance_matrix.columns = df_cultures_metadata.index
 
         # compute and plot as usual
-        # WARNING - this computation takes a couple of minutes because of the many index levels.
+        # WARNING - this computation takes a couple of minutes because of the many index levels.  # noqa: E501
         similarity_random = _select_distances(df_distance_matrix)
         similarity_in_group = _select_distances(
             df_distance_matrix,
@@ -856,6 +864,10 @@ match dataset:
                 subject_id1,
                 group2,
                 subject_id2,
+                group_1=group_1,
+                subject_1=subject_1,
+                group_2=group_2,
+                subject_2=subject_2,
             ):
                 selection = (
                     (group1 == group_1)
@@ -980,7 +992,7 @@ match dataset:
             (6 * cm, 6 * cm),
             [
                 "Between group",
-                # *[f"{key}-{value}" for key, value in list(_isogenic_map.items())[2:]],  # only MELAS pairs
+                # *[f"{key}-{value}" for key, value in list(_isogenic_map.items())[2:]],  # only MELAS pairs  # noqa: E501
                 "MELAS 1 - Contr. 2",
                 "MELAS 2 - Contr. 4",
                 "MELAS 3 - Contr. 5",

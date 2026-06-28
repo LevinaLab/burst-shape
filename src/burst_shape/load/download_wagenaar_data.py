@@ -81,7 +81,7 @@ def download(
             if file.removesuffix(".bz2") not in existing_files
         ]
         for file in tqdm(files_to_extract):
-            bashCommand = f"bzip2 -d {os.path.join(path_raw, file)} -c > {os.path.join(path_extracted, file.removesuffix('.bz2'))}"
+            bashCommand = f"bzip2 -d {os.path.join(path_raw, file)} -c > {os.path.join(path_extracted, file.removesuffix('.bz2'))}"  # noqa: E501
             subprocess.call(bashCommand, shell=True)
     print("Manually fix file content...")
     _manually_fix_file_content(path_extracted)

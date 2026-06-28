@@ -17,7 +17,7 @@ def _get_knn_clustering_file_name(
             params_spectral_clustering=spectral_clustering_params,
             params_burst_extraction=burst_extraction_params,
         ),
-        f"knn_clustering_results{'_' + cv_type if cv_type else '_'}{'_special_target' if special_target is True else ''}.npz",
+        f"knn_clustering_results{'_' + cv_type if cv_type else '_'}{'_special_target' if special_target is True else ''}.npz",  # noqa: E501
     )
 
 

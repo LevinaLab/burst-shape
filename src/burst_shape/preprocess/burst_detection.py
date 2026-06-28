@@ -47,12 +47,12 @@ def pop_burst_detection(
     # print(bursts)
     for burst in bursts:
         burst_vectors[int(burst[0]) : int(burst[1]), 0] += 10
-        # plt.plot([int(burst[0])/1000,int(burst[1])/1000],[0,0],'-',color='g',alpha=1,linewidth=2)
+        # plt.plot([int(burst[0])/1000,int(burst[1])/1000],[0,0],'-',color='g',alpha=1,linewidth=2)  # noqa: E501
 
     # onset_threshold = 3# numer of sim active electrodes to consider a burst
-    onset_threshold = 1  # np.percentile(na(burst_vectors[:,0]),50)#max(np.percentile(na(burst_vectors[:,0]),50),3)#min(np.median(na(burst_vectors[:,0])),3)
-    peak_threshold = 1  # max(np.percentile(na(burst_vectors[:,0]),50),3)#max(np.percentile(na(burst_vectors[:,0]),99),5)
-    # plt.plot(np.linspace(int(np.min(st))/1000,int(np.max(st))/1000,len(burst_vectors)),burst_vectors)
+    onset_threshold = 1  # np.percentile(na(burst_vectors[:,0]),50)#max(np.percentile(na(burst_vectors[:,0]),50),3)#min(np.median(na(burst_vectors[:,0])),3)  # noqa: E501
+    peak_threshold = 1  # max(np.percentile(na(burst_vectors[:,0]),50),3)#max(np.percentile(na(burst_vectors[:,0]),99),5)  # noqa: E501
+    # plt.plot(np.linspace(int(np.min(st))/1000,int(np.max(st))/1000,len(burst_vectors)),burst_vectors)  # noqa: E501
     # print(onset_threshold,peak_threshold)
     pop_bursts_final = detect_onests(
         burst_vectors,
@@ -153,7 +153,8 @@ def MI_bursts(st, maxISIstart=4.5, maxISIb=4.5, minBdur=40, minIBI=40, minSburst
     Returns:
             burst (list of tuples): burst start, burst end
     [1] Nex Technologies.NeuroExplorer Manual.  Nex Technologies,2014
-    [2] Cotterill, E., and Eglen, S.J. (2018). Burst detection methods. ArXiv:1802.01287.
+    [2] Cotterill, E., and Eglen, S.J. (2018). Burst detection methods.
+        ArXiv:1802.01287.
     """
     spikes = np.sort(st)
     r_spikes = np.round(spikes, -1)
@@ -163,7 +164,7 @@ def MI_bursts(st, maxISIstart=4.5, maxISIb=4.5, minBdur=40, minIBI=40, minSburst
     bursts = []
     if burst_:
         bursts.append(burst_[0])
-        for i, b in enumerate(burst_[1:]):
+        for _i, b in enumerate(burst_[1:]):
             if b[1] - b[0] >= minBdur and b[0] - bursts[-1][1] >= minIBI:
                 bursts.append(b)
             elif b[0] - bursts[-1][1] <= minIBI:
@@ -187,7 +188,6 @@ def find_burstlets(
     """
     b_spikes = None
     burst_ = []
-    sync_b = False
     b_start = 0
     b_size = 0
     for i, s in enumerate(spikes[:-1]):
@@ -204,12 +204,9 @@ def find_burstlets(
             burst_.append((b_spikes, s))
             b_spikes = None
             b_size = 0
-            sync_b = False
             b_start = 0
 
         else:
-            b_spike = None
             b_size = 0
-            sync_b = False
             b_start = 0
     return burst_

@@ -7,11 +7,14 @@ def get_burst_level_predictions(
 ):
     """Compute the burst-level predictions of KNN-Clustering.
 
-    :param df_cultures: dataframe of cultures, must have a target column named "target_label"
-    :param df_bursts: dataframe of bursts, must have a target column named "target_label"
+    :param df_cultures: dataframe of cultures, must have a target column named
+        "target_label"
+    :param df_bursts: dataframe of bursts, must have a target column named
+        "target_label"
     :param distance_matrix_square: distance matrix of bursts
     :param kth: number of neighbors to consider
-    :param target_label: use this to specify if the column "target_label" is named differently
+    :param target_label: use this to specify if the column "target_label" is
+        named differently
     :return:
         class_labels: list of unique labels present in target column
         relative_votes: matrix of size (n_bursts, len(class_labels)) with relative votes
@@ -65,11 +68,14 @@ def get_burst_level_predictions_cv(
 ):
     """Compute the burst-level predictions of KNN-Clustering.
 
-    :param df_cultures: dataframe of cultures, must have a target column named "target_label"
-    :param df_bursts: dataframe of bursts, must have a target column named "target_label"
+    :param df_cultures: dataframe of cultures, must have a target column named
+        "target_label"
+    :param df_bursts: dataframe of bursts, must have a target column named
+        "target_label"
     :param distance_matrix_square: distance matrix of bursts
     :param kth: number of neighbors to consider
-    :param target_label: use this to specify if the column "target_label" is named differently
+    :param target_label: use this to specify if the column "target_label" is
+        named differently
     :return:
         class_labels: list of unique labels present in target column
         relative_votes: matrix of size (n_bursts, len(class_labels)) with relative votes
@@ -117,10 +123,14 @@ def get_burst_level_predictions_cv(
 def get_culture_level_predictions(df_cultures, df_bursts, relative_votes, class_labels):
     """Aggregates the results from burst-level KNN clustering to the culture level.
 
-    :param df_cultures: dataframe of cultures where the column "relative_votes" and "predicted_label" will be added
+    :param df_cultures: dataframe of cultures where the column "relative_votes"
+        and "predicted_label" will be added
     :param df_bursts: dataframe of bursts
-    :param relative_votes: relative votes on individual burst level, result from get_burst_level_predictions()
-    :param class_labels: unique class labels present in target column, must be the result from get_burst_level_predictions() to ensure consistency with relative_votes!
+    :param relative_votes: relative votes on individual burst level, result from
+        get_burst_level_predictions()
+    :param class_labels: unique class labels present in target column, must be
+        the result from get_burst_level_predictions() to ensure consistency with
+        relative_votes!
     :return: df_cultures with additional columns "relative_votes" and "predicted_label"
     """
     df_cultures["relative_votes"] = pd.Series(dtype="object")
@@ -145,10 +155,14 @@ def get_culture_level_predictions_cv(
 ):
     """Aggregates the results from burst-level KNN clustering to the culture level.
 
-    :param df_cultures: dataframe of cultures where the column "relative_votes" and "predicted_label" will be added
+    :param df_cultures: dataframe of cultures where the column "relative_votes"
+        and "predicted_label" will be added
     :param df_bursts: dataframe of bursts
-    :param relative_votes: relative votes on individual burst level, result from get_burst_level_predictions()
-    :param class_labels: unique class labels present in target column, must be the result from get_burst_level_predictions() to ensure consistency with relative_votes!
+    :param relative_votes: relative votes on individual burst level, result from
+        get_burst_level_predictions()
+    :param class_labels: unique class labels present in target column, must be
+        the result from get_burst_level_predictions() to ensure consistency with
+        relative_votes!
     :return: df_cultures with additional columns "relative_votes" and "predicted_label"
     """
     test_burst_mask = get_recording_mask(
@@ -166,10 +180,11 @@ def get_culture_level_predictions_cv(
 
 
 def get_recording_mask(df_bursts, culture_index):
-    """Find the corresponding indices in df_bursts from a specific recording (culture_index).
+    """Find the indices in df_bursts belonging to a recording (culture_index).
 
     :param df_bursts: datafame of bursts
-    :param culture_index: index from df_cultures for which the corresponding indices in df_burst should be found
+    :param culture_index: index from df_cultures for which the corresponding
+        indices in df_burst should be found
     :return: boolean mask for df_bursts of size (n_bursts)
     """
     if isinstance(culture_index, list):

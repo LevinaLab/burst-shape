@@ -6,6 +6,7 @@ They are saved in df_cultures with index (batch, culture, day) and columns:
 """
 
 import os
+from random import sample
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,7 @@ from burst_shape.persistence.burst_extraction import _get_burst_folder
 
 
 def get_sequence_df():
-    burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"
+    burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"  # noqa: E501
     agglomerating_clustering_params = (
         "agglomerating_clustering_linkage_complete_n_bursts_None"
     )
@@ -57,7 +58,7 @@ def get_sequence_df():
         for c in cluster_colors
     ]
 
-    # %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+    # %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')  # noqa: E501
     print("Building df_cultures...")
     df_bursts_reset = df_bursts.reset_index(
         drop=False

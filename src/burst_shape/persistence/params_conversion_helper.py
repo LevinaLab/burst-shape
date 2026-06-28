@@ -19,7 +19,7 @@ def _string_key(key: str) -> str:
 def _parse_param_value(value_str: str):
     try:
         return ast.literal_eval(value_str)
-    except ValueError or SyntaxError:
+    except (ValueError, SyntaxError):
         return value_str
 
 

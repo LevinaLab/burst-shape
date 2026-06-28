@@ -7,9 +7,11 @@ Algorithm:
 3) accumulate 'votes' of these K-nearest neighbours based on their classes.
     Weight for:
     - divide by number of bursts per recording
-      (Motivation: correct for a single recording with a large number of bursts having a disproportionate influence.)
+      (Motivation: correct for a single recording with a large number of bursts
+      having a disproportionate influence.)
     - divide by number of recordings per class
-      (Motivation: correct for a single class with a large number of recordings having a disproportionate influence.)
+      (Motivation: correct for a single class with a large number of recordings
+      having a disproportionate influence.)
 4) accumulate votes
 5) assign predicted label based on largest share of votes
 
@@ -55,7 +57,7 @@ random_state = 1234567890
 n_splits = 100
 
 # parameters which clustering to plot
-burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+burst_extraction_params = "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 clustering_params = get_chosen_spectral_embedding_params(dataset)
 match = re.search(r"(\d+)$", clustering_params)

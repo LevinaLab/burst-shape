@@ -41,7 +41,7 @@ def _metric_from_index_k(k):
     c = -(1 + k)
     i = (-b + np.sqrt(b**2 - 4 * a * c)) / (2 * a)
     i = int(np.floor(i - 1e5 * np.finfo(float).eps))
-    j = k - (i * (2 * n - i - 1) // 2 - i - 1)
+    return k - (i * (2 * n - i - 1) // 2 - i - 1)
 
 
 with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:

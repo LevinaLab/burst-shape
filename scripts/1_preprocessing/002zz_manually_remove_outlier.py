@@ -14,7 +14,7 @@ from burst_shape.persistence.burst_extraction import (
 )
 
 # %% load settings
-burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"  # noqa: E501
 n_bursts = None  # if None uses all bursts
 linkage_method = "complete"
 np.random.seed(0)

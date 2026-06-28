@@ -38,19 +38,19 @@ X2 = np.random.randn(100, 3)
 y = np.random.randint(0, 2, size=100)
 
 outer_cv = _get_outer_cv(cv_type)
-for train_idx1, test_idx1 in tqdm(
+for train_idx1, _test_idx1 in tqdm(  # noqa: B007
     outer_cv.split(X1, y), total=n_splits, desc="Outer loop of cv"
 ):
     pass
 
 outer_cv = _get_outer_cv(cv_type)
-for train_idx2, test_idx2 in tqdm(
+for train_idx2, _test_idx2 in tqdm(  # noqa: B007
     outer_cv.split(X2, y), total=n_splits, desc="Outer loop of cv"
 ):
     pass
 
 outer_cv = _get_outer_cv(cv_type)
-for train_idx3, test_idx3 in tqdm(
+for train_idx3, _test_idx3 in tqdm(  # noqa: B007
     outer_cv.split(np.zeros_like(y), y), total=n_splits, desc="Outer loop of cv"
 ):
     pass

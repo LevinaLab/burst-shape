@@ -17,9 +17,9 @@ cm = prepare_plotting()
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
@@ -99,8 +99,8 @@ if dataset == "inhibblock":
 
     fig, ax = plt.subplots(constrained_layout=True, figsize=(10 * cm, 3 * cm))
     sns.despine()
-    for start, end, color, index in zip(
-        burst_starts, burst_ends, burst_colors, burst_index
+    for start, end, color, _index in zip(
+        burst_starts, burst_ends, burst_colors, burst_index, strict=False
     ):
         ax.axvspan(start, end, color=color, alpha=0.6, zorder=-1)
 
@@ -111,7 +111,7 @@ if dataset == "inhibblock":
 
     fig.show()
     fig.savefig(
-        os.path.join(get_fig_folder(), f"demo_pie_code.svg"),
+        os.path.join(get_fig_folder(), "demo_pie_code.svg"),
         transparent=True,
     )
 
@@ -125,6 +125,6 @@ if dataset == "inhibblock":
     ax.pie(fractions, colors=color_discrete_sequence, startangle=90)
     fig.show()
     fig.savefig(
-        os.path.join(get_fig_folder(), f"demo_pie_code-pie.svg"),
+        os.path.join(get_fig_folder(), "demo_pie_code-pie.svg"),
         transparent=True,
     )

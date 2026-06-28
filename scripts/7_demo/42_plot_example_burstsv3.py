@@ -22,9 +22,9 @@ color_by = ["spectral_cluster", "group"][1]
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
@@ -42,7 +42,7 @@ if color_by == "spectral_cluster":
 
     labels_params = "labels"
     cv_params = "cv"  # if cv_split is not None, chooses the cross-validation split
-    cv_split = None  # set to None for plotting the whole clustering, set to int for specific split
+    cv_split = None  # set to None for plotting the whole clustering, set to int for specific split  # noqa: E501
 
     clustering = load_clustering_labels(
         clustering_params, burst_extraction_params, labels_params, cv_params, cv_split
@@ -69,7 +69,7 @@ if dataset == "inhibblock":
     # sns.despine()
     offset_start = 1000
     offset_end = 1000
-    for i, index in enumerate(examples_indices):
+    for _i, index in enumerate(examples_indices):
         fig, ax = plt.subplots(constrained_layout=True, figsize=(4 * cm, 3 * cm))
         # ax = axs[i]
         ax_raster = ax.twinx()

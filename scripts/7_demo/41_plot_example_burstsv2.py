@@ -8,7 +8,7 @@ from scipy.cluster.hierarchy import fcluster
 from burst_shape.folders import get_results_folder
 from burst_shape.persistence import load_df_bursts
 
-burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"
+burst_extraction_params = "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"  # noqa: E501
 # load bursts df
 df_bursts = load_df_bursts(burst_extraction_params)
 # load labels
@@ -63,7 +63,6 @@ fig.show()
 
 # %%
 # Choose a cluster to plot
-from scipy.ndimage import gaussian_filter
 
 idx_bursts_to_plot = [
     [142],  # 1
@@ -152,7 +151,7 @@ for day in range(1, 30):
         # ax[i_cluster-1].axvline(start,color='gray',linestyle='--',alpha=0.5)
         ax[day - 1].set_ylim([0, 2000])
         ax[day - 1].text(100000, 0, day)
-    except:
+    except Exception:
         continue
 plt.savefig("../figures/development-6-1.pdf")
 

@@ -23,7 +23,6 @@ import pytest
 
 from burst_shape.preprocess.burst_detection import MI_bursts, find_burstlets
 
-
 # -------------------- find_burstlets ----------------------------------
 
 

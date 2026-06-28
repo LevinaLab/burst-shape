@@ -10,7 +10,7 @@ na = np.array
 # % Load rats cultures
 days = [7, 10, 14, 17, 21, 24, 28, 31, 35]
 
-url = "https://gin.g-node.org/NeuroGroup_TUNI/Comparative_MEA_dataset/raw/master/Data/Rat_MEA1/Rat_MEA1_spikes_noise_explogs/Rat_190617_MEA1_DIV%s_spikes.csv"  # %day
+url = "https://gin.g-node.org/NeuroGroup_TUNI/Comparative_MEA_dataset/raw/master/Data/Rat_MEA1/Rat_MEA1_spikes_noise_explogs/Rat_190617_MEA1_DIV%s_spikes.csv"  # %day  # noqa: E501
 
 path = get_data_kapucu_folder()
 os.makedirs(path, exist_ok=True)

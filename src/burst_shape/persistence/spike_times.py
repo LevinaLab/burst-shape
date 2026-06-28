@@ -28,8 +28,9 @@ def get_spike_times_in_seconds(df_cultures, idx, dataset):
         case _:
             warnings.warn(
                 f"get_spike_times_in_seconds() not implemented for dataset={dataset}. "
-                "Trying to load with default behaviour: Loading from df_cultures columns 'times' and 'gid'. "
-                "If this doesn't work or to suppress this warning implement your dataset explicitly here."
+                "Trying to load with default behaviour: Loading from df_cultures columns 'times' and 'gid'. "  # noqa: E501
+                "If this doesn't work or to suppress this warning implement your dataset explicitly here.",  # noqa: E501
+                stacklevel=2,
             )
             st = df_cultures.at[idx, "times"]
             gid = df_cultures.at[idx, "gid"]

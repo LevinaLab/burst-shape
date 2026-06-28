@@ -13,7 +13,7 @@ from burst_shape.persistence import (
     load_df_bursts,
     load_df_cultures,
 )
-from burst_shape.plot import get_cluster_colors, label_sig_diff, prepare_plotting
+from burst_shape.plot import label_sig_diff, prepare_plotting
 from burst_shape.settings import (
     get_chosen_spectral_clustering_params,
     get_dataset_from_burst_extraction_params,
@@ -23,11 +23,11 @@ cm = prepare_plotting()
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
@@ -51,7 +51,7 @@ clustering = load_clustering_labels(
 df_bursts["cluster"] = clustering.labels_[n_clusters] + 1
 
 
-# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')  # noqa: E501
 print("Building df_cultures...")
 df_bursts_reset = df_bursts.reset_index(
     drop=False
@@ -65,7 +65,7 @@ for i_cluster in range(1, n_clusters + 1):
     col_cluster = "cluster"
     df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(index_names)[
         col_cluster
-    ].agg(lambda x: np.sum(x == i_cluster))
+    ].agg(lambda x, i_cluster=i_cluster: np.sum(x == i_cluster))
     df_cultures[f"cluster_rel_{i_cluster}"] = (
         df_cultures[f"cluster_abs_{i_cluster}"] / df_cultures["n_bursts"]
     )
@@ -148,7 +148,9 @@ def _cosine_similarity_df(
                 if len(unique_days) <= 1:
                     continue
                 similarities_per_day = []
-                for day_pre, day_post in zip(unique_days[:-1], unique_days[1:]):
+                for day_pre, day_post in zip(
+                    unique_days[:-1], unique_days[1:], strict=False
+                ):
                     similarities_per_day.append(
                         _cosine_similarity_selection(
                             df_separated_combo.loc[
@@ -406,7 +408,7 @@ match dataset:
             flierprops={"markerfacecolor": "grey", "markeredgecolor": "grey"},
             fliersize=0,
         )
-        # sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")
+        # sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")  # noqa: E501
 
         # Overlay dots for individual data points
         # sns.stripplot(data=data, ax=ax, color="black", size=0.08, jitter=True)
@@ -491,7 +493,7 @@ match dataset:
             edgecolor="black",
             inner_kws={"color": "grey", "zorder": 0},
         )
-        # sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")
+        # sns.violinplot(data=data, ax=ax, inner="box", color="white", edgecolor="black")  # noqa: E501
 
         # Overlay dots for individual data points
         # sns.stripplot(data=data, ax=ax, color="black", size=0.08, jitter=True)

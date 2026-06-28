@@ -3,9 +3,7 @@
 import os
 
 import matplotlib.patches as patches
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 
 from burst_shape.folders import get_fig_folder
 from burst_shape.persistence import (
@@ -31,11 +29,11 @@ plot_subset = True
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 clustering_params, n_clusters = get_chosen_spectral_clustering_params(dataset)
@@ -76,7 +74,7 @@ for i_cluster in range(n_clusters):
     col_cluster = f"cluster_{n_clusters}"
     df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(
         df_cultures.index.names  # ["batch", "culture", "day"]
-    )[col_cluster].agg(lambda x: np.sum(x == i_cluster))
+    )[col_cluster].agg(lambda x, i_cluster=i_cluster: np.sum(x == i_cluster))
     df_cultures[f"cluster_rel_{i_cluster}"] = df_cultures[
         f"cluster_abs_{i_cluster}"
     ] / df_cultures["n_bursts"].astype(float)

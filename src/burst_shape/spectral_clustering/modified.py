@@ -84,7 +84,8 @@ class SpectralClusteringModified(SpectralClustering):
                 "The spectral clustering API has changed. ``fit``"
                 "now constructs an affinity matrix from data. To use"
                 " a custom affinity matrix, "
-                "set ``affinity=precomputed``."
+                "set ``affinity=precomputed``.",
+                stacklevel=2,
             )
 
         if self.affinity == "nearest_neighbors":
@@ -133,7 +134,6 @@ class SpectralClusteringModified(SpectralClustering):
         if self.verbose:
             print(f"Computing label assignment using {self.assign_labels}")
 
-        random_state = check_random_state(self.random_state)
         self.labels_ = {}
         for n_cluster in self.n_clusters:
             self.labels_[n_cluster] = self._compute_labels(n_cluster)

@@ -31,15 +31,15 @@ data_columns_to_load = [
     "combo",  # combine the information
 ]
 plot_legend = True
-special_target = True  # for mossink: if True chooses subjects as target instead, if False chooses group
+special_target = True  # for mossink: if True chooses subjects as target instead, if False chooses group  # noqa: E501
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
 match dataset:
@@ -84,7 +84,7 @@ cv_split = (
 np.random.seed(0)
 
 # plot settings
-# n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index
+# n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index  # noqa: E501
 
 # plotting
 fig_path = folders.get_fig_folder()
@@ -129,7 +129,7 @@ palette = get_cluster_colors(n_clusters)
 cluster_colors = get_cluster_colors(n_clusters)
 
 
-# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')  # noqa: E501
 print("Building df_cultures...")
 df_bursts_reset = df_bursts.reset_index(
     drop=False
@@ -167,7 +167,7 @@ for i_cluster in range(1, n_clusters + 1):
     col_cluster = "cluster"
     df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(index_names)[
         col_cluster
-    ].agg(lambda x: np.sum(x == i_cluster))
+    ].agg(lambda x, i_cluster=i_cluster: np.sum(x == i_cluster))
     df_cultures[f"cluster_rel_{i_cluster}"] = (
         df_cultures[f"cluster_abs_{i_cluster}"] / df_cultures["n_bursts"]
     )
@@ -242,6 +242,7 @@ def _plot_PCA(pca, pc_column_names, select_data_column, feature_columns=None):
                 for culture_type, mea_number in zip(
                     df_cultures.index.get_level_values("culture_type").astype(str),
                     df_cultures.index.get_level_values("mea_number").astype(str),
+                    strict=False,
                 )
             ]
             s = 8
@@ -298,7 +299,7 @@ def _plot_PCA(pca, pc_column_names, select_data_column, feature_columns=None):
             scaling_factor = np.max(
                 np.abs(df_cultures[pc_column_names[:2]])
             )  # Scale for visibility
-            for i, feature in enumerate(feature_columns):
+            for i, _feature in enumerate(feature_columns):
                 color = get_cluster_colors(n_clusters)[i]
                 plt.arrow(
                     0,
@@ -422,8 +423,6 @@ def _logistic_regression(train_columns):
 
                 mean_tpr = np.mean(tprs, axis=0)
                 std_tpr = np.std(tprs, axis=0)
-                mean_auc = np.mean(aucs)
-                std_auc = np.std(aucs)
                 # return mean_fpr, mean_tpr, std_tpr
             case "direct":
                 clf = LogisticRegression(solver="liblinear", class_weight="balanced")
@@ -466,8 +465,6 @@ def _logistic_regression(train_columns):
 
         mean_tpr = np.mean(tprs, axis=0)
         std_tpr = np.std(tprs, axis=0)
-        mean_auc = np.mean(aucs)
-        std_auc = np.std(aucs)
         # return mean_fpr, mean_tpr, std_tpr
 
     # Compute Balanced Accuracy for each threshold
@@ -495,6 +492,7 @@ def _plot_ROC(select_data_column, pc_column_names):
         ["all", "2 PCs", "1 PC"],
         ["k", "k", "k"],  # ["C0", "C1", "C2"],
         ["-", "--", ":"],
+        strict=False,
     ):
         (
             mean_fpr,

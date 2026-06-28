@@ -5,15 +5,14 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from scipy.cluster.hierarchy import dendrogram, fcluster
+from scipy.cluster.hierarchy import dendrogram
 
 from burst_shape import folders
 from burst_shape.persistence import load_burst_matrix, load_df_bursts, load_linkage
 from burst_shape.persistence.agglomerative_clustering import get_agglomerative_labels
-from burst_shape.persistence.burst_extraction import _get_burst_folder
 
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 agglomerating_clustering_params = (
@@ -76,7 +75,7 @@ dendrogram_properties = dendrogram(
 cluster_counts = np.bincount(df_bursts["cluster"])[1:]  # ignoring cluster 0
 cluster_index_dendrogram = [i for i in range(n_clusters) if cluster_counts[i] > 1]
 # (fix the situation where a cluster is only size 1 -> not present in ax.collections)
-for i, d in zip(cluster_index_dendrogram, ax.collections[:-1]):
+for i, d in zip(cluster_index_dendrogram, ax.collections[:-1], strict=False):
     if i >= n_clusters:
         break
     color = cluster_colors[i]

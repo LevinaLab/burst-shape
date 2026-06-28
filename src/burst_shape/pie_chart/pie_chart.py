@@ -168,7 +168,9 @@ def _plot_data_point(data_point, plot_type, ax, colors=None, index=None, dataset
                         (group, subject_id, _) = index
                         color = get_group_colors(dataset)[f"{group} {subject_id}"]
                     case _:
-                        warnings.warn("No color set for average burst. Using black.")
+                        warnings.warn(
+                            "No color set for average burst. Using black.", stacklevel=2
+                        )
                         color = "k"
 
                 ax.plot(data_point, color=color)
@@ -292,6 +294,7 @@ def get_df_cultures_subset(df_cultures, dataset):
                     for batch, culture in zip(
                         df_cultures_subset.index.get_level_values("batch"),
                         df_cultures_subset.index.get_level_values("culture"),
+                        strict=False,
                     )
                 ]
             ]
@@ -319,6 +322,7 @@ def get_df_cultures_subset(df_cultures, dataset):
                         df_cultures_subset.index.get_level_values("culture_type"),
                         df_cultures_subset.index.get_level_values("mea_number"),
                         df_cultures_subset.index.get_level_values("well_id"),
+                        strict=False,
                     )
                 ]
             ]
@@ -331,6 +335,7 @@ def get_df_cultures_subset(df_cultures, dataset):
         case _:
             warnings.warn(
                 f"Taking subset is not implemented for dataset {dataset}. "
-                "Returning full dataset instead and continuing."
+                "Returning full dataset instead and continuing.",
+                stacklevel=2,
             )
     return df_cultures_subset

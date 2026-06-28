@@ -39,7 +39,7 @@ def savefig(fig, filename, file_format="svg", dpi=300, transparent=True):
 def get_cluster_colors(n_clusters):
     if n_clusters <= 7:
         austria_custom = met_brewer.met_brew("Austria", 7, brew_type="discrete")
-        # austria_custom = [austria_custom[i] for i in [1, 4, 6, 0, 2, 3, 5][:n_clusters]]
+        # austria_custom = [austria_custom[i] for i in [1, 4, 6, 0, 2, 3, 5][:n_clusters]]  # noqa: E501
         return austria_custom[:n_clusters]
     else:
         return met_brewer.met_brew("Austria", n_clusters, brew_type="continuous")

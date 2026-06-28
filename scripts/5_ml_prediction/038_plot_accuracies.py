@@ -75,7 +75,7 @@ for burst_extraction_params in burst_extraction_params_list:
         # ISI + 20% threshold
         "burst_dataset_inhibblock_algorithm_overlap_maxISIstart_69_maxISIb_69_minBdur_50_minIBI_100_minSburst_8_network_rule_simultaneity_unit_threshold_0.2_n_units_total_12_n_bins_50_normalization_integral_min_length_30": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_90",  # noqa: E501
         "burst_dataset_hommersom_binary_algorithm_overlap_maxISIstart_80_maxISIb_80_minBdur_50_minIBI_100_minSburst_6_network_rule_simultaneity_unit_threshold_0.2_n_units_total_16_n_bins_50_normalization_integral_min_length_30": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_22",  # noqa: E501
-        "burst_dataset_mossink_KS_intermediate": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_114",
+        "burst_dataset_mossink_KS_intermediate": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_114",  # noqa: E501
         "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_132",  # noqa: E501
     }
     spectral_clustering_params = spectral_clustering_params_supplementary.get(
@@ -95,7 +95,8 @@ for burst_extraction_params in burst_extraction_params_list:
         except FileNotFoundError:
             warnings.warn(
                 f"XGBoost results not found for dataset={dataset}, "
-                f"feature_set={feature_set_name}. Skipping."
+                f"feature_set={feature_set_name}. Skipping.",
+                stacklevel=2,
             )
             continue
         n_classes[dataset] = len(np.unique(all_y_test))
@@ -123,7 +124,8 @@ for burst_extraction_params in burst_extraction_params_list:
             )
     except FileNotFoundError:
         warnings.warn(
-            f"KNN Clustering not found for dataset={dataset}. Continuing without it."
+            f"KNN Clustering not found for dataset={dataset}. Continuing without it.",
+            stacklevel=2,
         )
         pass
 df_accuracies = pd.DataFrame(df_accuracies)
@@ -327,7 +329,7 @@ plot_type = (
 )
 
 # Add dashed line for random accuracy
-for dataset, ax in zip(df_accuracies["dataset"].unique(), g.axes.flat):
+for dataset, ax in zip(df_accuracies["dataset"].unique(), g.axes.flat, strict=False):
     random_level = 1 / n_classes[dataset]
     ax.axhline(random_level, ls="--", color="gray", label="Chance level")
 
@@ -374,7 +376,7 @@ match plot_type:
             hue="feature_set",
             palette="Set2",
             order=feature_set_order,
-            dodge=False,  # No dodging along the x-axis (unless you have multiple hue levels per x)
+            dodge=False,  # No dodging along the x-axis (unless you have multiple hue levels per x)  # noqa: E501
             jitter=True,  # Add some jitter to spread out points
             size=6,  # Marker size
         )
@@ -810,7 +812,7 @@ bayesian_symbols = ["n.d.", "†", "‡", "#"][::-1]
 
 
 def _get_bayesian_symbol(prob):
-    for threshold, symbol in zip(bayesian_thresholds, bayesian_symbols):
+    for threshold, symbol in zip(bayesian_thresholds, bayesian_symbols, strict=False):
         if prob > threshold:
             return symbol
     return None
@@ -868,7 +870,7 @@ for i, dataset_name in enumerate(dataset_order):
 
     if plot_bayesian is True:
         # add bayesian symbols
-        for j, (first, second) in enumerate(comparison_pairs):
+        for _j, (first, second) in enumerate(comparison_pairs):
             try:
                 prob_first_better = df_bayesian[
                     (df_bayesian["dataset"] == dataset_name)
@@ -928,7 +930,7 @@ fig_legend = plt.figure(constrained_layout=True, figsize=(8 * cm, 2 * cm))
 # --- Build manual legend patches ---
 handles = []
 labels = []
-for c, ec, h, fs in zip(color, edgecolor, hatch, feature_sets):
+for c, ec, h, fs in zip(color, edgecolor, hatch, feature_sets, strict=False):
     patch = matplotlib.patches.Patch(
         facecolor=c,
         edgecolor=ec,
@@ -983,6 +985,7 @@ else:
         "wagenaar": get_group_colors("wagenaar")[2],
     }
 
+    ax_list = axs.flatten() if use_subplots else [ax] * 4
     for dataset, ax in zip(
         [
             "inhibblock",
@@ -990,7 +993,8 @@ else:
             "mossink_KS",
             "wagenaar",
         ],
-        axs.flatten() if use_subplots else [ax] * 4,
+        ax_list,
+        strict=False,
     ):
         ax.errorbar(
             dimensions,

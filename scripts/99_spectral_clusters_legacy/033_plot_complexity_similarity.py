@@ -22,8 +22,8 @@ col_cluster = f"cluster_{n_clusters}"
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
     "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
 )
 if "kapucu" in burst_extraction_params:
@@ -52,7 +52,7 @@ cv_split = (
 np.random.seed(0)
 
 # plot settings
-# n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index
+# n_clusters = 5  # 3  # if None chooses the number of clusters with Davies-Bouldin index  # noqa: E501
 
 # plotting
 cm = 1 / 2.54  # centimeters in inches
@@ -94,7 +94,7 @@ palette = get_cluster_colors(n_clusters)
 cluster_colors = get_cluster_colors(n_clusters)
 
 
-# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')
+# %% build new dataframe df_cultures with index ('batch', 'culture', 'day') and columns ('n_bursts', 'cluster_abs', 'cluster_rel')  # noqa: E501
 print("Building df_cultures...")
 df_bursts_reset = df_bursts.reset_index(
     drop=False
@@ -132,7 +132,7 @@ for i_cluster in range(1, n_clusters + 1):
     col_cluster = "cluster"
     df_cultures[f"cluster_abs_{i_cluster}"] = df_bursts.groupby(index_names)[
         col_cluster
-    ].agg(lambda x: np.sum(x == i_cluster))
+    ].agg(lambda x, i_cluster=i_cluster: np.sum(x == i_cluster))
     df_cultures[f"cluster_rel_{i_cluster}"] = (
         df_cultures[f"cluster_abs_{i_cluster}"] / df_cultures["n_bursts"]
     )
@@ -182,7 +182,7 @@ for i, day in enumerate(days):
             == cluster
         )
 # for cluster in range(1, n_clusters + 1):
-# ax.plot(days, fraction[:, cluster - 1], color=palette[cluster - 1], label=f"Cluster {cluster}")
+# ax.plot(days, fraction[:, cluster - 1], color=palette[cluster - 1], label=f"Cluster {cluster}")  # noqa: E501
 # smooth fraction by moving average over 5 days
 if apply_smoothing is True:
     for cluster in range(1, n_clusters + 1):
@@ -207,7 +207,9 @@ fig.savefig(os.path.join(fig_path, "fraction_clusters.pdf"))
 
 # %% development plot based on df_cultures
 print("Plotting development based on df_cultures...")
-for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
+for df_, column in zip(
+    [df_cultures, df_cultures_weeks], [index_names[-1], "week"], strict=False
+):
     fig, ax = plt.subplots(figsize=(4.6 * cm, 3.5 * cm), constrained_layout=True)
     sns.despine()
     days = df_.index.get_level_values(column).unique().sort_values()
@@ -242,11 +244,15 @@ for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week
 
 # %% complexity plot (information)
 print("Plotting information...")
-for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
+for df_, column in zip(
+    [df_cultures, df_cultures_weeks], [index_names[-1], "week"], strict=False
+):
     # compute information based on cluster_rel columns
     columns = [f"cluster_rel_{i_cluster}" for i_cluster in range(1, n_clusters + 1)]
     df_["information"] = df_.apply(
-        lambda x: -np.sum([(p * np.log2(p) if p > 0 else 0) for p in x[columns]]),
+        lambda x, columns=columns: (
+            -np.sum([(p * np.log2(p) if p > 0 else 0) for p in x[columns]])
+        ),
         axis=1,
     )
     # plot average information per day
@@ -355,7 +361,9 @@ fig.show()
 # %% plot a pie chart for each entry in df_cultures
 # position of the pie chart in the grid is determined by the day and i_culture
 print("Plotting pie charts...")
-for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
+for df_, column in zip(
+    [df_cultures, df_cultures_weeks], [index_names[-1], "week"], strict=False
+):
     colors = palette  #  sns.color_palette("Set1", n_colors=n_clusters)
     nrows = df_["i_culture"].max() + 1
     ncols = df_.index.get_level_values(column).max() + 1
@@ -451,7 +459,9 @@ def _cosine_similarity_df(df_selection, df_selection2=None):
     return similarities
 
 
-for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week"]):
+for df_, column in zip(
+    [df_cultures, df_cultures_weeks], [index_names[-1], "week"], strict=False
+):
     # print("Random across whole dataframe", _cosine_similarity_df(df_cultures).mean())
     similarity_random = _cosine_similarity_df(df_.sample(frac=1))
     similarity_batch_random = np.array(
@@ -526,6 +536,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week
             for day, next_day in zip(
                 sorted(df_.index.get_level_values(column).unique())[:-1],
                 sorted(df_.index.get_level_values(column).unique())[1:],
+                strict=False,
             )
         ]
     )
@@ -547,7 +558,7 @@ for df_, column in zip([df_cultures, df_cultures_weeks], [index_names[-1], "week
         days = sorted(group.index.get_level_values(column).unique())
 
         # Compute similarity to the next existing day within this batch and culture
-        for i, (day, next_day) in enumerate(zip(days[:-1], days[1:])):
+        for _i, (day, next_day) in enumerate(zip(days[:-1], days[1:], strict=False)):
             day_index = unique_days.index(day)
             similarity = _cosine_similarity_df(
                 group[group.index.get_level_values(column) == day],

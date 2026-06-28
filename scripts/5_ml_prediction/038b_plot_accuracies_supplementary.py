@@ -80,7 +80,8 @@ for burst_extraction_params in burst_extraction_params_list:
         except FileNotFoundError:
             warnings.warn(
                 f"KNN Clustering not found for dataset={dataset}. "
-                "Continuing without it."
+                "Continuing without it.",
+                stacklevel=2,
             )
             pass
 df_accuracies = pd.DataFrame(df_accuracies)
@@ -215,7 +216,7 @@ for i, dataset_name in enumerate(dataset_order):
             # rasterized=True,
         )
 
-for i, dataset_name in enumerate(dataset_order):
+for i, _dataset_name in enumerate(dataset_order):
     ax = axs[i]
     # ax.set_ylim(1 / n_classes[dataset_name], None)
     # if i == 3:
@@ -236,4 +237,4 @@ fig.legend(
     ncol=3,
 )
 fig.show()
-savefig(fig, f"accuracies_supplementary_shape_dimensions", file_format=["pdf", "svg"])
+savefig(fig, "accuracies_supplementary_shape_dimensions", file_format=["pdf", "svg"])

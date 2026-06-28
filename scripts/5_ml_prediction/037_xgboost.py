@@ -66,13 +66,13 @@ n_splits = 100
 spectral_embeddings_dims_max = 10  # maximal number of used dimensions, usually 10
 
 burst_extraction_params_list = [
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_mossink_KS"
     # "burst_dataset_mossink_MELAS"
     # supplementary: fixed-ISI burstlets + 20% threshold
@@ -99,7 +99,9 @@ for burst_extraction_params in burst_extraction_params_list:
         _target_counts = df_cultures["target_label"].value_counts()
         _small_classes = _target_counts[_target_counts < 2].index.tolist()
         if _small_classes:
-            warnings.warn(f"Dropping classes with <2 cultures: {_small_classes}")
+            warnings.warn(
+                f"Dropping classes with <2 cultures: {_small_classes}", stacklevel=2
+            )
             df_cultures = df_cultures[~df_cultures["target_label"].isin(_small_classes)]
 
         print(f"Dataset:\t\t{dataset}\nTarget label:\t{target_label}")
@@ -244,7 +246,7 @@ for burst_extraction_params in burst_extraction_params_list:
                 cv_type,
             ):
                 print(
-                    f"XGBoost results for feature set {feature_set_name} don't exists. Computing them."
+                    f"XGBoost results for feature set {feature_set_name} don't exists. Computing them."  # noqa: E501
                 )
 
                 objective = "multi:softprob" if num_classes > 2 else "binary:logistic"
@@ -362,7 +364,7 @@ for burst_extraction_params in burst_extraction_params_list:
                 print(f"Saved the results for feature set {feature_set_name}.")
             else:
                 print(
-                    f"XGBoost results for feature set {feature_set_name} already exists. Loading..."
+                    f"XGBoost results for feature set {feature_set_name} already exists. Loading..."  # noqa: E501
                 )
                 (
                     features,
@@ -378,7 +380,7 @@ for burst_extraction_params in burst_extraction_params_list:
                 )
                 print(f"Loaded the results for feature set {feature_set_name}.")
 
-            # ----------------------------------------------------------------------------
+            # ----------------------------------------------------------------------------  # noqa: E501
             # Plotting
             average_score = np.mean(nested_scores)
             print(f"Average balanced accuracy:\t{average_score:.3f}")
@@ -386,8 +388,8 @@ for burst_extraction_params in burst_extraction_params_list:
             # Aggregate SHAP values across folds
             mean_shap_values = np.mean(all_shap_values, axis=0)
             mean_abs_shap_values = np.mean(np.abs(mean_shap_values), axis=0)
-            # sorted_importances = pd.Series(mean_abs_shap_values, index=X.columns).sort_values(ascending=False)
-            # extract_corr_and_impact(X, list(X.columns), mean_shap_values, mean_abs_shap_values
+            # sorted_importances = pd.Series(mean_abs_shap_values, index=X.columns).sort_values(ascending=False)  # noqa: E501
+            # extract_corr_and_impact(X, list(X.columns), mean_shap_values, mean_abs_shap_values  # noqa: E501
 
             # Plot aggregated SHAP values
             # Close any prior figures so shap's internal tight_layout doesn't clash
@@ -434,7 +436,7 @@ for burst_extraction_params in burst_extraction_params_list:
                     feature_names=X.columns,
                     class_inds="original",
                     class_names=list(label_encoder.classes_),
-                    color=lambda i: [
+                    color=lambda i, dataset=dataset, label_encoder=label_encoder: [
                         get_group_colors(dataset)[j]
                         for j in list(label_encoder.classes_)
                     ][i],
@@ -480,6 +482,7 @@ for burst_extraction_params in burst_extraction_params_list:
                         get_group_colors(dataset)[j]
                         for j in list(label_encoder.classes_)
                     ],
+                    strict=False,
                 ):
                     label_x.set_color(color)
                     label_y.set_color(color)

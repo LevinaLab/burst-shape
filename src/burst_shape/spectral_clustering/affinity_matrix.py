@@ -67,7 +67,8 @@ def compute_affinity_matrix(bursts, n_jobs=1, metric="wasserstein", n_neighbors=
             warnings.warn(
                 "You chose 'KLDivergence' as a distance metric. "
                 "Note that KLDivergence is not a metric. "
-                "Please continue at your own discretion."
+                "Please continue at your own discretion.",
+                stacklevel=2,
             )
         case _:
             raise NotImplementedError(

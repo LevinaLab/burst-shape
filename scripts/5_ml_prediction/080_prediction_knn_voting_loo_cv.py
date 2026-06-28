@@ -7,9 +7,11 @@ Algorithm:
 3) accumulate 'votes' of these K-nearest neighbours based on their classes.
     Weight for:
     - divide by number of bursts per recording
-      (Motivation: correct for a single recording with a large number of bursts having a disproportionate influence.)
+      (Motivation: correct for a single recording with a large number of bursts
+      having a disproportionate influence.)
     - divide by number of recordings per class
-      (Motivation: correct for a single class with a large number of recordings having a disproportionate influence.)
+      (Motivation: correct for a single class with a large number of recordings
+      having a disproportionate influence.)
 4) accumulate votes
 5) assign predicted label based on largest share of votes
 
@@ -55,18 +57,18 @@ from burst_shape.settings import (
 )
 
 cm = prepare_plotting()
-special_target = False  # for mossink: if True chooses subjects as target instead, if False chooses group
+special_target = False  # for mossink: if True chooses subjects as target instead, if False chooses group  # noqa: E501
 
 
 # parameters which clustering to plot
 burst_extraction_params = (
-    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
-    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
+    # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_mossink_KS"
 )
 dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
@@ -115,7 +117,9 @@ match dataset:
             figsize = (6 * cm, 6 * cm)
     case _:
         figsize = (6 * cm, 6 * cm)
-        warnings.warn(f"Using default figsize {figsize} for dataset {dataset}.")
+        warnings.warn(
+            f"Using default figsize {figsize} for dataset {dataset}.", stacklevel=2
+        )
 
 # %% burst-level knn clustering
 (
@@ -189,7 +193,7 @@ fig.savefig(
 )
 
 print(
-    f"Accuracy: {np.mean(df_cultures['target_label'] == df_cultures['predicted_label']):.2f}"
+    f"Accuracy: {np.mean(df_cultures['target_label'] == df_cultures['predicted_label']):.2f}"  # noqa: E501
 )
 print(f"Balanced accuracy: {matrix_confusion.diagonal().mean():.2f}")
 for i in range(1, min(len(class_labels) + 1, 5)):
@@ -197,7 +201,7 @@ for i in range(1, min(len(class_labels) + 1, 5)):
         np.argsort(np.vstack(df_cultures["relative_votes"]), axis=1)[:, -i]
     ]
     print(
-        f"Share in {i} prediction {np.mean(predicted_labels == df_cultures['target_label']):.3f}"
+        f"Share in {i} prediction {np.mean(predicted_labels == df_cultures['target_label']):.3f}"  # noqa: E501
     )
 
 # %% plot relative_votes as pie chart
@@ -256,7 +260,7 @@ fig.show()
 fig.savefig(
     os.path.join(
         get_fig_folder(),
-        f"{dataset}_knn_clustering_predictions{'_full' if plot_subset is False else ''}.svg",
+        f"{dataset}_knn_clustering_predictions{'_full' if plot_subset is False else ''}.svg",  # noqa: E501
     ),
     transparent=True,
 )
@@ -428,7 +432,7 @@ if len(class_labels) > 2:
             }
         )
 
-    # df_accuracies = pd.DataFrame.from_dict(accuracies, orient='index', columns=['accuracy'])
+    # df_accuracies = pd.DataFrame.from_dict(accuracies, orient='index', columns=['accuracy'])  # noqa: E501
     df_accuracies = pd.DataFrame(accuracies)
     df_accuracies["balanced_accuracy"] = (
         df_accuracies["accuracy_pos"] + df_accuracies["accuracy_neg"]
