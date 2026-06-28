@@ -41,8 +41,16 @@ dev = [
     "pytest>=8.4.0",
     "ruff>=0.15",
 ]
+# Tooling to run notebooks/tutorial.ipynb (Jupyter + an interactive kernel).
+notebook = [
+    "ipykernel>=6.29",
+    "ipywidgets>=8.1",
+    "jupyterlab>=4.2",
+]
 
 [tool.uv]
+# `notebook` is opt-in (`uv sync --group notebook`) so the Jupyter stack is not
+# pulled into web/CI installs.
 default-groups = ["web", "analysis", "dev"]
 
 [build-system]

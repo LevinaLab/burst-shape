@@ -12,8 +12,18 @@ corresponding to [Schäfer et al., 2025, bioRxiv: Data-driven burst shape analys
 }
 ```
 
-# Tutorial
-`notebooks/tutorial.ipynb` walks you through the basic pipeline step-by-step.
+# Quickstart
+To try the analysis locally, install [uv](https://docs.astral.sh/uv/) (see [Setup](#setup)), then from the repo root run:
+```bash
+uv sync --group notebook
+uv run jupyter lab notebooks/tutorial.ipynb
+```
+The [tutorial notebook](notebooks/tutorial.ipynb) automatically downloads the
+blocked-inhibition dataset ([Vinogradov et al., 2024](https://doi.org/10.1101/2024.08.21.608974))
+and walks you through the full pipeline step-by-step: burst detection, average
+burst shapes, spectral embedding, and XGBoost classification.
+
+Prefer not to install anything? Try the online tools below.
 
 # Online tools
 You can also try out the analysis pipeline without installing anything using the following online tools.
