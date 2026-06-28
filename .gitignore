@@ -138,3 +138,6 @@ dmypy.json
 
 # macOS Finder noise
 .DS_Store
+
+# local archive
+scripts/_local_archive/

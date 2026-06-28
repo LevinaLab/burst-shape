@@ -75,7 +75,7 @@ else:
     burst_extraction_params = (
         # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
         # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4_outlier_removed"  # noqa: E501
-        # Revision: per-unit overlap + simultaneity (wagenaar)
+        # supplementary: per-unit overlap + simultaneity (wagenaar)
         # "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None"  # noqa: E501
         # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_smoothing_kernel_4"  # noqa: E501
         # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"  # noqa: E501
@@ -199,8 +199,8 @@ z = pivot_table.to_numpy()
 
 # Custom Colorscale
 colorscale = [
-    [0, "blue"],  # Empty cells (None or np.nan)
-    [1e-5, "blue"],  # Zero values
+    [0, "lightgrey"],  # Recordings with no detected bursts
+    [1e-5, "lightgrey"],  # Zero values
     [1.1e-5, "yellow"],  # Start of gradient
     [1.0, "red"],  # End of gradient
 ]
@@ -331,7 +331,7 @@ def update_plot(click_data, n_burst_colors, burst_toggles_value):
             z=z,
             x=days,
             y=subjects,
-            colorscale=colorscale if z.min() == 0 else colorscale_alternative,
+            colorscale=colorscale if np.nanmin(z) == 0 else colorscale_alternative,
             showscale=True,  # Show color legend
             hoverongaps=False,  # Avoid hover info for empty cells
             colorbar=dict(

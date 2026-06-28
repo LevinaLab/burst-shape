@@ -25,8 +25,13 @@ Adjacent burstlets whose extended regions touch are merged. The SIMMUX
 paper uses `entourage_maxISI=1/3` with `entourage_cap_ms=200`.
 
 Together with `network_rule="chain"`, `minSburst=3`, `minBdur=0`,
-`minIBI=0`, and `threshold=4` (i.e. ">4 electrodes"), this reproduces
+`minIBI=0`, and `threshold=5` (i.e. ">=5 electrodes"), this reproduces
 the SIMMUX algorithm from Wagenaar et al. 2005/2006.
+
+Note: the unit `threshold` uses inclusive ">=" semantics (a burst is
+kept/active when the number of units is >= threshold). Earlier versions
+used strict ">"; to reproduce old behaviour add 1 to the threshold
+(old ">4" == new ">=5").
 """
 
 from itertools import groupby
@@ -239,10 +244,12 @@ def _network_bursts_simultaneity(
     for time, delta in merged_events:
         prev_active = active_units
         active_units += delta
-        if prev_active <= n_units_threshold < active_units:
+        # A network burst is "on" while active_units >= n_units_threshold
+        # (inclusive ">=" semantics).
+        if prev_active < n_units_threshold <= active_units:
             network_start = float(time)
         elif (
-            prev_active > n_units_threshold >= active_units
+            prev_active >= n_units_threshold > active_units
             and network_start is not None
         ):
             network_bursts.append((network_start, float(time)))
@@ -259,10 +266,10 @@ def _network_bursts_chain(
     All per-unit burstlets are sorted by start time; any two burstlets
     with non-zero temporal overlap belong to the same component. A
     component becomes a network burst spanning
-    `[min(starts), max(ends)]`. Components with at most
+    `[min(starts), max(ends)]`. Components with fewer than
     `n_units_threshold` distinct units are dropped (matching the
-    "tiny burst" exclusion: with `n_units_threshold=4`, the surviving
-    bursts span >= 5 units).
+    "tiny burst" exclusion: with `n_units_threshold=5`, the surviving
+    bursts span >= 5 units). Inclusive ">=" semantics.
     """
     if not unit_bursts:
         return []
@@ -287,14 +294,113 @@ def _network_bursts_chain(
             comp_units.add(unit)
         else:
             # close component
-            if len(comp_units) > n_units_threshold:
+            if len(comp_units) >= n_units_threshold:
                 network_bursts.append((comp_start, comp_end))
             comp_start = start
             comp_end = end
             comp_units = {unit}
-    if len(comp_units) > n_units_threshold:
+    if len(comp_units) >= n_units_threshold:
         network_bursts.append((comp_start, comp_end))
     return network_bursts
+
+
+def _network_bursts_mcs(
+    unit_bursts: dict,
+    min_simultaneous: float,
+    min_participating: float,
+) -> List[Tuple[float, float]]:
+    """Multi Channel Systems (MCS) network burst rule (manual 5.13.3.2).
+
+    Network burst = chain component of temporally overlapping per-channel
+    burstlets, spanning [min(start), max(end)] (same window as the chain rule).
+    A component is kept only if (POST-HOC gates that keep/drop the whole burst;
+    they do NOT trim the window):
+      - distinct participating channels >= `min_participating`
+        ("Min. Channels Participating"), and
+      - the peak number of simultaneously active burstlets >= `min_simultaneous`
+        ("Min. Simultaneous Channels").
+    Inclusive ">=" semantics, consistent with the other rules.
+    """
+    intervals = sorted(
+        (float(s), float(e), u) for u, ivs in unit_bursts.items() for s, e in ivs
+    )
+    if not intervals:
+        return []
+    network_bursts: List[Tuple[float, float]] = []
+
+    def _emit(members):
+        # peak simultaneously active burstlets (ends before starts at ties)
+        events = sorted(
+            [ev for s, e, _u in members for ev in ((s, 1), (e, -1))],
+            key=lambda x: (x[0], 0 if x[1] == -1 else 1),
+        )
+        active = peak = 0
+        for _t, d in events:
+            active += d
+            peak = max(peak, active)
+        if (
+            len({u for _s, _e, u in members}) >= min_participating
+            and peak >= min_simultaneous
+        ):
+            network_bursts.append((members[0][0], max(e for _s, e, _u in members)))
+
+    comp = [intervals[0]]
+    comp_end = intervals[0][1]
+    for s, e, u in intervals[1:]:
+        if s < comp_end:
+            comp.append((s, e, u))
+            comp_end = max(comp_end, e)
+        else:
+            _emit(comp)
+            comp = [(s, e, u)]
+            comp_end = e
+    _emit(comp)
+    return network_bursts
+
+
+def _gate_simultaneity_windows(
+    windows: List[Tuple[float, float]],
+    unit_bursts: dict,
+    min_peak: float,
+    min_participating: float,
+) -> List[Tuple[float, float]]:
+    """Filter simultaneity windows by MCS-style gates (no reshaping).
+
+    Each window is a maximal interval over which the number of simultaneously
+    active burstlets is >= the simultaneity trim level. The window is kept iff,
+    restricted to that window:
+      - the peak number of simultaneously active burstlets is >= `min_peak`
+        ("Min. Simultaneous Channels"), and
+      - the number of distinct participating units (with a burstlet overlapping
+        the window) is >= `min_participating` ("Min. Channels Participating").
+    Gates keep/drop whole windows; they do NOT trim. This is the validated
+    "Route 2" rule: simultaneity-trim first, then MCS gate each fragment.
+    Inclusive ">=" semantics.
+    """
+    kept: List[Tuple[float, float]] = []
+    for ws, we in windows:
+        events: List[Tuple[float, int]] = []
+        participating = 0
+        for ivs in unit_bursts.values():
+            overlaps = False
+            for s, e in ivs:
+                if s < we and e > ws:  # burstlet overlaps the window
+                    overlaps = True
+                    events.append((max(s, ws), 1))
+                    events.append((min(e, we), -1))
+            if overlaps:
+                participating += 1
+        if participating < min_participating:
+            continue
+        events.sort(key=lambda item: (item[0], 0 if item[1] == -1 else 1))
+        active = peak = 0
+        for _t, delta in events:
+            active += delta
+            if active > peak:
+                peak = active
+        if peak >= min_peak:
+            kept.append((ws, we))
+    return kept
 
 
 def network_bursts_from_unit_overlap(
@@ -309,9 +415,11 @@ def network_bursts_from_unit_overlap(
     n_units: Optional[int] = None,
     isi_cap_ms: Optional[float] = None,
     recording_duration_ms: Optional[float] = None,
-    entourage_maxISI: Optional[float] = 1 / 3,
+    entourage_maxISI: Optional[float] = None,
     entourage_cap_ms: Optional[float] = 200,
     network_rule: str = "chain",
+    mcs_min_participating: Optional[float] = None,
+    mcs_min_simultaneous: Optional[float] = None,
     return_unit_bursts: bool = False,
 ):
     """Detect network bursts from per-unit burstlets.
@@ -321,12 +429,13 @@ def network_bursts_from_unit_overlap(
     spikes with ISI below `min(entourage_maxISI * mean_isi,
     entourage_cap_ms)`, and overlapping extended burstlets are merged.
 
-    The `network_rule` selects how per-unit burstlets are combined:
+    The `network_rule` selects how per-unit burstlets are combined
+    (both use inclusive ">=" semantics on `threshold`):
       - "simultaneity" (default): emit a network burst while the
-        number of simultaneously active per-unit burstlets exceeds
+        number of simultaneously active per-unit burstlets is >=
         the absolute or fractional `threshold`.
       - "chain": connected-component on the overlap graph (Wagenaar
-        SIMMUX). Components with at most `threshold` distinct units
+        SIMMUX). Components with fewer than `threshold` distinct units
         (interpreted as an absolute count) are dropped.
 
     Args:
@@ -339,9 +448,9 @@ def network_bursts_from_unit_overlap(
             0, 0, 3.
         threshold: for both rules, values in (0,1] are interpreted as
             a fraction of `n_units` and values > 1 as an absolute count.
-            Comparison is always strict ">", so e.g. threshold=4 keeps
+            Comparison is inclusive ">=", so e.g. threshold=5 keeps
             bursts spanning >= 5 distinct units, and threshold=0.5 with
-            n_units=10 keeps bursts spanning >= 6. Required (None
+            n_units=10 keeps bursts spanning >= 5. Required (None
             raises ValueError).
         n_units: override for total units (defaults to len(unique gid)).
             Used to resolve fractional `threshold` for both rules.
@@ -392,7 +501,7 @@ def network_bursts_from_unit_overlap(
         raise ValueError(
             "threshold is required (got None). Pass unit_threshold>1 for an "
             "absolute count, or unit_threshold in (0,1] for a fraction of "
-            "n_units. With strict '>', e.g. unit_threshold=4 keeps bursts "
+            "n_units. With inclusive '>=', e.g. unit_threshold=5 keeps bursts "
             "spanning >=5 distinct units."
         )
 
@@ -407,10 +516,43 @@ def network_bursts_from_unit_overlap(
         network_bursts = _network_bursts_simultaneity(unit_bursts, n_units_threshold)
     elif network_rule == "chain":
         network_bursts = _network_bursts_chain(unit_bursts, n_units_threshold)
+    elif network_rule == "mcs":
+        if mcs_min_participating is None:
+            raise ValueError("network_rule='mcs' requires mcs_min_participating")
+        if 0.0 < mcs_min_participating <= 1.0:
+            min_participating = n_units_detected * float(mcs_min_participating)
+        else:
+            min_participating = float(mcs_min_participating)
+        # threshold -> Min. Simultaneous Channels; mcs_min_participating ->
+        # Min. Channels Participating.
+        network_bursts = _network_bursts_mcs(
+            unit_bursts, n_units_threshold, min_participating
+        )
+    elif network_rule == "sim_mcs":
+        # Route 2: simultaneity trim (threshold = trim level k) followed by MCS
+        # gates that keep/drop each fragment. `mcs_min_simultaneous` -> peak
+        # co-activity gate; `mcs_min_participating` -> distinct-channels gate.
+        if mcs_min_simultaneous is None or mcs_min_participating is None:
+            raise ValueError(
+                "network_rule='sim_mcs' requires both "
+                "mcs_min_simultaneous and mcs_min_participating"
+            )
+        windows = _network_bursts_simultaneity(unit_bursts, n_units_threshold)
+        if 0.0 < mcs_min_simultaneous <= 1.0:
+            min_peak = n_units_detected * float(mcs_min_simultaneous)
+        else:
+            min_peak = float(mcs_min_simultaneous)
+        if 0.0 < mcs_min_participating <= 1.0:
+            min_participating = n_units_detected * float(mcs_min_participating)
+        else:
+            min_participating = float(mcs_min_participating)
+        network_bursts = _gate_simultaneity_windows(
+            windows, unit_bursts, min_peak, min_participating
+        )
     else:
         raise ValueError(
             f"Unknown network_rule {network_rule!r}; "
-            "expected 'simultaneity' or 'chain'."
+            "expected 'simultaneity', 'chain', 'mcs' or 'sim_mcs'."
         )
 
     if return_unit_bursts:

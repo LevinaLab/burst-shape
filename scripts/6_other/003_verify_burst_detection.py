@@ -9,10 +9,13 @@ The script runs:
     direct bursts against per-unit burst detection + simultaneity threshold.
     Runs for ALL datasets.
 
-(2) Same comparison against the canonical SIMMUX algorithm
-    (Wagenaar/DeMarse/Potter 2005: per-electrode cores + entourage +
-    chain-overlap rule), plus a burst-existence analysis and a
-    width-dilution diagnostic. Only runs for the Wagenaar dataset.
+(2) Same comparison against the SIMMUX algorithm (Wagenaar/DeMarse/Potter
+    2005: per-electrode cores + entourage + chain-overlap rule), plus a
+    burst-existence analysis and a width-dilution diagnostic. Runs for ALL
+    datasets, using the per-dataset SIMMUX parameters drawn from the
+    burst-extraction scripts in scripts/1_preprocessing/ (the "overlap"
+    algorithm params used to extract the saved SIMMUX burst datasets), rather
+    than a single canonical parameter set.
 
 Switch dataset by uncommenting one of the burst_extraction_params strings
 below. Output is printed to stdout.
@@ -36,18 +39,10 @@ burst_extraction_params = (
     "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"  # noqa: E501
     # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
-    # "burst_dataset_mossink_KS"
     # "burst_dataset_mossink_maxISIstart_50_maxISIb_50_minBdur_100_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
 )
 
 DIRECT_BURST_COLUMN = "burst_start_end"
-
-# SIMMUX-specific (only used when dataset == "wagenaar"). Match the post-
-# filters of the direct reference (min_firing_rate=3162 Hz, min_length=30 ms)
-# so the burst counts here align with what 005a/037 train on.
-SIMMUX_UNIT_THRESHOLD = 4
-SIMMUX_MIN_FIRING_RATE_HZ = 3162
-SIMMUX_MIN_LENGTH_MS = 30
 
 # Per-dataset electrode count (used to scale the simultaneity-rule parameters
 # the same way the original analysis did).
@@ -55,7 +50,6 @@ N_UNITS_BY_DATASET = {
     "inhibblock": 12,
     "wagenaar": 59,
     "hommersom_binary": 16,
-    "mossink_KS": 12,
     "mossink": 12,
 }
 
@@ -417,82 +411,135 @@ if _min_length_direct is not None or _min_firing_rate_direct is not None:
 
 
 # ==========================================================================
-# (2) canonical SIMMUX comparison (Wagenaar dataset only)
+# (2) SIMMUX comparison (all datasets)
 # ==========================================================================
 
-if dataset != "wagenaar":
+# SIMMUX parameters per dataset (the canonical SIMMUX core, Wagenaar et al.
+# 2005/2006: "overlap" algorithm with the chain rule + entourage). The only
+# differences across datasets are the entourage ISI fraction and the
+# post-detection min_firing_rate filter. These reproduce the SIMMUX burst
+# datasets explored during the revision (not part of the reported pipeline).
+# mossink_KS has no dedicated entry; it reuses the mossink params.
+SIMMUX_PARAMS_BY_DATASET = {
+    "wagenaar": {
+        "maxISIstart": 0.25,
+        "maxISIb": 0.25,
+        "isi_cap_ms": 100,
+        "entourage_maxISI": 0.333,
+        "entourage_cap_ms": 200,
+        "network_rule": "chain",
+        "unit_threshold": 5,
+        "minSburst": 3,
+        "minBdur": 0,
+        "minIBI": 0,
+        "min_length": 30,
+        "min_firing_rate": 1778,  # 10**3.25
+    },
+    "inhibblock": {
+        "maxISIstart": 0.25,
+        "maxISIb": 0.25,
+        "isi_cap_ms": 100,
+        "entourage_maxISI": 0.5,
+        "entourage_cap_ms": 200,
+        "network_rule": "chain",
+        "unit_threshold": 5,
+        "minSburst": 3,
+        "minBdur": 0,
+        "minIBI": 0,
+        "min_length": 30,
+        "min_firing_rate": None,
+    },
+    "mossink": {
+        "maxISIstart": 0.25,
+        "maxISIb": 0.25,
+        "isi_cap_ms": 100,
+        "entourage_maxISI": 0.333,
+        "entourage_cap_ms": 200,
+        "network_rule": "chain",
+        "unit_threshold": 5,
+        "minSburst": 3,
+        "minBdur": 0,
+        "minIBI": 0,
+        "min_length": 30,
+        "min_firing_rate": None,
+    },
+    "hommersom_binary": {
+        "maxISIstart": 0.25,
+        "maxISIb": 0.25,
+        "isi_cap_ms": 100,
+        "entourage_maxISI": 0.333,
+        "entourage_cap_ms": 200,
+        "network_rule": "chain",
+        "unit_threshold": 5,
+        "minSburst": 3,
+        "minBdur": 0,
+        "minIBI": 0,
+        "min_length": 30,
+        "min_firing_rate": None,
+    },
+}
+
+if dataset not in SIMMUX_PARAMS_BY_DATASET:
     print(
-        f"\nSIMMUX comparison skipped (only runs for dataset='wagenaar', got {dataset!r})."
+        f"\nSIMMUX comparison skipped: no SIMMUX parameters defined for "
+        f"dataset={dataset!r}. Add an entry to SIMMUX_PARAMS_BY_DATASET."
     )
     raise SystemExit(0)
 
-# Cache per-electrode SIMMUX burstlets once (the expensive step) for two
-# variants: canonical SIMMUX (with entourage extension) and a no-entourage
-# variant. The actual saved Wagenaar SIMMUX dataset was extracted with
-# entourage_maxISI=None, so reporting both lets us see the discrepancy.
-SIMMUX_VARIANTS = {
-    # label                            (entourage_maxISI, entourage_cap_ms, network_rule)
-    # "chain_with_entourage":             (1 / 3, 200,  "chain"),  # canonical SIMMUX
-    # "chain_no_entourage":               (None,  None, "chain"),
-    # matches the algorithm actually used to extract the burst dataset that
-    # 005a/037 train on (per-unit overlap with simultaneity rule, no entourage):
-    "simultaneity_no_entourage": (None, None, "simultaneity"),
-}
-for variant, (
-    entourage_maxISI,
-    entourage_cap_ms,
-    network_rule,
-) in SIMMUX_VARIANTS.items():
-    col_name = f"simmux_unit_bursts__{variant}"
-    df_cultures[col_name] = pd.Series(dtype=object)
-    for index in tqdm(
-        df_cultures.index, f"Detect SIMMUX per-electrode burstlets ({variant})"
-    ):
-        st, gid = get_spike_times_in_milliseconds(df_cultures, index, dataset)
-        if not (isinstance(st, np.ndarray) and st.size > 0):
-            df_cultures.at[index, col_name] = {}
-            continue
-        # threshold=0 keeps every chain/simultaneity component; we filter post-hoc.
-        _, unit_bursts = network_bursts_from_unit_overlap(
-            st,
-            gid,
-            # SIMMUX core: adaptive per-electrode ISI = min(1/(4 f_c), 100 ms).
-            maxISIstart=0.25,
-            maxISIb=0.25,
-            isi_cap_ms=100,
-            minBdur=0,
-            minIBI=0,
-            minSburst=3,  # >=4 spikes per core
-            threshold=0,
-            n_units=n_units,
-            return_unit_bursts=True,
-            entourage_maxISI=entourage_maxISI,
-            entourage_cap_ms=entourage_cap_ms,
-            network_rule=network_rule,
-        )
-        df_cultures.at[index, col_name] = unit_bursts
+# Per-dataset SIMMUX parameters, drawn from the burst-extraction scripts.
+simmux_params = SIMMUX_PARAMS_BY_DATASET[dataset]
+SIMMUX_UNIT_THRESHOLD = simmux_params["unit_threshold"]
+SIMMUX_NETWORK_RULE = simmux_params["network_rule"]
+SIMMUX_MIN_LENGTH_MS = simmux_params["min_length"]
+SIMMUX_MIN_FIRING_RATE_HZ = simmux_params["min_firing_rate"]
+
+# Cache per-electrode SIMMUX burstlets once (the expensive step). threshold=0
+# keeps every chain/simultaneity component; we re-apply the unit_threshold
+# (and the post-detection filters) below.
+df_cultures["simmux_unit_bursts"] = pd.Series(dtype=object)
+for index in tqdm(df_cultures.index, "Detect SIMMUX per-electrode burstlets"):
+    st, gid = get_spike_times_in_milliseconds(df_cultures, index, dataset)
+    if not (isinstance(st, np.ndarray) and st.size > 0):
+        df_cultures.at[index, "simmux_unit_bursts"] = {}
+        continue
+    _, unit_bursts = network_bursts_from_unit_overlap(
+        st,
+        gid,
+        maxISIstart=simmux_params["maxISIstart"],
+        maxISIb=simmux_params["maxISIb"],
+        isi_cap_ms=simmux_params["isi_cap_ms"],
+        minBdur=simmux_params["minBdur"],
+        minIBI=simmux_params["minIBI"],
+        minSburst=simmux_params["minSburst"],
+        threshold=0,
+        n_units=n_units,
+        return_unit_bursts=True,
+        entourage_maxISI=simmux_params["entourage_maxISI"],
+        entourage_cap_ms=simmux_params["entourage_cap_ms"],
+        network_rule=SIMMUX_NETWORK_RULE,
+    )
+    df_cultures.at[index, "simmux_unit_bursts"] = unit_bursts
 
 
-def _simmux_bursts(index, spike_arr, min_firing_rate_hz, variant):
+def _simmux_bursts(index, spike_arr, min_firing_rate_hz):
     """Re-derive SIMMUX network bursts from cached per-electrode burstlets.
 
     Also applies the `SIMMUX_MIN_LENGTH_MS` filter to match the post-detection
     filtering that the saved burst dataset (used by 005a/037) has applied.
     """
-    unit_bursts = df_cultures.at[index, f"simmux_unit_bursts__{variant}"]
+    unit_bursts = df_cultures.at[index, "simmux_unit_bursts"]
     if not (isinstance(unit_bursts, dict) and unit_bursts):
         return []
-    network_rule = SIMMUX_VARIANTS[variant][2]
-    if network_rule == "chain":
+    if SIMMUX_NETWORK_RULE == "chain":
         bursts = _network_bursts_chain(
             unit_bursts, n_units_threshold=SIMMUX_UNIT_THRESHOLD
         )
-    elif network_rule == "simultaneity":
+    elif SIMMUX_NETWORK_RULE == "simultaneity":
         bursts = _network_bursts_simultaneity(
             unit_bursts, n_units_threshold=SIMMUX_UNIT_THRESHOLD
         )
     else:
-        raise ValueError(f"Unknown network_rule: {network_rule!r}")
+        raise ValueError(f"Unknown network_rule: {SIMMUX_NETWORK_RULE!r}")
     if SIMMUX_MIN_LENGTH_MS is not None and bursts:
         bursts = [(s, e) for (s, e) in bursts if (e - s) >= SIMMUX_MIN_LENGTH_MS]
     if min_firing_rate_hz is not None and spike_arr is not None and bursts:
@@ -504,37 +551,43 @@ def _simmux_bursts(index, spike_arr, min_firing_rate_hz, variant):
     return bursts
 
 
+def _firing_rate_label():
+    """Human-readable min_firing_rate label for printed headers."""
+    if SIMMUX_MIN_FIRING_RATE_HZ is None:
+        return "no firing-rate filter"
+    return f"min_firing_rate={SIMMUX_MIN_FIRING_RATE_HZ} Hz"
+
+
 # ---------- (2a) Time-overlap Dice vs direct -----------------------------
 
-for variant in SIMMUX_VARIANTS:
-    matrix_simmux = _agreement_per_recording(
-        df_cultures,
-        get_reference_intervals=lambda idx, spike_arr, v=variant: _simmux_bursts(
-            idx, spike_arr, SIMMUX_MIN_FIRING_RATE_HZ, v
-        ),
-    )
-    _print_agreement_metrics(
-        f"direct vs SIMMUX ({variant}, unit_threshold={SIMMUX_UNIT_THRESHOLD}, "
-        f"min_firing_rate={SIMMUX_MIN_FIRING_RATE_HZ} Hz)",
-        matrix_simmux,
-    )
+matrix_simmux = _agreement_per_recording(
+    df_cultures,
+    get_reference_intervals=lambda idx, spike_arr: _simmux_bursts(
+        idx, spike_arr, SIMMUX_MIN_FIRING_RATE_HZ
+    ),
+)
+_print_agreement_metrics(
+    f"direct vs SIMMUX ({SIMMUX_NETWORK_RULE}, "
+    f"unit_threshold={SIMMUX_UNIT_THRESHOLD}, {_firing_rate_label()})",
+    matrix_simmux,
+)
 
 
 # ---------- (2b) Burst-existence overlap (with and without rate filter) --
 
-for variant in SIMMUX_VARIANTS:
+_burst_existence_overlap(
+    get_ref_intervals=lambda idx, spk: _simmux_bursts(
+        idx, spk, SIMMUX_MIN_FIRING_RATE_HZ
+    ),
+    label=f"direct vs SIMMUX ({SIMMUX_NETWORK_RULE}, "
+    f"unit_threshold={SIMMUX_UNIT_THRESHOLD}, {_firing_rate_label()})",
+    ref_name="SIMMUX",
+)
+# Skip the redundant "no filter" pass when there is no firing-rate filter.
+if SIMMUX_MIN_FIRING_RATE_HZ is not None:
     _burst_existence_overlap(
-        get_ref_intervals=lambda idx, spk, v=variant: _simmux_bursts(
-            idx, spk, SIMMUX_MIN_FIRING_RATE_HZ, v
-        ),
-        label=f"direct vs SIMMUX ({variant}, "
-        f"unit_threshold={SIMMUX_UNIT_THRESHOLD}, "
-        f"min_firing_rate={SIMMUX_MIN_FIRING_RATE_HZ} Hz)",
-        ref_name="SIMMUX",
-    )
-    _burst_existence_overlap(
-        get_ref_intervals=lambda idx, spk, v=variant: _simmux_bursts(idx, spk, None, v),
-        label=f"direct vs SIMMUX ({variant}, "
+        get_ref_intervals=lambda idx, spk: _simmux_bursts(idx, spk, None),
+        label=f"direct vs SIMMUX ({SIMMUX_NETWORK_RULE}, "
         f"unit_threshold={SIMMUX_UNIT_THRESHOLD}, NO firing-rate filter)",
         ref_name="SIMMUX",
     )
@@ -553,11 +606,7 @@ for index in df_cultures.index:
     st_ms, _ = get_spike_times_in_milliseconds(df_cultures, index, dataset)
     spike_arr = st_ms if isinstance(st_ms, np.ndarray) and st_ms.size > 0 else None
     direct = _merge_intervals(_to_intervals(df_cultures.at[index, DIRECT_BURST_COLUMN]))
-    simmux = _merge_intervals(
-        _to_intervals(
-            _simmux_bursts(index, spike_arr, None, "simultaneity_no_entourage")
-        )
-    )
+    simmux = _merge_intervals(_to_intervals(_simmux_bursts(index, spike_arr, None)))
     widths_direct.extend(e - s for s, e in direct)
     widths_simmux_all.extend(e - s for s, e in simmux)
     if spike_arr is None:
@@ -579,8 +628,16 @@ for index in df_cultures.index:
                 "simmux_rate_hz": s_rate,
                 "direct_rate_hz": d_rate,
                 "rate_ratio": s_rate / d_rate if d_rate > 0 else np.nan,
-                "simmux_passes": s_rate >= SIMMUX_MIN_FIRING_RATE_HZ,
-                "direct_passes": d_rate >= SIMMUX_MIN_FIRING_RATE_HZ,
+                "simmux_passes": (
+                    s_rate >= SIMMUX_MIN_FIRING_RATE_HZ
+                    if SIMMUX_MIN_FIRING_RATE_HZ is not None
+                    else True
+                ),
+                "direct_passes": (
+                    d_rate >= SIMMUX_MIN_FIRING_RATE_HZ
+                    if SIMMUX_MIN_FIRING_RATE_HZ is not None
+                    else True
+                ),
             }
         )
 
@@ -598,45 +655,54 @@ print(
 )
 print()
 print(f"For SIMMUX bursts that overlap a direct burst (n={len(df_pair)}):")
-print(
-    f"  width ratio (SIMMUX/direct)  median {df_pair['width_ratio'].median():.2f}   "
-    f"mean {df_pair['width_ratio'].mean():.2f}"
-)
-print(
-    f"  rate  ratio (SIMMUX/direct)  median {df_pair['rate_ratio'].median():.2f}   "
-    f"mean {df_pair['rate_ratio'].mean():.2f}"
-)
+if df_pair.empty:
+    print("  (no overlapping SIMMUX/direct burst pairs)")
+else:
+    print(
+        f"  width ratio (SIMMUX/direct)  median "
+        f"{df_pair['width_ratio'].median():.2f}   "
+        f"mean {df_pair['width_ratio'].mean():.2f}"
+    )
+    print(
+        f"  rate  ratio (SIMMUX/direct)  median "
+        f"{df_pair['rate_ratio'].median():.2f}   "
+        f"mean {df_pair['rate_ratio'].mean():.2f}"
+    )
 
-n_both = int((df_pair["simmux_passes"] & df_pair["direct_passes"]).sum())
-n_dir_only = int((~df_pair["simmux_passes"] & df_pair["direct_passes"]).sum())
-n_sim_only = int((df_pair["simmux_passes"] & ~df_pair["direct_passes"]).sum())
-n_neither = int((~df_pair["simmux_passes"] & ~df_pair["direct_passes"]).sum())
-print()
-print(
-    f"  {SIMMUX_MIN_FIRING_RATE_HZ} Hz filter outcome for matched pairs "
-    f"(n={len(df_pair)}):"
-)
-print(f"    both pass        : {n_both:>6}")
-print(f"    only direct pass : {n_dir_only:>6}   <- SIMMUX dropped here")
-print(f"    only SIMMUX pass : {n_sim_only:>6}")
-print(f"    neither pass     : {n_neither:>6}")
-
-df_dropped = df_pair[~df_pair["simmux_passes"] & df_pair["direct_passes"]]
-if len(df_dropped) > 0:
+# The firing-rate filter outcome only makes sense when a filter is configured
+# for this dataset (only wagenaar, drawn from its extraction script).
+if SIMMUX_MIN_FIRING_RATE_HZ is not None and not df_pair.empty:
+    n_both = int((df_pair["simmux_passes"] & df_pair["direct_passes"]).sum())
+    n_dir_only = int((~df_pair["simmux_passes"] & df_pair["direct_passes"]).sum())
+    n_sim_only = int((df_pair["simmux_passes"] & ~df_pair["direct_passes"]).sum())
+    n_neither = int((~df_pair["simmux_passes"] & ~df_pair["direct_passes"]).sum())
     print()
     print(
-        f"For the {len(df_dropped)} pairs where SIMMUX was dropped but direct passed:"
+        f"  {SIMMUX_MIN_FIRING_RATE_HZ} Hz filter outcome for matched pairs "
+        f"(n={len(df_pair)}):"
     )
-    print(
-        f"  width ratio   median {df_dropped['width_ratio'].median():.2f}   "
-        f"mean {df_dropped['width_ratio'].mean():.2f}   "
-        f"max {df_dropped['width_ratio'].max():.2f}"
-    )
-    print(
-        f"  rate ratio    median {df_dropped['rate_ratio'].median():.2f}   "
-        f"mean {df_dropped['rate_ratio'].mean():.2f}"
-    )
-    print(
-        f"  SIMMUX rate Hz median {df_dropped['simmux_rate_hz'].median():.0f}   "
-        f"direct rate Hz median {df_dropped['direct_rate_hz'].median():.0f}"
-    )
+    print(f"    both pass        : {n_both:>6}")
+    print(f"    only direct pass : {n_dir_only:>6}   <- SIMMUX dropped here")
+    print(f"    only SIMMUX pass : {n_sim_only:>6}")
+    print(f"    neither pass     : {n_neither:>6}")
+
+    df_dropped = df_pair[~df_pair["simmux_passes"] & df_pair["direct_passes"]]
+    if len(df_dropped) > 0:
+        print()
+        print(
+            f"For the {len(df_dropped)} pairs where SIMMUX was dropped but "
+            f"direct passed:"
+        )
+        print(
+            f"  width ratio   median {df_dropped['width_ratio'].median():.2f}   "
+            f"mean {df_dropped['width_ratio'].mean():.2f}   "
+            f"max {df_dropped['width_ratio'].max():.2f}"
+        )
+        print(
+            f"  rate ratio    median {df_dropped['rate_ratio'].median():.2f}   "
+            f"mean {df_dropped['rate_ratio'].mean():.2f}"
+        )
+        print(
+            f"  SIMMUX rate Hz median {df_dropped['simmux_rate_hz'].median():.0f}   "
+            f"direct rate Hz median {df_dropped['direct_rate_hz'].median():.0f}"
+        )

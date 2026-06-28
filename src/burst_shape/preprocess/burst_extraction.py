@@ -34,9 +34,11 @@ def extract_bursts(
     unit_threshold=None,
     n_units_total=None,
     isi_cap_ms=None,
-    entourage_maxISI=1 / 3,
+    entourage_maxISI=None,
     entourage_cap_ms=200,
     network_rule="chain",
+    mcs_min_participating=None,
+    mcs_min_simultaneous=None,
 ):
     """Extract bursts from data files.
 
@@ -91,6 +93,9 @@ def extract_bursts(
             Threshold for share of units that must overlap to consider a
             network burst. Values in (0, 1] are interpreted as a fraction of
             units; values > 1 are interpreted as an absolute count.
+            Comparison uses inclusive ">=" semantics (a network burst needs
+            >= unit_threshold simultaneously/connected units). Earlier code
+            used strict ">"; to reproduce it add 1 (old ">4" == new ">=5").
         n_units_total (int, optional): only needed if algorithm="overlap"
             Total number of units in the culture, used to compute the number of
             overlapping units from the percentage threshold.
@@ -106,10 +111,10 @@ def extract_bursts(
             ISI threshold when fractional. Wagenaar et al. uses 200 ms.
         network_rule (str, optional): only used if algorithm="overlap".
             "simultaneity" (default) emits a network burst while the
-            number of simultaneously active units exceeds `unit_threshold`.
+            number of simultaneously active units is >= `unit_threshold`.
             "chain" forms a network burst from each connected component
             on the per-unit burstlet overlap graph (SIMMUX rule) and
-            drops components with at most `unit_threshold` distinct units.
+            drops components with fewer than `unit_threshold` distinct units.
 
     Returns:
         df_cultures (pd.DataFrame): Dataframe with index as constructed, but
@@ -142,6 +147,8 @@ def extract_bursts(
         entourage_maxISI=entourage_maxISI,
         entourage_cap_ms=entourage_cap_ms,
         network_rule=network_rule,
+        mcs_min_participating=mcs_min_participating,
+        mcs_min_simultaneous=mcs_min_simultaneous,
     )
     df_bursts = _build_bursts_df(
         df_cultures,
@@ -183,9 +190,11 @@ def _bursts_from_df_culture(
     unit_threshold,
     n_units_total,
     isi_cap_ms=None,
-    entourage_maxISI=1 / 3,
+    entourage_maxISI=None,
     entourage_cap_ms=200,
     network_rule="chain",
+    mcs_min_participating=None,
+    mcs_min_simultaneous=None,
 ):
     """Detect bursts in df_culture.
 
@@ -227,6 +236,8 @@ def _bursts_from_df_culture(
                             entourage_maxISI=entourage_maxISI,
                             entourage_cap_ms=entourage_cap_ms,
                             network_rule=network_rule,
+                            mcs_min_participating=mcs_min_participating,
+                            mcs_min_simultaneous=mcs_min_simultaneous,
                             return_unit_bursts=True,
                         )
                     )

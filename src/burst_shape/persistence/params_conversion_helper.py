@@ -1,6 +1,20 @@
 import ast
 from typing import Any
 
+# Short aliases used ONLY in the serialized parameter string (to keep folder
+# names under the filesystem's 255-byte component limit). These keys are new
+# (no pre-existing folder contains them), so abbreviating them does not affect
+# parsing of any already-saved folder. The in-memory dict always uses the full
+# key names; abbreviation happens only at the string boundary.
+_KEY_ABBREVIATIONS = {
+    "mcs_min_simultaneous": "msim",
+    "mcs_min_participating": "mpart",
+}
+
+
+def _string_key(key: str) -> str:
+    return _KEY_ABBREVIATIONS.get(key, key)
+
 
 def _parse_param_value(value_str: str):
     try:
@@ -16,7 +30,7 @@ def params_dict_to_string(params: dict, defaults: dict, startswith: str | None =
     name = "" if startswith is None else startswith
     for key, value in params.items():
         if key in defaults and value != defaults[key]:
-            name += f"_{key}_{value}"
+            name += f"_{_string_key(key)}_{value}"
     return name
 
 
@@ -47,15 +61,16 @@ def params_string_to_dict(burst_params: str, defaults: dict, startswith=None):
     if not remainder:
         return parsed_params
 
-    keys_by_length = sorted(defaults.keys(), key=len, reverse=True)
+    # (marker, full_key) pairs, using the abbreviated string key, longest first
+    markers = [(f"_{_string_key(key)}_", key) for key in defaults.keys()]
+    markers.sort(key=lambda mk: len(mk[0]), reverse=True)
     index = 0
 
     while index < len(remainder):
         matched_key = None
-        for key in keys_by_length:
-            marker = f"_{key}_"
+        for marker, full_key in markers:
             if remainder.startswith(marker, index):
-                matched_key = key
+                matched_key = full_key
                 index += len(marker)
                 break
 
@@ -65,8 +80,7 @@ def params_string_to_dict(burst_params: str, defaults: dict, startswith=None):
             )
 
         next_key_index = None
-        for key in keys_by_length:
-            marker = f"_{key}_"
+        for marker, _full_key in markers:
             candidate = remainder.find(marker, index)
             if candidate != -1 and (
                 next_key_index is None or candidate < next_key_index

@@ -34,6 +34,9 @@ _burst_extraction_defaults: dict = {
     "entourage_maxISI": 1 / 3,
     "entourage_cap_ms": 200,
     "network_rule": "chain",
+    # MCS / sim_mcs gate thresholds
+    "mcs_min_participating": None,
+    "mcs_min_simultaneous": None,
 }
 
 

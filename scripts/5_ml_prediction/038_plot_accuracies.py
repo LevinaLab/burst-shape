@@ -1,13 +1,16 @@
 import os
 import warnings
+from itertools import combinations
 
 import baycomp
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 import seaborn as sns
 import statsmodels.stats.meta_analysis as meta
+from scipy.stats import t
 
 from burst_shape.folders import get_fig_folder
 from burst_shape.persistence.knn_clustering import load_knn_clustering_results_cv
@@ -22,15 +25,23 @@ cm = prepare_plotting()
 
 shape_dimensions = np.arange(1, 11)
 
-burst_extraction_params_list = [
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
-    "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
-    "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4",
-    # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4",
-    # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30",
-    "burst_dataset_mossink_KS",
-    # "burst_dataset_mossink_MELAS",
-]
+supplementary = False
+
+if supplementary is False:
+    burst_extraction_params_list = [
+        "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
+        "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30",
+        "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4",
+        "burst_dataset_mossink_KS",
+    ]
+else:
+    burst_extraction_params_list = [
+        # supplementary: fixed-ISI burstlets + 20% threshold
+        "burst_dataset_inhibblock_algorithm_overlap_maxISIstart_69_maxISIb_69_minBdur_50_minIBI_100_minSburst_8_network_rule_simultaneity_unit_threshold_0.2_n_units_total_12_n_bins_50_normalization_integral_min_length_30",  # noqa: E501
+        "burst_dataset_hommersom_binary_algorithm_overlap_maxISIstart_80_maxISIb_80_minBdur_50_minIBI_100_minSburst_6_network_rule_simultaneity_unit_threshold_0.2_n_units_total_16_n_bins_50_normalization_integral_min_length_30",  # noqa: E501
+        "burst_dataset_mossink_KS_intermediate",
+        "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None",  # noqa: E501
+    ]
 
 cv_type = (
     # "RepeatedStratifiedKFold"
@@ -59,6 +70,16 @@ for burst_extraction_params in burst_extraction_params_list:
     dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
     spectral_clustering_params = get_chosen_spectral_embedding_params(
         dataset, **kwargs_spectral_clustering_params
+    )
+    spectral_clustering_params_supplementary = {
+        # ISI + 20% threshold
+        "burst_dataset_inhibblock_algorithm_overlap_maxISIstart_69_maxISIb_69_minBdur_50_minIBI_100_minSburst_8_network_rule_simultaneity_unit_threshold_0.2_n_units_total_12_n_bins_50_normalization_integral_min_length_30": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_90",  # noqa: E501
+        "burst_dataset_hommersom_binary_algorithm_overlap_maxISIstart_80_maxISIb_80_minBdur_50_minIBI_100_minSburst_6_network_rule_simultaneity_unit_threshold_0.2_n_units_total_16_n_bins_50_normalization_integral_min_length_30": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_22",  # noqa: E501
+        "burst_dataset_mossink_KS_intermediate": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_114",
+        "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_132",  # noqa: E501
+    }
+    spectral_clustering_params = spectral_clustering_params_supplementary.get(
+        burst_extraction_params, spectral_clustering_params
     )
 
     for feature_set_name in ["combined", "traditional", "shape_manual"] + [
@@ -128,6 +149,98 @@ if _missing_rows:
     df_accuracies = pd.concat(
         [df_accuracies, pd.DataFrame(_missing_rows)], ignore_index=True
     )
+
+# Some feature sets may be unavailable for a given run: the individual-burst-
+# shape kNN baseline ("knn_clustering") is not computed for the supplementary
+# detector. Detect what is actually present so the plots/stats below adapt
+# (drop the kNN column / kNN comparisons) instead of crashing on missing data.
+has_knn = bool(
+    df_accuracies.loc[df_accuracies["feature_set"] == "knn_clustering", "score"]
+    .notna()
+    .any()
+)
+# Ordered feature sets (kNN first when present), used for axis order + table.
+feature_set_order = (["knn_clustering"] if has_knn else []) + [
+    "traditional",
+    "shape_2D",
+    "combined",
+]
+# Model-pair comparisons; the kNN pairs are only meaningful when kNN is present.
+comparison_pairs = [("combined", "traditional")] + (
+    [("knn_clustering", "shape_2D"), ("knn_clustering", "traditional")]
+    if has_knn
+    else []
+)
+# Available burst-shape dimensions. The supplementary run may have fewer than
+# the main text (e.g. only up to shape_2D), so detect what was actually trained.
+available_shape_dims = sorted(
+    int(fs[len("shape_") : -1])
+    for fs in df_accuracies.loc[df_accuracies["score"].notna(), "feature_set"].unique()
+    if fs.startswith("shape_") and fs.endswith("D") and fs[len("shape_") : -1].isdigit()
+)
+# Burst-shape-dimension comparisons (independent of kNN). The shape-dimension
+# figures use the same dims as the main text and are skipped entirely when those
+# dims were not trained (rather than shown with fewer dims).
+shape_dim_pairs = [
+    ("shape_2D", "shape_manual"),
+    ("shape_5D", "shape_manual"),
+    ("shape_10D", "shape_manual"),
+]
+has_shape_dim_comparisons = {2, 5, 10}.issubset(available_shape_dims)
+has_shape_dim_sweep = set(range(1, 11)).issubset(available_shape_dims)
+# Suffix so a supplementary run does not overwrite the main-text figures.
+suppl_string = "_supplementary" if supplementary else ""
+
+
+def _corrected_std(differences, n_train, n_test):
+    """Corrects standard deviation using Nadeau and Bengio's approach.
+
+    Parameters
+    ----------
+    differences : ndarray of shape (n_samples,)
+        Vector containing the differences in the score metrics of two models.
+    n_train : int
+        Number of samples in the training set.
+    n_test : int
+        Number of samples in the testing set.
+
+    Returns
+    -------
+    corrected_std : float
+        Variance-corrected standard deviation of the set of differences.
+    """
+    # kr = k times r, r times repeated k-fold crossvalidation,
+    # kr equals the number of times the model was evaluated
+    kr = len(differences)
+    corrected_var = np.var(differences, ddof=1) * (1 / kr + n_test / n_train)
+    corrected_std = np.sqrt(corrected_var)
+    return corrected_std
+
+
+def _std2_corrected_std(std, kr, n_train, n_test):
+    """Corrects standard deviation using Nadeau and Bengio's approach.
+
+    Parameters
+    ----------
+    std : float
+        Standard deviation of the score metrics of one model.
+    kr : int
+        Number of times the model was evaluated.
+    n_train : int
+        Number of samples in the training set.
+    n_test : int
+        Number of samples in the testing set.
+
+    Returns
+    -------
+    corrected_std : float
+        Variance-corrected standard deviation of the set of differences.
+    """
+    # kr = k times r, r times repeated k-fold crossvalidation,
+    # kr equals the number of times the model was evaluated
+    corrected_var = (std**2) * (1 / kr + n_test / n_train)
+    corrected_std = np.sqrt(corrected_var)
+    return corrected_std
 
 
 def _get_stats(normalize=False, baseline="traditional", groupby=None):
@@ -230,7 +343,7 @@ match plot_type:
             markers="_",  # Horizontal line marker
             markersize=15,
             dodge=0,
-            order=["knn_clustering", "traditional", "shape_2D", "combined"],
+            order=feature_set_order,
         )
     case "boxplot":
         g.map_dataframe(
@@ -239,7 +352,7 @@ match plot_type:
             y="score",
             # hue="feature_set",
             # palette="Set2",
-            order=["knn_clustering", "traditional", "shape_2D", "combined"],
+            order=feature_set_order,
             boxprops=dict(facecolor="none"),
             medianprops=dict(color="red"),
         )
@@ -250,7 +363,7 @@ match plot_type:
             y="score",
             hue="feature_set",
             palette="Set2",
-            order=["knn_clustering", "traditional", "shape_2D", "combined"],
+            order=feature_set_order,
             inner="box",
         )
     case "stripplot":
@@ -260,17 +373,23 @@ match plot_type:
             y="score",
             hue="feature_set",
             palette="Set2",
-            order=["knn_clustering", "traditional", "shape_2D", "combined"],
+            order=feature_set_order,
             dodge=False,  # No dodging along the x-axis (unless you have multiple hue levels per x)
             jitter=True,  # Add some jitter to spread out points
             size=6,  # Marker size
         )
     case "boxplot-manual":
-        positions = [0, 2, 3, 4]
+        order = feature_set_order
+        # leave a gap after the individual-shape (kNN) box when present, so the
+        # remaining "summary" features read as a group
+        if has_knn:
+            positions = [0, 2, 3, 4]
+            summary_positions = positions[1:]
+        else:
+            positions = list(range(len(order)))
+            summary_positions = positions
 
         def _manual_boxplot(data, color, **kwargs):
-            order = ["knn_clustering", "traditional", "shape_2D", "combined"]
-
             # Collect data for each feature_set in order
             grouped_scores = [
                 data.loc[data["feature_set"] == fs, "score"] for fs in order
@@ -286,7 +405,7 @@ match plot_type:
             )
 
             plt.text(
-                x=(positions[1] + positions[3]) / 2,
+                x=sum(summary_positions) / len(summary_positions),
                 y=plt.ylim()[0] - 0.5 * (plt.ylim()[1] - plt.ylim()[0]),
                 s="Summary\nfeatures",
                 ha="center",
@@ -320,7 +439,10 @@ fig = g.figure
 fig.show()
 for filetype in ("svg", "pdf"):
     fig.savefig(
-        os.path.join(get_fig_folder(), f"accuracies_all_data{save_string}.{filetype}"),
+        os.path.join(
+            get_fig_folder(),
+            f"accuracies_all_data{save_string}{suppl_string}.{filetype}",
+        ),
         transparent=True,
     )
 # %% print accuracies
@@ -328,8 +450,7 @@ df_accuracies_mean = df_accuracies.groupby(["dataset", "feature_set"])["score"].
     "mean"
 )
 print(df_accuracies_mean)
-# to copy it directly into latex table
-feature_set_order = ["knn_clustering", "traditional", "shape_2D", "combined"]
+# to copy it directly into latex table (uses the module-level feature_set_order)
 for dataset in df_accuracies_mean.index.get_level_values("dataset").unique():
     accuracies_mean_dataset = np.array(
         [
@@ -352,62 +473,6 @@ for dataset in df_accuracies_mean.index.get_level_values("dataset").unique():
         "\\\\",
     )
 # %% statistical tests
-from itertools import combinations
-
-from scipy.stats import t, ttest_rel, wilcoxon
-
-
-def _corrected_std(differences, n_train, n_test):
-    """Corrects standard deviation using Nadeau and Bengio's approach.
-
-    Parameters
-    ----------
-    differences : ndarray of shape (n_samples,)
-        Vector containing the differences in the score metrics of two models.
-    n_train : int
-        Number of samples in the training set.
-    n_test : int
-        Number of samples in the testing set.
-
-    Returns
-    -------
-    corrected_std : float
-        Variance-corrected standard deviation of the set of differences.
-    """
-    # kr = k times r, r times repeated k-fold crossvalidation,
-    # kr equals the number of times the model was evaluated
-    kr = len(differences)
-    corrected_var = np.var(differences, ddof=1) * (1 / kr + n_test / n_train)
-    corrected_std = np.sqrt(corrected_var)
-    return corrected_std
-
-
-def _std2_corrected_std(std, kr, n_train, n_test):
-    """Corrects standard deviation using Nadeau and Bengio's approach.
-
-    Parameters
-    ----------
-    std : float
-        Standard deviation of the score metrics of one model.
-    kr : int
-        Number of times the model was evaluated.
-    n_train : int
-        Number of samples in the training set.
-    n_test : int
-        Number of samples in the testing set.
-
-    Returns
-    -------
-    corrected_std : float
-        Variance-corrected standard deviation of the set of differences.
-    """
-    # kr = k times r, r times repeated k-fold crossvalidation,
-    # kr equals the number of times the model was evaluated
-    corrected_var = (std**2) * (1 / kr + n_test / n_train)
-    corrected_std = np.sqrt(corrected_var)
-    return corrected_std
-
-
 results = []
 
 # Iterate over each dataset
@@ -500,17 +565,10 @@ datasets = ["inhibblock", "hommersom_binary", "mossink_KS", "wagenaar"]  # , "ka
 
 df_reml = []
 
-for first, second in [
-    ("combined", "traditional"),
-    ("combined", "shape_2D"),
-    ("shape_2D", "traditional"),
-    ("knn_clustering", "shape_2D"),
-    ("knn_clustering", "traditional"),
-    ("shape_2D", "shape_manual"),
-    ("knn_clustering", "shape_manual"),
-    ("shape_5D", "shape_manual"),
-    ("shape_10D", "shape_manual"),
-]:
+# compute meta-analysis (REML) effects for every pair plotted below
+for first, second in comparison_pairs + (
+    shape_dim_pairs if has_shape_dim_comparisons else []
+):
     print("\nFirst dataset:", first)
     print("Second dataset:", second)
     df_stats = _get_stats(normalize=True, baseline=second)
@@ -523,15 +581,14 @@ for first, second in [
     res_REML = meta.combine_effects(
         df_stats_reduced["mean"].values,
         (df_stats_reduced["sem"].values ** 2),
-        method_re="dl",
+        # method_re="dl",
+        method_re="iterated",  # Fixes the negative tau^2 bug
         alpha=0.001,
     )
     res_REML = res_REML.summary_frame()
 
     print("\nRandom-effects (REML):")
     print(res_REML.round(4))
-
-    import scipy.stats
 
     z = res_REML.at["random effect", "eff"] / res_REML.at["random effect", "sd_eff"]
     p_value = 2 * (1 - scipy.stats.norm.cdf(abs(z)))
@@ -628,35 +685,47 @@ def _plot_comparison(ax, first, second):
     return None
 
 
+# model-vs-model comparisons (kNN pairs included only when kNN is available)
+n_cmp = len(comparison_pairs)
 fig, axs = plt.subplots(
-    nrows=1, ncols=3, figsize=(9.5 * cm, 5 * cm), constrained_layout=True
+    nrows=1,
+    ncols=n_cmp,
+    figsize=(max(4, 3.2 * n_cmp) * cm, 5 * cm),
+    constrained_layout=True,
 )
+axs = np.atleast_1d(axs)
 sns.despine()
-for i, (first, second) in enumerate(
-    [
-        ("combined", "traditional"),
-        ("knn_clustering", "shape_2D"),
-        ("knn_clustering", "traditional"),
-    ]
-):
+for i, (first, second) in enumerate(comparison_pairs):
     _plot_comparison(axs[i], first, second)
     if i > 0:
         axs[i].set_ylabel(axs[i].get_ylabel().split("\n")[1])
 fig.show()
-savefig(fig, f"accuracies_improvement{save_string}", file_format=["pdf", "svg"])
+savefig(
+    fig,
+    f"accuracies_improvement{save_string}{suppl_string}",
+    file_format=["pdf", "svg"],
+)
 
-fig, axs = plt.subplots(ncols=3, figsize=(9.5 * cm, 5 * cm), constrained_layout=True)
-sns.despine()
-for i, (first, second) in enumerate(
-    [
-        ("shape_2D", "shape_manual"),
-        ("shape_5D", "shape_manual"),
-        ("shape_10D", "shape_manual"),
-    ]
-):
-    _plot_comparison(axs[i], first, second)
-fig.show()
-savefig(fig, f"accuracies_improvement_suppl{save_string}", file_format=["pdf", "svg"])
+# burst-shape-dimension comparisons (independent of the kNN baseline)
+# skipped entirely when the required dims (2, 5, 10) were not trained
+if has_shape_dim_comparisons:
+    fig, axs = plt.subplots(
+        ncols=3, figsize=(9.5 * cm, 5 * cm), constrained_layout=True
+    )
+    sns.despine()
+    for i, (first, second) in enumerate(shape_dim_pairs):
+        _plot_comparison(axs[i], first, second)
+    fig.show()
+    savefig(
+        fig,
+        f"accuracies_improvement_suppl{save_string}{suppl_string}",
+        file_format=["pdf", "svg"],
+    )
+else:
+    print(
+        "Skipping shape-dimension comparison figure: needs shape dims "
+        f"2, 5, 10; available {available_shape_dims}."
+    )
 
 # %% Bayesian comparison
 # https://jmlr.org/papers/volume18/16-305/16-305.pdf
@@ -665,11 +734,7 @@ savefig(fig, f"accuracies_improvement_suppl{save_string}", file_format=["pdf", "
 np.set_printoptions(precision=3, suppress=True)
 
 df_bayesian = []
-for first, second in [
-    ("combined", "traditional"),
-    ("knn_clustering", "traditional"),
-    ("knn_clustering", "shape_2D"),
-]:
+for first, second in comparison_pairs:
     print(f"\nBayesian test: {first} better than {second}?")
     for dataset in df_accuracies["dataset"].unique():
         probs, fig = baycomp.two_on_single(
@@ -723,7 +788,7 @@ for first, second in [
         fig.savefig(
             os.path.join(
                 get_fig_folder(),
-                f"accuracies_all_data_bayesian_test_{dataset}_{first}_vs_{second}{save_string}.svg",
+                f"accuracies_all_data_bayesian_test_{dataset}_{first}_vs_{second}{save_string}{suppl_string}.svg",
             ),
             transparent=True,
         )
@@ -756,10 +821,15 @@ stats = _get_stats(normalize=normalize, baseline="traditional")
 
 color_shape = "C3"  # "#00AA00"
 color_traditional = "grey"  # "#800000"
-feature_sets = ["traditional", "shape_2D", "combined", "knn_clustering"]
-color = [color_traditional, color_shape, color_shape, "white"]
-edgecolor = [color_traditional, color_shape, color_traditional, color_shape]
-hatch = ["", "", "//", ""]
+# kNN ("Individual") is the last bar and only shown when available
+feature_sets = ["traditional", "shape_2D", "combined"] + (
+    ["knn_clustering"] if has_knn else []
+)
+color = [color_traditional, color_shape, color_shape] + (["white"] if has_knn else [])
+edgecolor = [color_traditional, color_shape, color_traditional] + (
+    [color_shape] if has_knn else []
+)
+hatch = ["", "", "//"] + ([""] if has_knn else [])
 linewidth = 1
 alpha = 1
 matplotlib.rcParams["hatch.linewidth"] = 4
@@ -798,13 +868,7 @@ for i, dataset_name in enumerate(dataset_order):
 
     if plot_bayesian is True:
         # add bayesian symbols
-        for j, (first, second) in enumerate(
-            [
-                ("combined", "traditional"),
-                ("knn_clustering", "traditional"),
-                ("knn_clustering", "shape_2D"),
-            ]
-        ):
+        for j, (first, second) in enumerate(comparison_pairs):
             try:
                 prob_first_better = df_bayesian[
                     (df_bayesian["dataset"] == dataset_name)
@@ -856,7 +920,9 @@ for i, dataset_name in enumerate(dataset_order):
 
 
 fig.show()
-savefig(fig, f"accuracies_barplot{save_string}", file_format=["pdf", "svg"])
+savefig(
+    fig, f"accuracies_barplot{save_string}{suppl_string}", file_format=["pdf", "svg"]
+)
 
 fig_legend = plt.figure(constrained_layout=True, figsize=(8 * cm, 2 * cm))
 # --- Build manual legend patches ---
@@ -884,101 +950,121 @@ leg = fig_legend.legend(
 )
 fig_legend.show()
 savefig(
-    fig_legend, f"accuracies_barplot_legend{save_string}", file_format=["pdf", "svg"]
+    fig_legend,
+    f"accuracies_barplot_legend{save_string}{suppl_string}",
+    file_format=["pdf", "svg"],
 )
 
 # %% plot accuracy over number of dimensions for summary shapes
-shades_for_error = False
-use_subplots = False
-normalize = False
-baseline = "shape_manual"
-df_stats = _get_stats(normalize=normalize, baseline=baseline)
-if use_subplots:
-    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(9 * cm, 5 * cm))
-else:
-    fig, ax = plt.subplots(figsize=[6.5 * cm, 5 * cm], constrained_layout=True)
-sns.despine()
-dimensions = np.arange(1, 11)
-
-colormap = {
-    "inhibblock": get_group_colors("inhibblock")["bic"],
-    "hommersom_binary": get_group_colors("hommersom_binary")["CACNA1A"],
-    "mossink_KS": get_group_colors("mossink_KS")["KS"],
-    "wagenaar": get_group_colors("wagenaar")[2],
-}
-
-for dataset, ax in zip(
-    [
-        "inhibblock",
-        "hommersom_binary",
-        "mossink_KS",
-        "wagenaar",
-    ],
-    axs.flatten() if use_subplots else [ax] * 4,
-):
-    ax.errorbar(
-        dimensions,
-        [df_stats.loc[(dataset, f"shape_{dim}D"), "mean"] for dim in dimensions],
-        yerr=None
-        if shades_for_error is True
-        else [df_stats.loc[(dataset, f"shape_{dim}D"), "sem"] for dim in dimensions],
-        marker="",
-        markersize=3,
-        # linestyle="",
-        linewidth=1,
-        label=custom_dataset_mapping[dataset],
-        capsize=2,
-        color=colormap[dataset],
+# Uses the full shape_1D..shape_10D sweep as in the main text; skipped entirely
+# when those dims were not trained (e.g. the supplementary run).
+if not has_shape_dim_sweep:
+    print(
+        "Skipping shape-dimension sweep figure: needs shape dims 1..10, "
+        f"available {available_shape_dims}."
     )
-    if shades_for_error is True:
-        ax.fill_between(
+else:
+    shades_for_error = False
+    use_subplots = False
+    normalize = False
+    baseline = "shape_manual"
+    df_stats = _get_stats(normalize=normalize, baseline=baseline)
+    if use_subplots:
+        fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(9 * cm, 5 * cm))
+    else:
+        fig, ax = plt.subplots(figsize=[6.5 * cm, 5 * cm], constrained_layout=True)
+    sns.despine()
+    dimensions = np.arange(1, 11)
+
+    colormap = {
+        "inhibblock": get_group_colors("inhibblock")["bic"],
+        "hommersom_binary": get_group_colors("hommersom_binary")["CACNA1A"],
+        "mossink_KS": get_group_colors("mossink_KS")["KS"],
+        "wagenaar": get_group_colors("wagenaar")[2],
+    }
+
+    for dataset, ax in zip(
+        [
+            "inhibblock",
+            "hommersom_binary",
+            "mossink_KS",
+            "wagenaar",
+        ],
+        axs.flatten() if use_subplots else [ax] * 4,
+    ):
+        ax.errorbar(
             dimensions,
-            [
-                df_stats.loc[(dataset, f"shape_{dim}D"), "mean"]
-                - df_stats.loc[(dataset, f"shape_{dim}D"), "sem"]
-                for dim in dimensions
+            [df_stats.loc[(dataset, f"shape_{dim}D"), "mean"] for dim in dimensions],
+            yerr=None
+            if shades_for_error is True
+            else [
+                df_stats.loc[(dataset, f"shape_{dim}D"), "sem"] for dim in dimensions
             ],
-            [
-                df_stats.loc[(dataset, f"shape_{dim}D"), "mean"]
-                + df_stats.loc[(dataset, f"shape_{dim}D"), "sem"]
-                for dim in dimensions
-            ],
+            marker="",
+            markersize=3,
+            # linestyle="",
+            linewidth=1,
+            label=custom_dataset_mapping[dataset],
+            capsize=2,
             color=colormap[dataset],
-            alpha=0.2,
         )
-    if normalize is False:
+        if shades_for_error is True:
+            ax.fill_between(
+                dimensions,
+                [
+                    df_stats.loc[(dataset, f"shape_{dim}D"), "mean"]
+                    - df_stats.loc[(dataset, f"shape_{dim}D"), "sem"]
+                    for dim in dimensions
+                ],
+                [
+                    df_stats.loc[(dataset, f"shape_{dim}D"), "mean"]
+                    + df_stats.loc[(dataset, f"shape_{dim}D"), "sem"]
+                    for dim in dimensions
+                ],
+                color=colormap[dataset],
+                alpha=0.2,
+            )
+        if normalize is False:
+            ax.axhline(
+                df_stats.loc[(dataset, baseline), "mean"],
+                ls=":",
+                color=colormap[dataset],
+                alpha=0.7,
+            )
+        ax.set_xticks([1] + np.arange(5, dimensions.max() + 1, 5).tolist())
+        ax.set_xticks(dimensions, minor=True)
+        ax.set_xlabel("Number of data-driven dimensions")
+        ax.set_ylabel("Accuracy")
+    if normalize is True:
         ax.axhline(
-            df_stats.loc[(dataset, baseline), "mean"],
-            ls=":",
-            color=colormap[dataset],
-            alpha=0.7,
+            0, ls="--", color="gray", label=f"{custom_label_mapping[baseline]}\nlevel"
         )
-    ax.set_xticks([1] + np.arange(5, dimensions.max() + 1, 5).tolist())
-    ax.set_xticks(dimensions, minor=True)
-    ax.set_xlabel("Number of data-driven dimensions")
-    ax.set_ylabel("Accuracy")
-if normalize is True:
-    ax.axhline(
-        0, ls="--", color="gray", label=f"{custom_label_mapping[baseline]}\nlevel"
-    )
-else:
-    ax.plot(
-        [], [], ls=":", color="gray", label=f"{custom_label_mapping[baseline]}\nlevel"
-    )
+    else:
+        ax.plot(
+            [],
+            [],
+            ls=":",
+            color="gray",
+            label=f"{custom_label_mapping[baseline]}\nlevel",
+        )
 
-if use_subplots:
-    ax = axs.flatten()[-1]
-    # make space for legend
-    fig.tight_layout(rect=[0, 0, 0.75, 1])
-    leg = fig.legend(frameon=False, bbox_to_anchor=(1, 1), loc="upper right")
-else:
-    leg = ax.legend(frameon=False, bbox_to_anchor=(1, 0.5), loc="center left")
-for label in leg.get_texts():
-    if label.get_text() == "CACNA1A":
-        label.set_fontstyle("italic")
-if normalize is True:
-    ax.set_ylabel("Accuracy improvement\nvs. " + custom_label_mapping[baseline])
-else:
-    ax.set_ylabel("Accuracy")
-fig.show()
-savefig(fig, f"accuracies_shape_dimensions{save_string}", file_format=["pdf", "svg"])
+    if use_subplots:
+        ax = axs.flatten()[-1]
+        # make space for legend
+        fig.tight_layout(rect=[0, 0, 0.75, 1])
+        leg = fig.legend(frameon=False, bbox_to_anchor=(1, 1), loc="upper right")
+    else:
+        leg = ax.legend(frameon=False, bbox_to_anchor=(1, 0.5), loc="center left")
+    for label in leg.get_texts():
+        if label.get_text() == "CACNA1A":
+            label.set_fontstyle("italic")
+    if normalize is True:
+        ax.set_ylabel("Accuracy improvement\nvs. " + custom_label_mapping[baseline])
+    else:
+        ax.set_ylabel("Accuracy")
+    fig.show()
+    savefig(
+        fig,
+        f"accuracies_shape_dimensions{save_string}{suppl_string}",
+        file_format=["pdf", "svg"],
+    )

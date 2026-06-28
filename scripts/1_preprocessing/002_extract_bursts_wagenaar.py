@@ -12,25 +12,58 @@ from burst_shape.persistence import (
 )
 from burst_shape.preprocess import burst_extraction
 
-# parameters
-params_burst_extraction = {
-    "dataset": "wagenaar",
-    "maxISIstart": 5,
-    "maxISIb": 5,
-    "minBdur": 40,
-    "minIBI": 40,
-    "minSburst": 50,
-    "bin_size": None,
-    "n_bins": 50,
-    "extend_left": 0,
-    "extend_right": 0,
-    "burst_length_threshold": None,
-    "pad_right": False,
-    "normalization": "integral",
-    "min_length": 30,
-    "min_firing_rate": 3162,  # 10 ** 3.5,
-    "smoothing_kernel": 4,
-}
+# Burst detector selection.
+#   supplementary = False -> MAIN detector (MI_bursts on pooled spikes; main text)
+#   supplementary = True  -> supplementary detector ("ISI + 20% threshold"):
+#       per-electrode burstlets with fixed ISI = MAIN_ISI * sqrt(n_units),
+#       combined via the simultaneity rule that keeps a network burst while
+#       >= 20% of electrodes are simultaneously bursting (unit_threshold=0.2).
+supplementary = False
+n_units_total = 59  # electrodes per recording (used by the supplementary detector)
+
+if not supplementary:
+    params_burst_extraction = {
+        "dataset": "wagenaar",
+        "maxISIstart": 5,
+        "maxISIb": 5,
+        "minBdur": 40,
+        "minIBI": 40,
+        "minSburst": 50,
+        "bin_size": None,
+        "n_bins": 50,
+        "extend_left": 0,
+        "extend_right": 0,
+        "burst_length_threshold": None,
+        "pad_right": False,
+        "normalization": "integral",
+        "min_length": 30,
+        "min_firing_rate": 3162,  # 10 ** 3.5,
+        "smoothing_kernel": 4,
+    }
+else:
+    params_burst_extraction = {
+        "dataset": "wagenaar",
+        "maxISIstart": int(round(5 * np.sqrt(n_units_total))),  # 38
+        "maxISIb": int(round(5 * np.sqrt(n_units_total))),  # 38
+        "minBdur": 40,
+        "minIBI": 40,
+        "minSburst": round(50 / n_units_total, 2),  # 0.85
+        "bin_size": None,
+        "n_bins": 50,
+        "extend_left": 0,
+        "extend_right": 0,
+        "burst_length_threshold": None,
+        "pad_right": False,
+        "normalization": "integral",
+        "min_length": 30,
+        "min_firing_rate": 3162,  # 10 ** 3.5,
+        "smoothing_kernel": 4,
+        "algorithm": "overlap",
+        "unit_threshold": 0.2,  # keep burst while >= 20% of electrodes active
+        "n_units_total": n_units_total,
+        "network_rule": "simultaneity",
+        "entourage_maxISI": None,  # no entourage extension
+    }
 
 
 def _get_data_from_file():

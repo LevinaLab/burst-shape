@@ -14,7 +14,18 @@ from burst_shape.persistence import (
     save_df_cultures,
 )
 
-burst_extraction_params = "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
+# Burst detector to subset (must match the extraction that was run).
+#   supplementary = False -> MAIN detector (MI_bursts on pooled spikes; main text)
+#   supplementary = True  -> supplementary detector ("ISI + 20% threshold"), saved under
+#                       the "_intermediate" alias
+supplementary = False
+
+if not supplementary:
+    burst_extraction_params = "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    alias_suffix = ""
+else:
+    burst_extraction_params = "burst_dataset_mossink_algorithm_overlap_maxISIstart_346_maxISIb_173_minBdur_100_minIBI_500_minSburst_4_network_rule_simultaneity_unit_threshold_0.2_n_units_total_12_n_bins_50_normalization_integral_min_length_30"  # noqa: E501
+    alias_suffix = "_intermediate"
 
 df_cultures = load_df_cultures(burst_extraction_params)
 df_bursts = load_df_bursts(burst_extraction_params)
@@ -26,7 +37,7 @@ print("burst_matrix", burst_matrix.shape)
 
 for selected_group in ["KS", "MELAS"]:
     dataset = f"mossink_{selected_group}"
-    burst_extraction_params_subset = f"burst_dataset_{dataset}"
+    burst_extraction_params_subset = f"burst_dataset_{dataset}{alias_suffix}"
     selection_df_cultures = df_cultures.index.get_level_values("group").isin(
         ["Control", selected_group]
     )

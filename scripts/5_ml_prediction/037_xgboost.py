@@ -63,417 +63,444 @@ cv_type = (
 random_state = 1234567890
 n_splits = 100
 
-burst_extraction_params = (
+spectral_embeddings_dims_max = 10  # maximal number of used dimensions, usually 10
+
+burst_extraction_params_list = [
     # "burst_dataset_wagenaar_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4"
-    # Revision: per-unit overlap + simultaneity (wagenaar)
-    # "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None"  # noqa: E501
     # "burst_dataset_kapucu_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_500_minSburst_100_n_bins_50_normalization_integral_min_length_30_min_firing_rate_316_smoothing_kernel_4"
     # "burst_dataset_hommersom_test_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
-    "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
+    # "burst_dataset_inhibblock_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_maxISIstart_100_maxISIb_50_minBdur_100_minIBI_500_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_hommersom_binary_maxISIstart_20_maxISIb_20_minBdur_50_minIBI_100_minSburst_100_n_bins_50_normalization_integral_min_length_30"
     # "burst_dataset_mossink_KS"
     # "burst_dataset_mossink_MELAS"
-)
-dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
-df_cultures = load_df_cultures(burst_extraction_params)
-df_cultures = df_cultures[df_cultures["n_bursts"] > 0]
-df_bursts = load_df_bursts(burst_extraction_params, cv_params=None)
+    # supplementary: fixed-ISI burstlets + 20% threshold
+    "burst_dataset_inhibblock_algorithm_overlap_maxISIstart_69_maxISIb_69_minBdur_50_minIBI_100_minSburst_8_network_rule_simultaneity_unit_threshold_0.2_n_units_total_12_n_bins_50_normalization_integral_min_length_30",  # noqa: E501
+    "burst_dataset_hommersom_binary_algorithm_overlap_maxISIstart_80_maxISIb_80_minBdur_50_minIBI_100_minSburst_6_network_rule_simultaneity_unit_threshold_0.2_n_units_total_16_n_bins_50_normalization_integral_min_length_30",  # noqa: E501
+    "burst_dataset_mossink_KS_intermediate",
+    "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None",  # noqa: E501
+]
+for burst_extraction_params in burst_extraction_params_list:
+    try:
+        print(burst_extraction_params)
 
-df_cultures, target_label = make_target_label(
-    dataset, df_cultures, None, special_target=special_target
-)
+        dataset = get_dataset_from_burst_extraction_params(burst_extraction_params)
+        df_cultures = load_df_cultures(burst_extraction_params)
+        df_cultures = df_cultures[df_cultures["n_bursts"] > 0]
+        df_bursts = load_df_bursts(burst_extraction_params, cv_params=None)
 
-# StratifiedShuffleSplit needs >=2 samples per class; drop classes that don't
-# have that many cultures (can happen on heavily filtered burst extractions).
-_target_counts = df_cultures["target_label"].value_counts()
-_small_classes = _target_counts[_target_counts < 2].index.tolist()
-if _small_classes:
-    warnings.warn(f"Dropping classes with <2 cultures: {_small_classes}")
-    df_cultures = df_cultures[~df_cultures["target_label"].isin(_small_classes)]
-
-print(f"Dataset:\t\t{dataset}\nTarget label:\t{target_label}")
-
-# spectral embedding type
-spectral_embedding_dims_list = np.arange(1, 11)
-_distance_metric = (
-    None  # use default, usually 'wasserstein'
-    # "wasserstein"
-    # "euclidean"
-    # "Correlation"
-    # "JensenShannon"
-    # "KLDivergence"
-)
-# %% get embedding coordinates
-spectral_clustering_params = get_chosen_spectral_embedding_params(dataset)
-# Override for the per-unit-overlap+simultaneity Wagenaar revision dataset
-# (13 234 bursts → 1% = 132 nearest neighbors). Uncomment when running on it.
-# spectral_clustering_params = (
-#     "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_132"
-# )
-if _distance_metric is not None:
-    spectral_clustering_params_split = spectral_clustering_params.split("_")
-    if "metric" in spectral_clustering_params_split:
-        _position_metric = spectral_clustering_params_split.index("metric") + 1
-        if _position_metric < len(spectral_clustering_params_split):
-            spectral_clustering_params_split[_position_metric] = _distance_metric
-        else:
-            spectral_clustering_params_split.append(_distance_metric)
-    else:
-        spectral_clustering_params_split.extend(["metric", _distance_metric])
-
-    spectral_clustering_params = "_".join(spectral_clustering_params_split)
-n_spectral_dims_max = max(spectral_embedding_dims_list)
-spectral_embedding = load_spectral_embedding(
-    burst_extraction_params,
-    spectral_clustering_params,
-    n_dims=n_spectral_dims_max,
-)
-for i_dim in range(n_spectral_dims_max):
-    name_dim = f"shape_{i_dim + 1}"
-    df_bursts[name_dim] = spectral_embedding[:, i_dim]
-    df_cultures[name_dim] = pd.Series(dtype=float)
-    for index in df_cultures.index:
-        mask_recording = get_recording_mask(df_bursts, index)
-        df_cultures.at[index, name_dim] = (
-            df_bursts[name_dim].values[mask_recording].mean()
+        df_cultures, target_label = make_target_label(
+            dataset, df_cultures, None, special_target=special_target
         )
 
-fig, ax = plt.subplots(figsize=(3 * cm, 3 * cm), constrained_layout=True)
-# ax.set_title("Spectral Embedding (Shape features) for each recording")
-sns.despine(bottom=True, left=True)
-sns.scatterplot(
-    data=df_cultures.reset_index(),
-    x="shape_1",
-    y="shape_2",
-    hue="target_label",
-    palette=get_group_colors(dataset),
-    legend=False,
-)
-"""ax.legend(
-    frameon=False,
-    title="Recordings\naverage location\nin embedding",
-    bbox_to_anchor=(1.1, 0.8),
-    loc="upper left",
-)"""
-ax.set_xticks([])
-ax.set_yticks([])
-ax.set_xlabel("")
-ax.set_ylabel("")
-fig.show()
-fig.savefig(
-    os.path.join(
-        get_fig_folder(),
-        f"{dataset}_xgboost_recording_embedding_shape.svg",
-    ),
-    transparent=True,
-)
-# %% get classical features
-df_cultures, classical_features = get_classical_features(
-    df_cultures, df_bursts, dataset
-)
+        # StratifiedShuffleSplit needs >=2 samples per class; drop classes that don't
+        # have that many cultures (can happen on heavily filtered burst extractions).
+        _target_counts = df_cultures["target_label"].value_counts()
+        _small_classes = _target_counts[_target_counts < 2].index.tolist()
+        if _small_classes:
+            warnings.warn(f"Dropping classes with <2 cultures: {_small_classes}")
+            df_cultures = df_cultures[~df_cultures["target_label"].isin(_small_classes)]
 
+        print(f"Dataset:\t\t{dataset}\nTarget label:\t{target_label}")
 
-# %% get manual shape features
-def _get_manual_shape_features(df_cultures, df_bursts):
-    # get average burst_shapes
-    index_names = df_cultures.index.names
-    df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
-        avg_burst=pd.NamedAgg(column="burst", aggfunc="mean")
-    )
-
-    # compute features
-    df_cultures["argmax_bin"] = df_cultures["avg_burst"].apply(np.argmax)
-    df_cultures["rel_peak"] = (df_cultures["argmax_bin"] + 0.5) / 50
-    df_cultures["activity_80%"] = df_cultures["avg_burst"].apply(lambda x: x[39])
-    shape_manual_features = ["rel_peak", "activity_80%"]
-    return df_cultures, shape_manual_features
-
-
-df_cultures, shape_manual_features = _get_manual_shape_features(
-    df_cultures,
-    df_bursts,
-)
-
-# %% define feature sets
-shape_features = [f"shape_{i_dim + 1}" for i_dim in range(n_spectral_dims_max)]
-# classical features
-all_features = shape_features[:2] + classical_features
-
-feature_dict = {
-    "combined": all_features,
-    # "shape": shape_features,
-    "traditional": classical_features,
-    "shape_manual": shape_manual_features,
-}
-for n_spectral_dims in spectral_embedding_dims_list:
-    feature_dict[f"shape_{n_spectral_dims}D"] = shape_features[:n_spectral_dims]
-# %% prediction with xgboost
-for feature_set_name, features in feature_dict.items():
-    # Encode target labels
-    label_encoder = LabelEncoder()
-    df_cultures["encoded_label"] = label_encoder.fit_transform(
-        df_cultures["target_label"]
-    )
-    num_classes = len(label_encoder.classes_)
-
-    X = df_cultures[features].astype(float)  # .values
-    y = df_cultures["encoded_label"]  # .values
-
-    if not exist_xgboost_results(
-        burst_extraction_params,
-        spectral_clustering_params,
-        feature_set_name,
-        cv_type,
-    ):
-        print(
-            f"XGBoost results for feature set {feature_set_name} don't exists. Computing them."
+        # spectral embedding type
+        spectral_embedding_dims_list = np.arange(1, spectral_embeddings_dims_max + 1)
+        _distance_metric = (
+            None  # use default, usually 'wasserstein'
+            # "wasserstein"
+            # "euclidean"
+            # "Correlation"
+            # "JensenShannon"
+            # "KLDivergence"
         )
-
-        objective = "multi:softprob" if num_classes > 2 else "binary:logistic"
-        eval_metric = "mlogloss" if num_classes > 2 else "logloss"
-
-        match cv_type:
-            case "StratifiedShuffleSplit":
-                outer_cv = StratifiedShuffleSplit(
-                    n_splits=n_splits,
-                    test_size=0.2,
-                    random_state=random_state,
-                )
-            case "RepeatedStratifiedKFold":
-                outer_cv = RepeatedStratifiedKFold(
-                    n_splits=5,
-                    n_repeats=n_splits // 5,
-                    random_state=random_state,
-                )
-            case _:
-                raise NotImplementedError(f"Unknown cv type: {cv_type}")
-        inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
-
-        # XGBoost hyperparameters grid
-        param_grid_xgb = {
-            "n_estimators": [100, 150, 200, 250, 300],
-            "learning_rate": [0.01, 0.04, 0.1, 0.2],
-            "max_depth": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            "subsample": [0.6, 0.8, 0.9, 1.0],
-            "colsample_bytree": [0.6, 0.8, 0.9, 1.0],
-            "reg_alpha": [0, 0.1, 1],
-            "reg_lambda": [0.5, 1, 2],
+        # %% get embedding coordinates
+        spectral_clustering_params = get_chosen_spectral_embedding_params(dataset)
+        spectral_clustering_params_supplementary = {
+            # ISI + 20% threshold
+            "burst_dataset_inhibblock_algorithm_overlap_maxISIstart_69_maxISIb_69_minBdur_50_minIBI_100_minSburst_8_network_rule_simultaneity_unit_threshold_0.2_n_units_total_12_n_bins_50_normalization_integral_min_length_30": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_90",  # noqa: E501
+            "burst_dataset_hommersom_binary_algorithm_overlap_maxISIstart_80_maxISIb_80_minBdur_50_minIBI_100_minSburst_6_network_rule_simultaneity_unit_threshold_0.2_n_units_total_16_n_bins_50_normalization_integral_min_length_30": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_22",  # noqa: E501
+            "burst_dataset_mossink_KS_intermediate": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_114",  # noqa: E501
+            "burst_dataset_wagenaar_maxISIstart_38_maxISIb_38_minSburst_0.85_n_bins_50_normalization_integral_min_length_30_min_firing_rate_3162_smoothing_kernel_4_algorithm_overlap_unit_threshold_0.2_n_units_total_59_network_rule_simultaneity_entourage_maxISI_None": "spectral_affinity_precomputed_metric_wasserstein_n_neighbors_132",  # noqa: E501
         }
-
-        xgb = XGBClassifier(
-            objective=objective,
-            eval_metric=eval_metric,
-            random_state=random_state,
-            # do not weight classes here, weighting is done in fit
+        spectral_clustering_params = spectral_clustering_params_supplementary.get(
+            burst_extraction_params, spectral_clustering_params
         )
-        scorer = make_scorer(balanced_accuracy_score)
-
-        grid_search = GridSearchCV(
-            estimator=xgb,
-            param_grid=param_grid_xgb,
-            scoring=scorer,
-            cv=inner_cv,
-            n_jobs=-1,
-        )
-        random_search = RandomizedSearchCV(
-            estimator=xgb,
-            param_distributions=param_grid_xgb,
-            n_iter=100,
-            scoring=scorer,
-            cv=inner_cv,
-            n_jobs=-1,
-        )
-
-        nested_scores = []
-        all_y_test = []
-        all_y_pred = []
-        all_shap_values = []
-        all_best_models = []
-
-        for train_idx, test_idx in tqdm(
-            outer_cv.split(X, y), total=n_splits, desc="Outer loop of cv"
-        ):
-            X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-            y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-
-            # grid_search.fit(X_train, y_train)
-            # best_model = grid_search.best_estimator_
-
-            random_search.fit(
-                X_train,
-                y_train,
-                sample_weight=compute_sample_weight(class_weight="balanced", y=y_train),
-            )
-            best_model = random_search.best_estimator_
-
-            y_pred = best_model.predict(X_test)
-
-            all_best_models.append(best_model)
-            all_y_test.extend(y_test)
-            all_y_pred.extend(y_pred)
-
-            score = balanced_accuracy_score(y_test, y_pred)
-            nested_scores.append(score)
-
-            # Compute SHAP values for the entire dataset using the best model
-            explainer = shap.TreeExplainer(best_model)
-            shap_values = explainer.shap_values(X)
-            all_shap_values.append(shap_values)
-
-        # save results
-        features = np.array(features)
-        nested_scores = np.array(nested_scores)
-        all_shap_values = np.array(all_shap_values)
-        all_y_pred = np.array(all_y_pred)
-        all_y_test = np.array(all_y_test)
-        save_xgboost_results(
-            burst_extraction_params,
-            spectral_clustering_params,
-            feature_set_name,
-            cv_type,
-            features,
-            nested_scores,
-            all_shap_values,
-            all_y_pred,
-            all_y_test,
-        )
-        print(f"Saved the results for feature set {feature_set_name}.")
-    else:
-        print(
-            f"XGBoost results for feature set {feature_set_name} already exists. Loading..."
-        )
-        (
-            features,
-            nested_scores,
-            all_shap_values,
-            all_y_pred,
-            all_y_test,
-        ) = load_xgboost_results(
-            burst_extraction_params,
-            spectral_clustering_params,
-            feature_set_name,
-            cv_type,
-        )
-        print(f"Loaded the results for feature set {feature_set_name}.")
-
-    # ----------------------------------------------------------------------------
-    # Plotting
-    average_score = np.mean(nested_scores)
-    print(f"Average balanced accuracy:\t{average_score:.3f}")
-
-    # Aggregate SHAP values across folds
-    mean_shap_values = np.mean(all_shap_values, axis=0)
-    mean_abs_shap_values = np.mean(np.abs(mean_shap_values), axis=0)
-    # sorted_importances = pd.Series(mean_abs_shap_values, index=X.columns).sort_values(ascending=False)
-    # extract_corr_and_impact(X, list(X.columns), mean_shap_values, mean_abs_shap_values
-
-    # Plot aggregated SHAP values
-    # Close any prior figures so shap's internal tight_layout doesn't clash
-    # with a previously-set constrained_layout engine (matplotlib raises
-    # 'Colorbar layout of new layout engine not compatible' otherwise).
-    plt.close("all")
-    if mean_shap_values.ndim == 2:
-        shap.summary_plot(
-            mean_shap_values,
-            features=X,
-            plot_type="bar",
-            feature_names=X.columns,
-            show=False,
-        )
-        fig = plt.gcf()
-        fig.show()
-        fig.savefig(
-            os.path.join(
-                get_fig_folder(),
-                f"{dataset}_xgboost_{feature_set_name}_shapley_values_bar.svg",
-            ),
-            transparent=True,
-        )
-        shap.summary_plot(
-            mean_shap_values,
-            features=X,
-            feature_names=X.columns,
-            show=False,
-        )
-        fig = plt.gcf()
-        fig.show()
-        fig.savefig(
-            os.path.join(
-                get_fig_folder(),
-                f"{dataset}_xgboost_{feature_set_name}_shapley_values_bee.svg",
-            ),
-            transparent=True,
-        )
-    else:
-        shap.summary_plot(
-            mean_shap_values,
-            features=X,
-            plot_type="bar",
-            feature_names=X.columns,
-            class_inds="original",
-            class_names=list(label_encoder.classes_),
-            color=lambda i: [
-                get_group_colors(dataset)[j] for j in list(label_encoder.classes_)
-            ][i],
-            show=False,
-        )
-        fig = plt.gcf()
-        fig.show()
-        fig.savefig(
-            os.path.join(
-                get_fig_folder(),
-                f"{dataset}_xgboost_{feature_set_name}_shapley_values.svg",
-            ),
-            transparent=True,
-        )
-
-    # %%
-    match dataset:
-        case "inhibblock" | "kapucu" | "wagenaar":
-            figsize = (7 * cm, 6 * cm)
-        case "mossink":
-            if special_target is True:
-                figsize = (10 * cm, 10 * cm)
+        if _distance_metric is not None:
+            spectral_clustering_params_split = spectral_clustering_params.split("_")
+            if "metric" in spectral_clustering_params_split:
+                _position_metric = spectral_clustering_params_split.index("metric") + 1
+                if _position_metric < len(spectral_clustering_params_split):
+                    spectral_clustering_params_split[_position_metric] = (
+                        _distance_metric
+                    )
+                else:
+                    spectral_clustering_params_split.append(_distance_metric)
             else:
-                figsize = (7 * cm, 6 * cm)
-        case _:
-            figsize = (7 * cm, 6 * cm)
+                spectral_clustering_params_split.extend(["metric", _distance_metric])
 
-    fig, ax = plt.subplots(constrained_layout=True, figsize=figsize)
-    sns.heatmap(
-        confusion_matrix(all_y_pred, all_y_test, normalize="true"),
-        vmin=0,
-        vmax=1,
-        annot=False,
-        xticklabels=label_encoder.classes_,
-        yticklabels=label_encoder.classes_,
-        cbar_kws={"label": "Accuracy"},
-    )
-    if get_group_colors(dataset) is not None:
-        for label_x, label_y, color in zip(
-            ax.get_xticklabels(),
-            ax.get_yticklabels(),
-            [get_group_colors(dataset)[j] for j in list(label_encoder.classes_)],
-        ):
-            label_x.set_color(color)
-            label_y.set_color(color)
-    ax.set_xlabel("Predicted label")
-    ax.set_ylabel("True label")
-    fig.show()
-    fig.savefig(
-        os.path.join(
-            get_fig_folder(),
-            f"{dataset}_xgboost_{feature_set_name}_confusion_matrix.svg",
-        ),
-        transparent=True,
-    )
+            spectral_clustering_params = "_".join(spectral_clustering_params_split)
+        n_spectral_dims_max = max(spectral_embedding_dims_list)
+        spectral_embedding = load_spectral_embedding(
+            burst_extraction_params,
+            spectral_clustering_params,
+            n_dims=n_spectral_dims_max,
+        )
+        for i_dim in range(n_spectral_dims_max):
+            name_dim = f"shape_{i_dim + 1}"
+            df_bursts[name_dim] = spectral_embedding[:, i_dim]
+            df_cultures[name_dim] = pd.Series(dtype=float)
+            for index in df_cultures.index:
+                mask_recording = get_recording_mask(df_bursts, index)
+                df_cultures.at[index, name_dim] = (
+                    df_bursts[name_dim].values[mask_recording].mean()
+                )
 
-    # %% feature importance for shape vs traditional
-    if feature_set_name == "combined":
-        print("\nFeature importance")
-        feature_importance = mean_abs_shap_values
-        feature_importance = feature_importance / feature_importance.sum()
-        print(f"Shape:\n{feature_importance[:2].sum():.3f}")
-        print(f"Traditional:\n{feature_importance[2:].sum():.3f}")
+        fig, ax = plt.subplots(figsize=(3 * cm, 3 * cm), constrained_layout=True)
+        # ax.set_title("Spectral Embedding (Shape features) for each recording")
+        sns.despine(bottom=True, left=True)
+        sns.scatterplot(
+            data=df_cultures.reset_index(),
+            x="shape_1",
+            y="shape_2",
+            hue="target_label",
+            palette=get_group_colors(dataset),
+            legend=False,
+        )
+        """ax.legend(
+            frameon=False,
+            title="Recordings\naverage location\nin embedding",
+            bbox_to_anchor=(1.1, 0.8),
+            loc="upper left",
+        )"""
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        fig.show()
+        fig.savefig(
+            os.path.join(
+                get_fig_folder(),
+                f"{dataset}_xgboost_recording_embedding_shape.svg",
+            ),
+            transparent=True,
+        )
+        # %% get classical features
+        df_cultures, classical_features = get_classical_features(
+            df_cultures, df_bursts, dataset
+        )
+
+        # %% get manual shape features
+        def _get_manual_shape_features(df_cultures, df_bursts):
+            # get average burst_shapes
+            index_names = df_cultures.index.names
+            df_cultures["avg_burst"] = df_bursts.groupby(index_names).agg(
+                avg_burst=pd.NamedAgg(column="burst", aggfunc="mean")
+            )
+
+            # compute features
+            df_cultures["argmax_bin"] = df_cultures["avg_burst"].apply(np.argmax)
+            df_cultures["rel_peak"] = (df_cultures["argmax_bin"] + 0.5) / 50
+            df_cultures["activity_80%"] = df_cultures["avg_burst"].apply(
+                lambda x: x[39]
+            )
+            shape_manual_features = ["rel_peak", "activity_80%"]
+            return df_cultures, shape_manual_features
+
+        df_cultures, shape_manual_features = _get_manual_shape_features(
+            df_cultures,
+            df_bursts,
+        )
+
+        # %% define feature sets
+        shape_features = [f"shape_{i_dim + 1}" for i_dim in range(n_spectral_dims_max)]
+        # classical features
+        all_features = shape_features[:2] + classical_features
+
+        feature_dict = {
+            "combined": all_features,
+            # "shape": shape_features,
+            "traditional": classical_features,
+            "shape_manual": shape_manual_features,
+        }
+        for n_spectral_dims in spectral_embedding_dims_list:
+            feature_dict[f"shape_{n_spectral_dims}D"] = shape_features[:n_spectral_dims]
+        # %% prediction with xgboost
+        for feature_set_name, features in feature_dict.items():
+            # Encode target labels
+            label_encoder = LabelEncoder()
+            df_cultures["encoded_label"] = label_encoder.fit_transform(
+                df_cultures["target_label"]
+            )
+            num_classes = len(label_encoder.classes_)
+
+            X = df_cultures[features].astype(float)  # .values
+            y = df_cultures["encoded_label"]  # .values
+
+            if not exist_xgboost_results(
+                burst_extraction_params,
+                spectral_clustering_params,
+                feature_set_name,
+                cv_type,
+            ):
+                print(
+                    f"XGBoost results for feature set {feature_set_name} don't exists. Computing them."
+                )
+
+                objective = "multi:softprob" if num_classes > 2 else "binary:logistic"
+                eval_metric = "mlogloss" if num_classes > 2 else "logloss"
+
+                match cv_type:
+                    case "StratifiedShuffleSplit":
+                        outer_cv = StratifiedShuffleSplit(
+                            n_splits=n_splits,
+                            test_size=0.2,
+                            random_state=random_state,
+                        )
+                    case "RepeatedStratifiedKFold":
+                        outer_cv = RepeatedStratifiedKFold(
+                            n_splits=5,
+                            n_repeats=n_splits // 5,
+                            random_state=random_state,
+                        )
+                    case _:
+                        raise NotImplementedError(f"Unknown cv type: {cv_type}")
+                inner_cv = StratifiedKFold(
+                    n_splits=5, shuffle=True, random_state=random_state
+                )
+
+                # XGBoost hyperparameters grid
+                param_grid_xgb = {
+                    "n_estimators": [100, 150, 200, 250, 300],
+                    "learning_rate": [0.01, 0.04, 0.1, 0.2],
+                    "max_depth": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                    "subsample": [0.6, 0.8, 0.9, 1.0],
+                    "colsample_bytree": [0.6, 0.8, 0.9, 1.0],
+                    "reg_alpha": [0, 0.1, 1],
+                    "reg_lambda": [0.5, 1, 2],
+                }
+
+                xgb = XGBClassifier(
+                    objective=objective,
+                    eval_metric=eval_metric,
+                    random_state=random_state,
+                    # do not weight classes here, weighting is done in fit
+                )
+                scorer = make_scorer(balanced_accuracy_score)
+
+                grid_search = GridSearchCV(
+                    estimator=xgb,
+                    param_grid=param_grid_xgb,
+                    scoring=scorer,
+                    cv=inner_cv,
+                    n_jobs=-1,
+                )
+                random_search = RandomizedSearchCV(
+                    estimator=xgb,
+                    param_distributions=param_grid_xgb,
+                    n_iter=100,
+                    scoring=scorer,
+                    cv=inner_cv,
+                    n_jobs=-1,
+                )
+
+                nested_scores = []
+                all_y_test = []
+                all_y_pred = []
+                all_shap_values = []
+                all_best_models = []
+
+                for train_idx, test_idx in tqdm(
+                    outer_cv.split(X, y), total=n_splits, desc="Outer loop of cv"
+                ):
+                    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+                    y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+                    # grid_search.fit(X_train, y_train)
+                    # best_model = grid_search.best_estimator_
+
+                    random_search.fit(
+                        X_train,
+                        y_train,
+                        sample_weight=compute_sample_weight(
+                            class_weight="balanced", y=y_train
+                        ),
+                    )
+                    best_model = random_search.best_estimator_
+
+                    y_pred = best_model.predict(X_test)
+
+                    all_best_models.append(best_model)
+                    all_y_test.extend(y_test)
+                    all_y_pred.extend(y_pred)
+
+                    score = balanced_accuracy_score(y_test, y_pred)
+                    nested_scores.append(score)
+
+                    # Compute SHAP values for the entire dataset using the best model
+                    explainer = shap.TreeExplainer(best_model)
+                    shap_values = explainer.shap_values(X)
+                    all_shap_values.append(shap_values)
+
+                # save results
+                features = np.array(features)
+                nested_scores = np.array(nested_scores)
+                all_shap_values = np.array(all_shap_values)
+                all_y_pred = np.array(all_y_pred)
+                all_y_test = np.array(all_y_test)
+                save_xgboost_results(
+                    burst_extraction_params,
+                    spectral_clustering_params,
+                    feature_set_name,
+                    cv_type,
+                    features,
+                    nested_scores,
+                    all_shap_values,
+                    all_y_pred,
+                    all_y_test,
+                )
+                print(f"Saved the results for feature set {feature_set_name}.")
+            else:
+                print(
+                    f"XGBoost results for feature set {feature_set_name} already exists. Loading..."
+                )
+                (
+                    features,
+                    nested_scores,
+                    all_shap_values,
+                    all_y_pred,
+                    all_y_test,
+                ) = load_xgboost_results(
+                    burst_extraction_params,
+                    spectral_clustering_params,
+                    feature_set_name,
+                    cv_type,
+                )
+                print(f"Loaded the results for feature set {feature_set_name}.")
+
+            # ----------------------------------------------------------------------------
+            # Plotting
+            average_score = np.mean(nested_scores)
+            print(f"Average balanced accuracy:\t{average_score:.3f}")
+
+            # Aggregate SHAP values across folds
+            mean_shap_values = np.mean(all_shap_values, axis=0)
+            mean_abs_shap_values = np.mean(np.abs(mean_shap_values), axis=0)
+            # sorted_importances = pd.Series(mean_abs_shap_values, index=X.columns).sort_values(ascending=False)
+            # extract_corr_and_impact(X, list(X.columns), mean_shap_values, mean_abs_shap_values
+
+            # Plot aggregated SHAP values
+            # Close any prior figures so shap's internal tight_layout doesn't clash
+            # with a previously-set constrained_layout engine (matplotlib raises
+            # 'Colorbar layout of new layout engine not compatible' otherwise).
+            plt.close("all")
+            if mean_shap_values.ndim == 2:
+                shap.summary_plot(
+                    mean_shap_values,
+                    features=X,
+                    plot_type="bar",
+                    feature_names=X.columns,
+                    show=False,
+                )
+                fig = plt.gcf()
+                fig.show()
+                fig.savefig(
+                    os.path.join(
+                        get_fig_folder(),
+                        f"{dataset}_xgboost_{feature_set_name}_shapley_values_bar.svg",
+                    ),
+                    transparent=True,
+                )
+                shap.summary_plot(
+                    mean_shap_values,
+                    features=X,
+                    feature_names=X.columns,
+                    show=False,
+                )
+                fig = plt.gcf()
+                fig.show()
+                fig.savefig(
+                    os.path.join(
+                        get_fig_folder(),
+                        f"{dataset}_xgboost_{feature_set_name}_shapley_values_bee.svg",
+                    ),
+                    transparent=True,
+                )
+            else:
+                shap.summary_plot(
+                    mean_shap_values,
+                    features=X,
+                    plot_type="bar",
+                    feature_names=X.columns,
+                    class_inds="original",
+                    class_names=list(label_encoder.classes_),
+                    color=lambda i: [
+                        get_group_colors(dataset)[j]
+                        for j in list(label_encoder.classes_)
+                    ][i],
+                    show=False,
+                )
+                fig = plt.gcf()
+                fig.show()
+                fig.savefig(
+                    os.path.join(
+                        get_fig_folder(),
+                        f"{dataset}_xgboost_{feature_set_name}_shapley_values.svg",
+                    ),
+                    transparent=True,
+                )
+
+            # %%
+            match dataset:
+                case "inhibblock" | "kapucu" | "wagenaar":
+                    figsize = (7 * cm, 6 * cm)
+                case "mossink":
+                    if special_target is True:
+                        figsize = (10 * cm, 10 * cm)
+                    else:
+                        figsize = (7 * cm, 6 * cm)
+                case _:
+                    figsize = (7 * cm, 6 * cm)
+
+            fig, ax = plt.subplots(constrained_layout=True, figsize=figsize)
+            sns.heatmap(
+                confusion_matrix(all_y_pred, all_y_test, normalize="true"),
+                vmin=0,
+                vmax=1,
+                annot=False,
+                xticklabels=label_encoder.classes_,
+                yticklabels=label_encoder.classes_,
+                cbar_kws={"label": "Accuracy"},
+            )
+            if get_group_colors(dataset) is not None:
+                for label_x, label_y, color in zip(
+                    ax.get_xticklabels(),
+                    ax.get_yticklabels(),
+                    [
+                        get_group_colors(dataset)[j]
+                        for j in list(label_encoder.classes_)
+                    ],
+                ):
+                    label_x.set_color(color)
+                    label_y.set_color(color)
+            ax.set_xlabel("Predicted label")
+            ax.set_ylabel("True label")
+            fig.show()
+            fig.savefig(
+                os.path.join(
+                    get_fig_folder(),
+                    f"{dataset}_xgboost_{feature_set_name}_confusion_matrix.svg",
+                ),
+                transparent=True,
+            )
+
+            # %% feature importance for shape vs traditional
+            if feature_set_name == "combined":
+                print("\nFeature importance")
+                feature_importance = mean_abs_shap_values
+                feature_importance = feature_importance / feature_importance.sum()
+                print(f"Shape:\n{feature_importance[:2].sum():.3f}")
+                print(f"Traditional:\n{feature_importance[2:].sum():.3f}")
+    except Exception as e:
+        print(f"Error processing burst_extraction_params: {burst_extraction_params}")
+        print(e)
