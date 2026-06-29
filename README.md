@@ -1,5 +1,7 @@
 # Data-driven burst shape analysis for functional phenotyping of neuronal cultures
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21035071.svg)](https://doi.org/10.5281/zenodo.21035071)
+
 corresponding to [Schäfer et al., 2025, bioRxiv: Data-driven burst shape analysis for functional phenotyping of neuronal cultures](https://doi.org/10.1101/2025.09.29.679256)
 
 ```
@@ -11,6 +13,8 @@ corresponding to [Schäfer et al., 2025, bioRxiv: Data-driven burst shape analys
 	journal = {bioRxiv},
 }
 ```
+
+Code archived on Zenodo: [10.5281/zenodo.21035071](https://doi.org/10.5281/zenodo.21035071)
 
 # Quickstart
 To try the analysis locally, install [uv](https://docs.astral.sh/uv/) (see [Setup](#setup)), then from the repo root run:

@@ -15,8 +15,9 @@ authors:
     given-names: "Anna"
   - family-names: "Vinogradov"
     given-names: "Oleg"
-# After the Zenodo release DOI is minted, add it here, e.g.:
-# doi: "10.5281/zenodo.xxxxxxx"
+# Concept (all-versions) DOI: always resolves to the latest release, so it is
+# stable across future releases.
+doi: "10.5281/zenodo.21035071"
 preferred-citation:
   type: article
   title: "Data-driven burst shape analysis for functional phenotyping of neuronal cultures"
