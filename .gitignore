@@ -141,3 +141,7 @@ dmypy.json
 
 # local archive
 scripts/_local_archive/
+
+# Syncthing
+.stfolder/
+.stignore

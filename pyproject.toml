@@ -3,6 +3,8 @@ name = "burst-shape"
 version = "0.1.0"
 description = "Data-driven burst shape analysis for functional phenotyping of neuronal cultures"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = "==3.13.*"
 # Core deps: required by burst_shape modules everywhere (incl. the Dash web apps).
 dependencies = [
