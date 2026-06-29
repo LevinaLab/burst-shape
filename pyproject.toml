@@ -72,5 +72,9 @@ target-version = "py313"
 select = ["E", "F", "W", "I", "B"] # "UP"
 # ignore = ["E203"] # black compatibility
 
+[tool.ruff.lint.per-file-ignores]
+# Figure notebooks: imports in later cells / after code
+"scripts/6_other/Fig_Suppl_*.ipynb" = ["E402"]
+
 [tool.ruff.format]
 quote-style = "double" # match black behavior
