@@ -1,6 +1,6 @@
 [project]
 name = "burst-shape"
-version = "0.1.0"
+version = "1.0.0"
 description = "Data-driven burst shape analysis for functional phenotyping of neuronal cultures"
 readme = "README.md"
 license = "MIT"
