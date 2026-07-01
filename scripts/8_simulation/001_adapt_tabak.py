@@ -5,7 +5,12 @@ https://journals.physiology.org/doi/full/10.1152/jn.00857.2009
 """
 
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
+
+from plot import prepare_plotting, savefig
+
+np.random.seed(123456789)
 
 w = 0.8         # Connectivity
 theta_0 = 0.17  # Input for half activation
@@ -29,7 +34,7 @@ a[0], s[0] = a0, s0
 noise = np.random.normal(scale=noise_amp, size=t.shape)
 
 a_diff = lambda a_old, s_old: -a_old + a_inf(w * s_old * a_old - theta_0)
-a_diff = lambda a_old, s_old: -a_old + s_old * a_inf(w * s_old * a_old - 0.25)  # smoothing with s (varying the constant changes the drop-off)
+a_diff = lambda a_old, s_old: -a_old + 2 * s_old * a_inf(w * s_old * a_old - 0.25)  # smoothing with s (varying the constant changes the drop-off)
 
 # s_diff = lambda a_old, s_old: (1/tau_s) * (-s_old + s_inf(a_old))
 s_diff = lambda a_old, s_old: (1/tau_s) * (.25 - a_old)  # constant source and linear cost
@@ -45,11 +50,25 @@ ax.plot(t, a, label='Activity')
 ax.plot(t, s, '--', label='Adaptation')
 ax.grid(True)
 ax.legend()
-ax.grid(True)
-ax.legend()
 ax.set_ylabel('value')
 ax.set_xlabel('time')
 fig.show()
+
+# %% plot short figure
+cm = prepare_plotting()
+fig, ax = plt.subplots(figsize=(5 * cm, 1.8 * cm), constrained_layout=True)
+sns.despine()
+ax.plot(t, a, label='Activity', color='k', linewidth=1)
+ax.plot(t, s, ':', label='Energy', color='orange', linewidth=1)
+# ax.grid(True)
+ax.legend(frameon=False, loc='upper right')
+ax.set_ylabel('Value')
+ax.set_xlabel('Time')
+ax.set_xlim(1230, 1450)
+ax.set_xticks([])
+ax.set_yticks([])
+fig.show()
+savefig(fig, "adaptation_simple", file_format=["svg"])
 
 # %% plot flow field
 # choose grid around the simulated trajectory with a margin
