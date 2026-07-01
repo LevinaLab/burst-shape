@@ -662,7 +662,7 @@ def _plot_comparison(ax, first, second):
         ax.bar(
             i_dataset,  # custom_dataset_mapping[dataset],
             mean_accuracy,
-            color="lightgrey" if mean_accuracy < 0 else "grey",
+            color="lightgrey",
             fill=True,
             edgecolor="black",
             yerr=_std2_corrected_std(std_accuracy, 100, 4, 1),

@@ -236,7 +236,7 @@ sns.barplot(
     x="share_shape",
     order=datasets_order,
     # fill=False,
-    color="grey",
+    color="lightgrey",
     edgecolor="k",
     width=0.5,
     linewidth=1.5,
