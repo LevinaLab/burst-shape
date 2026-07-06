@@ -9,6 +9,13 @@ The script runs:
     direct bursts against per-unit burst detection + simultaneity threshold.
     Runs for ALL datasets.
 
+(1b) ISI-perturbation sensitivity of the original (direct) algorithm: re-run
+    the same MI_bursts detection with maxISIstart/maxISIb scaled by
+    (-50, -20, -10, -5, +5, +10, +20, +50)% and report the
+    apples-to-apples agreement
+    (2x2 time-overlap + burst-existence) of each perturbed run against the
+    unperturbed direct bursts. Runs for ALL datasets.
+
 (2) Same comparison against the SIMMUX algorithm (Wagenaar/DeMarse/Potter
     2005: per-electrode cores + entourage + chain-overlap rule), plus a
     burst-existence analysis and a width-dilution diagnostic. Runs for ALL
@@ -27,6 +34,7 @@ from tqdm import tqdm
 
 from burst_shape.persistence import burst_params_str_to_dict, load_df_cultures
 from burst_shape.persistence.spike_times import get_spike_times_in_milliseconds
+from burst_shape.preprocess.burst_detection import MI_bursts
 from burst_shape.preprocess.burst_detection_alternative import (
     _network_bursts_chain,
     _network_bursts_simultaneity,
@@ -407,6 +415,83 @@ if _min_length_direct is not None or _min_firing_rate_direct is not None:
         f"(reference filtered to match direct: min_length={_min_length_direct}, "
         f"min_firing_rate={_min_firing_rate_direct} Hz)",
         ref_name="simultaneity",
+    )
+
+
+# ==========================================================================
+# (1b) ISI-perturbation sensitivity of the original (direct) algorithm
+# ==========================================================================
+# Re-run the SAME direct detector (MI_bursts on the flattened spike train,
+# with the dataset's minBdur/minIBI/minSburst) but scale the ISI thresholds
+# maxISIstart/maxISIb by +-(5, 10, 20)%. Compare each perturbed run against
+# the unperturbed direct bursts, apples-to-apples: the perturbed reference is
+# put through the SAME post-detection filters (min_length, min_firing_rate)
+# that the saved direct bursts already have, so both sides are filtered the
+# same way. This quantifies how sensitive the reported bursts are to the ISI
+# threshold choice.
+
+ISI_PERTURBATIONS_PERCENT = (-50, -20, -10, -5, 5, 10, 20, 50)
+
+_maxISIstart_direct = burst_params["maxISIstart"]
+_maxISIb_direct = burst_params["maxISIb"]
+_minBdur_direct = burst_params["minBdur"]
+_minIBI_direct = burst_params["minIBI"]
+_minSburst_direct = burst_params["minSburst"]
+
+print(
+    f"\nISI-perturbation sensitivity: original maxISIstart={_maxISIstart_direct}, "
+    f"maxISIb={_maxISIb_direct} ms (minBdur={_minBdur_direct}, "
+    f"minIBI={_minIBI_direct}, minSburst={_minSburst_direct})"
+)
+
+
+def _detect_direct_bursts_scaled(st_ms, scale):
+    """Run the original MI_bursts detector with the ISI thresholds scaled."""
+    return MI_bursts(
+        st_ms,
+        maxISIstart=_maxISIstart_direct * scale,
+        maxISIb=_maxISIb_direct * scale,
+        minBdur=_minBdur_direct,
+        minIBI=_minIBI_direct,
+        minSburst=_minSburst_direct,
+    )
+
+
+for _pct in ISI_PERTURBATIONS_PERCENT:
+    _scale = 1.0 + _pct / 100.0
+    _column = f"burst_start_end_isi_{_pct:+d}pct"
+    df_cultures[_column] = pd.Series(dtype=object)
+    for index in tqdm(df_cultures.index, f"Detect direct bursts, ISI {_pct:+d}%"):
+        st, _gid = get_spike_times_in_milliseconds(df_cultures, index, dataset)
+        if not (isinstance(st, np.ndarray) and st.size > 0):
+            df_cultures.at[index, _column] = []
+            continue
+        df_cultures.at[index, _column] = _detect_direct_bursts_scaled(st, _scale)
+
+    _label = (
+        f"direct (original ISI) vs direct with ISI {_pct:+d}% "
+        f"(maxISIstart={_maxISIstart_direct * _scale:.3g}, "
+        f"maxISIb={_maxISIb_direct * _scale:.3g} ms), apples-to-apples "
+        f"(perturbed filtered to match direct: min_length={_min_length_direct}, "
+        f"min_firing_rate={_min_firing_rate_direct} Hz)"
+    )
+    _matrix_isi = _agreement_per_recording(
+        df_cultures,
+        get_reference_intervals=(
+            lambda idx, spike_arr, col=_column: _apply_direct_filters(
+                df_cultures.at[idx, col], spike_arr
+            )
+        ),
+    )
+    _print_agreement_metrics(_label, _matrix_isi)
+    _burst_existence_overlap(
+        get_ref_intervals=(
+            lambda idx, spike_arr, col=_column: _apply_direct_filters(
+                df_cultures.at[idx, col], spike_arr
+            )
+        ),
+        label=_label,
+        ref_name=f"ISI{_pct:+d}%",
     )
 
 
