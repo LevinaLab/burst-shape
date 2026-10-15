@@ -50,6 +50,19 @@ for burst_extraction_params in burst_extraction_params_list:
         }
     )
 
+    # individual stats
+    print(f"{dataset} statistics:")
+    match dataset:
+        case "mossink":
+            print(df_cultures.index.get_level_values("group").value_counts())
+        case "inhibblock":
+            print(df_cultures.index.get_level_values("drug_label").value_counts())
+        case "hommersom_binary":
+            print(df_cultures["group"].value_counts())
+        case "wagenaar":
+            print(df_cultures.index.get_level_values("batch").value_counts())
+    print("\n")
+
 df_statistics = pd.DataFrame(statistics_list)
 df_statistics["max_time_rounded"] = df_statistics["max_time"].round(0).astype(int)
 df_statistics["total_time"] = (
