@@ -11,6 +11,11 @@ from burst_shape.persistence import (
 )
 from burst_shape.preprocess import burst_extraction
 
+DATA_PATH = (
+    "df_human_slice_full_data.pkl"
+    # "df_human_slice_half_data.pkl"
+)
+
 # parameters
 params_burst_extraction = {
     "dataset": "human_slice",
@@ -33,9 +38,7 @@ params_burst_extraction = {
 
 
 def _construct_df_cultures():
-    return pd.read_pickle(
-        os.path.join(get_data_human_slice_folder(), "df_human_slice_half_data.pkl")
-    )
+    return pd.read_pickle(os.path.join(get_data_human_slice_folder(), DATA_PATH))
 
 
 # extract bursts

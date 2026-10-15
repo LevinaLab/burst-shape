@@ -200,7 +200,7 @@ def _run_group_comparison(df_cultures, compare_column):
 
 print("Run statistical tests on average burst shapes.")
 match dataset:
-    case "inhibblock" | "hommersom_binary" | "mossink_KS":
+    case "inhibblock" | "hommersom_binary" | "mossink_KS" | "human_slice":
         df_cultures["peak_time"] = (
             df_cultures[column_burst_shapes].apply(np.argmax) * bin_size
         )

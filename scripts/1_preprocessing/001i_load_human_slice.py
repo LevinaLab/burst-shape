@@ -5,9 +5,16 @@ import pandas as pd
 
 from burst_shape.folders import get_data_human_slice_folder
 
+DATA_SELECTION = (
+    # "2026_04_14_Package"
+    "2026_07_15_Package"
+)
+
 path_data = get_data_human_slice_folder()
-path_raw = os.path.join(path_data, "2026_04_14_Package")
-subject_list = os.listdir(path_raw)
+path_raw = os.path.join(path_data, DATA_SELECTION)
+subject_list = [
+    dir_ for dir_ in os.listdir(path_raw) if os.path.isdir(os.path.join(path_raw, dir_))
+]
 
 df_list = []
 
@@ -66,7 +73,7 @@ df = df.rename(index=lambda x: x.replace("_1ÊM", ""), level="condition")
 # 3) remove all conditions with <=4 samples
 value_counts = df.reset_index()["condition"].value_counts()
 df = df[
-    df.index.get_level_values("condition").isin(value_counts[value_counts > 4].index)
+    df.index.get_level_values("condition").isin(value_counts[value_counts > 11].index)
 ]
 
 # print statistics of "condition" column
@@ -75,4 +82,10 @@ print("Condition value counts:")
 print(df.reset_index()["condition"].value_counts())
 
 # save
-df.to_pickle(os.path.join(path_data, "df_human_slice_half_data.pkl"))
+match DATA_SELECTION:
+    case "2026_04_14_Package":
+        df.to_pickle(os.path.join(path_data, "df_human_slice_half_data.pkl"))
+    case "2026_07_15_Package":
+        df.to_pickle(os.path.join(path_data, "df_human_slice_full_data.pkl"))
+    case _:
+        raise ValueError(f"Unknown DATA_SELECTION: {DATA_SELECTION}")
